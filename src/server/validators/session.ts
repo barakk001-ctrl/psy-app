@@ -35,10 +35,6 @@ export const createSessionSchema = z
     },
   );
 
-export const updateSessionSchema = createSessionSchema.partial().extend({
-  id: z.string(),
-});
-
 export const sessionStatusSchema = z.object({
   id: z.string(),
   status: z.enum(sessionStatuses),
