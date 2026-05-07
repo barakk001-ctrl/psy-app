@@ -83,6 +83,7 @@ export async function recordPaymentAction(
   revalidatePath(`/invoices/${data.invoiceId}`);
   revalidatePath("/invoices");
   revalidatePath("/dashboard");
+  revalidatePath("/reports");
   return { saved: true };
 }
 
@@ -127,4 +128,6 @@ export async function deletePaymentAction(formData: FormData) {
 
   revalidatePath(`/invoices/${payment.invoiceId}`);
   revalidatePath("/invoices");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
 }
