@@ -12,6 +12,7 @@ import {
 import {
   createSessionSchema,
   sessionStatusSchema,
+  updateSessionSchema,
 } from "@/server/validators/session";
 
 async function requireUserId(): Promise<string> {
@@ -77,6 +78,75 @@ export async function createSessionAction(
   revalidatePath("/dashboard");
   revalidatePath(`/clients/${client.id}`);
   redirect(`/sessions/${created.id}`);
+}
+
+export async function updateSessionAction(
+  _: SessionFormState,
+  formData: FormData,
+): Promise<SessionFormState> {
+  const userId = await requireUserId();
+
+  const parsed = updateSessionSchema.safeParse({
+    id: formData.get("id"),
+    clientId: formData.get("clientId"),
+    startsAt: formData.get("startsAt"),
+    durationMinutes: formData.get("durationMinutes"),
+    location: formData.get("location"),
+    meetingUrl: formData.get("meetingUrl") ?? "",
+    rate: formData.get("rate") ?? "",
+  });
+
+  if (!parsed.success) {
+    return {
+      error: "אנא תקן את השגיאות בטופס",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+  const data = parsed.data;
+
+  // Verify ownership and load existing session
+  const existing = await db.session.findFirst({
+    where: { id: data.id, userId },
+    select: { id: true, startsAt: true, status: true, clientId: true },
+  });
+  if (!existing) return { error: "פגישה לא נמצאה" };
+
+  // Verify the client belongs to this user
+  const client = await db.client.findFirst({
+    where: { id: data.clientId, userId },
+    select: { id: true },
+  });
+  if (!client) return { error: "לקוח לא נמצא" };
+
+  const startsAt = new Date(data.startsAt);
+  const endsAt = new Date(startsAt.getTime() + data.durationMinutes * 60 * 1000);
+
+  await db.session.update({
+    where: { id: data.id, userId },
+    data: {
+      clientId: data.clientId,
+      startsAt,
+      endsAt,
+      location: data.location,
+      meetingUrl: data.meetingUrl || null,
+      rate: data.rate ?? null,
+    },
+  });
+
+  // If the time changed and the session is still scheduled, refresh reminders
+  const timeChanged = startsAt.getTime() !== existing.startsAt.getTime();
+  if (timeChanged && existing.status === "SCHEDULED") {
+    await rescheduleSessionReminders(data.id);
+  }
+
+  revalidatePath("/calendar");
+  revalidatePath("/dashboard");
+  revalidatePath(`/sessions/${data.id}`);
+  revalidatePath(`/clients/${data.clientId}`);
+  if (existing.clientId !== data.clientId) {
+    revalidatePath(`/clients/${existing.clientId}`);
+  }
+  redirect(`/sessions/${data.id}`);
 }
 
 export async function updateSessionStatusAction(formData: FormData) {

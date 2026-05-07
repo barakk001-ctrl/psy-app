@@ -35,6 +35,34 @@ export const createSessionSchema = z
     },
   );
 
+export const updateSessionSchema = z
+  .object({
+    id: z.string().min(1),
+    clientId: z.string().min(1, "נדרש לקוח"),
+    startsAt: datetimeLocal,
+    durationMinutes: z
+      .union([z.string(), z.number()])
+      .transform((v) => (typeof v === "number" ? v : parseInt(v, 10)))
+      .pipe(z.number().int().min(15).max(240)),
+    location: z.enum(sessionLocations),
+    meetingUrl: z.string().url("קישור לא תקין").optional().or(z.literal("")),
+    rate: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((v) => {
+        if (v === undefined || v === "" || v === null) return undefined;
+        const n = typeof v === "number" ? v : parseFloat(v);
+        return Number.isNaN(n) ? undefined : n;
+      }),
+  })
+  .refine(
+    (d) => d.location !== "ONLINE" || (d.meetingUrl && d.meetingUrl.length > 0),
+    {
+      message: "פגישה מקוונת דורשת קישור",
+      path: ["meetingUrl"],
+    },
+  );
+
 export const sessionStatusSchema = z.object({
   id: z.string(),
   status: z.enum(sessionStatuses),

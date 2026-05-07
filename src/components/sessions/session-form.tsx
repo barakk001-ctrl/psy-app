@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   createSessionAction,
+  updateSessionAction,
   type SessionFormState,
 } from "@/server/actions/sessions";
 
@@ -19,27 +20,56 @@ type ClientOption = {
   defaultRate: string | null;
 };
 
+export type SessionFormInitial = {
+  id: string;
+  clientId: string;
+  startsAt: string; // datetime-local format yyyy-MM-ddTHH:mm
+  durationMinutes: number;
+  location: "OFFICE" | "ONLINE" | "HOME_VISIT" | "OTHER";
+  meetingUrl: string | null;
+  rate: string | null;
+};
+
 export function SessionForm({
   clients,
   defaults,
+  initial,
 }: {
   clients: ClientOption[];
   defaults?: { startsAt?: string; clientId?: string };
+  initial?: SessionFormInitial;
 }) {
+  const isEdit = !!initial;
+  const action = isEdit ? updateSessionAction : createSessionAction;
+
   const [state, formAction, pending] = useActionState<SessionFormState, FormData>(
-    createSessionAction,
+    action,
     null,
   );
   const fieldErr = state?.fieldErrors ?? {};
 
-  const [location, setLocation] = useState<string>("OFFICE");
-  const [clientId, setClientId] = useState<string>(defaults?.clientId ?? "");
+  const [location, setLocation] = useState<string>(
+    initial?.location ?? "OFFICE",
+  );
+  const [clientId, setClientId] = useState<string>(
+    initial?.clientId ?? defaults?.clientId ?? "",
+  );
 
   const selectedClient = clients.find((c) => c.id === clientId);
   const ratePlaceholder = selectedClient?.defaultRate ?? "";
 
+  // Match the start time to the initial value (edit) or the URL param (create from calendar click)
+  const startsAtDefault = initial?.startsAt ?? defaults?.startsAt;
+  const durationDefault = initial?.durationMinutes
+    ? String(initial.durationMinutes)
+    : "50";
+  const rateDefault = initial?.rate ?? "";
+  const meetingUrlDefault = initial?.meetingUrl ?? "";
+
   return (
     <form action={formAction} className="space-y-6" noValidate>
+      {isEdit && <input type="hidden" name="id" value={initial!.id} />}
+
       <Card>
         <CardContent className="space-y-5">
           <div>
@@ -81,7 +111,7 @@ export function SessionForm({
                 name="startsAt"
                 type="datetime-local"
                 required
-                defaultValue={defaults?.startsAt}
+                defaultValue={startsAtDefault}
                 invalid={!!fieldErr.startsAt}
               />
               {fieldErr.startsAt && (
@@ -90,7 +120,11 @@ export function SessionForm({
             </div>
             <div>
               <Label htmlFor="durationMinutes">משך (דקות) *</Label>
-              <Select id="durationMinutes" name="durationMinutes" defaultValue="50">
+              <Select
+                id="durationMinutes"
+                name="durationMinutes"
+                defaultValue={durationDefault}
+              >
                 <option value="30">30</option>
                 <option value="45">45</option>
                 <option value="50">50</option>
@@ -125,6 +159,7 @@ export function SessionForm({
                 type="number"
                 step="0.01"
                 min="0"
+                defaultValue={rateDefault}
                 placeholder={ratePlaceholder ? `ברירת מחדל: ${ratePlaceholder}` : "ללא"}
               />
             </div>
@@ -138,6 +173,7 @@ export function SessionForm({
                 name="meetingUrl"
                 type="url"
                 placeholder="https://…"
+                defaultValue={meetingUrlDefault}
                 invalid={!!fieldErr.meetingUrl}
               />
               {fieldErr.meetingUrl && (
@@ -155,7 +191,7 @@ export function SessionForm({
       )}
 
       <div className="flex items-center gap-3 justify-end">
-        <Link href="/calendar">
+        <Link href={isEdit ? `/sessions/${initial!.id}` : "/calendar"}>
           <Button type="button" variant="ghost">
             ביטול
           </Button>

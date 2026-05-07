@@ -7,10 +7,12 @@ import {
   Video,
   ExternalLink,
   User as UserIcon,
+  Pencil,
 } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { decryptNote } from "@/lib/crypto";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime, formatTime, formatCurrency } from "@/lib/format";
 import { SessionStatusBadge } from "@/components/sessions/session-status-badge";
@@ -101,6 +103,12 @@ export default async function SessionDetailPage({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
+          <Link href={`/sessions/${sess.id}/edit`}>
+            <Button variant="secondary" size="sm">
+              <Pencil className="w-4 h-4" />
+              עריכה
+            </Button>
+          </Link>
           <SessionStatusActions sessionId={sess.id} currentStatus={sess.status} />
         </div>
       </header>
