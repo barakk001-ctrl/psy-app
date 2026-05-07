@@ -1,0 +1,279 @@
+// Psychology Practice Management — v1 schema
+// Single-tenant per User row, but designed so multi-tenant is a non-breaking change later.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auth & practice owner
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String
+  hashedPassword  String?
+
+  // Used on invoice/receipt headers
+  businessName    String?
+  businessId      String?   // ת.ז / ע.מ / ח.פ
+  address         String?
+  phone           String?
+  logoUrl         String?
+
+  // Defaults
+  defaultRate     Decimal?  @db.Decimal(10, 2)
+  currency        String    @default("ILS")
+  timezone        String    @default("Asia/Jerusalem")
+
+  // For sequential invoice numbering
+  nextInvoiceNumber Int     @default(1)
+
+  clients         Client[]
+  sessions        Session[]
+  invoices        Invoice[]
+  reminderJobs    ReminderJob[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────
+// Clients (patients)
+// ─────────────────────────────────────────────────────────────
+
+model Client {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  firstName     String
+  lastName      String
+  idNumber      String?      // ת.ז — encrypted at app layer if you want
+  email         String?
+  phone         String?
+  dateOfBirth   DateTime?
+  address       String?
+
+  intakeDate    DateTime?
+  status        ClientStatus @default(ACTIVE)
+  defaultRate   Decimal?     @db.Decimal(10, 2)
+  generalNotes  String?      @db.Text   // non-clinical notes (contact prefs, billing notes)
+
+  sessions      Session[]
+  sessionNotes  SessionNote[]
+  invoices      Invoice[]
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([userId, lastName])
+  @@index([userId, status])
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+// ─────────────────────────────────────────────────────────────
+// Sessions (calendar events)
+// ─────────────────────────────────────────────────────────────
+
+model Session {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  startsAt      DateTime
+  endsAt        DateTime
+  status        SessionStatus @default(SCHEDULED)
+  rate          Decimal?      @db.Decimal(10, 2)  // snapshot at booking time
+  location      SessionLocation @default(OFFICE)
+  meetingUrl    String?
+
+  // Recurrence (simple — one parent + generated children, or use rrule string)
+  recurrenceRule String?      // RFC 5545 RRULE if recurring
+  parentSessionId String?
+  parentSession  Session?     @relation("Recurrence", fields: [parentSessionId], references: [id])
+  childSessions  Session[]    @relation("Recurrence")
+
+  note          SessionNote?
+  invoiceItem   InvoiceItem?
+
+  reminderJobs  ReminderJob[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId, startsAt])
+  @@index([clientId, startsAt])
+  @@index([status, startsAt])
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum SessionLocation {
+  OFFICE
+  ONLINE
+  HOME_VISIT
+  OTHER
+}
+
+// ─────────────────────────────────────────────────────────────
+// Clinical notes — kept in a separate table so you can apply
+// stricter access control / encryption later.
+// ─────────────────────────────────────────────────────────────
+
+model SessionNote {
+  id              String    @id @default(cuid())
+  sessionId       String    @unique
+  session         Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Encrypt at the application layer (e.g., AES-256-GCM with a key from env / KMS).
+  // The DB only ever sees ciphertext + iv + tag.
+  contentCiphertext String  @db.Text
+  contentIv         String
+  contentTag        String
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([clientId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Billing
+// ─────────────────────────────────────────────────────────────
+
+model Invoice {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  number        Int           // sequential per user
+  issueDate     DateTime      @default(now())
+  dueDate       DateTime?
+  status        InvoiceStatus @default(DRAFT)
+
+  subtotal      Decimal       @db.Decimal(10, 2)
+  total         Decimal       @db.Decimal(10, 2)
+  amountPaid    Decimal       @default(0) @db.Decimal(10, 2)
+  notes         String?       @db.Text
+  pdfUrl        String?       // generated PDF location
+
+  items         InvoiceItem[]
+  payments      Payment[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([userId, number])
+  @@index([userId, issueDate])
+  @@index([clientId, status])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+model InvoiceItem {
+  id            String    @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  // If this line item bills a session, link it (one item per session max)
+  sessionId     String?   @unique
+  session       Session?  @relation(fields: [sessionId], references: [id])
+
+  description   String
+  quantity      Decimal   @default(1) @db.Decimal(10, 2)
+  unitPrice     Decimal   @db.Decimal(10, 2)
+  amount        Decimal   @db.Decimal(10, 2)
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  amount        Decimal       @db.Decimal(10, 2)
+  method        PaymentMethod
+  paidAt        DateTime      @default(now())
+  reference     String?       // tx id, check #, last 4 digits, etc.
+  notes         String?
+
+  // For online providers
+  provider      String?       // "tranzila" | "cardcom" | "paypal" | null
+  providerTxId  String?
+
+  createdAt     DateTime      @default(now())
+
+  @@index([invoiceId])
+}
+
+enum PaymentMethod {
+  CASH
+  BIT
+  CHECK
+  BANK_TRANSFER
+  CREDIT_CARD
+  PAYPAL
+  OTHER
+}
+
+// ─────────────────────────────────────────────────────────────
+// Reminders (queued jobs to send email/SMS before a session)
+// ─────────────────────────────────────────────────────────────
+
+model ReminderJob {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId     String
+  session       Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  channel       ReminderChannel
+  scheduledFor  DateTime
+  status        ReminderStatus @default(PENDING)
+  sentAt        DateTime?
+  error         String?
+
+  @@index([status, scheduledFor])
+}
+
+enum ReminderChannel {
+  EMAIL
+  SMS
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
