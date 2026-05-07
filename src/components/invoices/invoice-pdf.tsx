@@ -1,3 +1,4 @@
+import path from "node:path";
 import {
   Document,
   Page,
@@ -7,22 +8,16 @@ import {
   Font,
 } from "@react-pdf/renderer";
 
-// Register Heebo (Hebrew + Latin) from jsDelivr — stable URLs from @fontsource
+// Register Heebo from local files in /public/fonts.
+// Bundling the fonts removes our dependency on any CDN being reachable at runtime —
+// previously we fetched from jsDelivr and that URL pattern changed, breaking PDF generation.
+const fontDir = path.join(process.cwd(), "public", "fonts");
 Font.register({
   family: "Heebo",
   fonts: [
-    {
-      src: "https://cdn.jsdelivr.net/npm/@fontsource/heebo@5.1.0/files/heebo-hebrew-400-normal.ttf",
-      fontWeight: 400,
-    },
-    {
-      src: "https://cdn.jsdelivr.net/npm/@fontsource/heebo@5.1.0/files/heebo-hebrew-500-normal.ttf",
-      fontWeight: 500,
-    },
-    {
-      src: "https://cdn.jsdelivr.net/npm/@fontsource/heebo@5.1.0/files/heebo-hebrew-700-normal.ttf",
-      fontWeight: 700,
-    },
+    { src: path.join(fontDir, "heebo-400.ttf"), fontWeight: 400 },
+    { src: path.join(fontDir, "heebo-500.ttf"), fontWeight: 500 },
+    { src: path.join(fontDir, "heebo-700.ttf"), fontWeight: 700 },
   ],
 });
 
