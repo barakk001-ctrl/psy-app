@@ -57,13 +57,19 @@ export function MobileTopBar({ userName }: { userName?: string | null }) {
         />
       )}
 
-      {/* Drawer panel — slides in from the right since the page is RTL */}
+      {/* Drawer panel — slides in from the right side of the screen.
+          We use inline styles + explicit `right: 0` (not `end-0`) to bypass any
+          RTL-aware Tailwind direction flipping which has caused the drawer to
+          stay visible when closed. */}
       <div
         className={cn(
-          "lg:hidden fixed inset-y-0 end-0 z-50 w-72 max-w-[85vw] bg-cream-50 border-s border-cream-300 shadow-lift",
+          "lg:hidden fixed inset-y-0 z-50 w-72 max-w-[85vw] bg-cream-50 border-l border-cream-300 shadow-lift",
           "transition-transform duration-200 ease-out flex flex-col",
-          open ? "translate-x-0" : "translate-x-full",
         )}
+        style={{
+          right: 0,
+          transform: open ? "translateX(0)" : "translateX(100%)",
+        }}
         aria-hidden={!open}
       >
         <div className="p-4 flex items-center justify-between border-b border-cream-300">
