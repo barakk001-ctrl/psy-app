@@ -62,7 +62,7 @@ export function MobileTopBar({ userName }: { userName?: string | null }) {
         className={cn(
           "lg:hidden fixed inset-y-0 end-0 z-50 w-72 max-w-[85vw] bg-cream-50 border-s border-cream-300 shadow-lift",
           "transition-transform duration-200 ease-out flex flex-col",
-          open ? "translate-x-0" : "rtl:translate-x-full ltr:-translate-x-full",
+          open ? "translate-x-0" : "translate-x-full",
         )}
         aria-hidden={!open}
       >
