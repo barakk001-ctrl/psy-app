@@ -147,25 +147,25 @@ export default async function ReportsPage({
                   <li key={inv.id}>
                     <Link
                       href={`/invoices/${inv.id}`}
-                      className="grid grid-cols-12 gap-3 items-center px-5 py-3 hover:bg-cream-100/60 transition-colors"
+                      className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-cream-100/60 transition-colors"
                     >
-                      <div className="col-span-2 font-display text-sm text-ink">
+                      <div className="font-display text-xs sm:text-sm text-ink shrink-0 w-12 sm:w-16">
                         #{String(inv.number).padStart(4, "0")}
                       </div>
-                      <div className="col-span-4 text-sm text-ink truncate">
-                        {inv.clientName}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-ink truncate">{inv.clientName}</div>
+                        <div className="text-[10px] sm:text-xs text-ink-muted mt-0.5">
+                          {inv.dueDate ? (
+                            <span className={isOverdue ? "text-terracotta-600 font-medium" : ""}>
+                              לתשלום עד {formatDate(inv.dueDate)}
+                              {isOverdue && " · באיחור"}
+                            </span>
+                          ) : (
+                            <span>הופקה {formatDate(inv.issueDate)}</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="col-span-3 text-xs text-ink-muted">
-                        {inv.dueDate ? (
-                          <span className={isOverdue ? "text-terracotta-600 font-medium" : ""}>
-                            לתשלום עד {formatDate(inv.dueDate)}
-                            {isOverdue && " · באיחור"}
-                          </span>
-                        ) : (
-                          <span>הופקה {formatDate(inv.issueDate)}</span>
-                        )}
-                      </div>
-                      <div className="col-span-3 text-end">
+                      <div className="text-end shrink-0">
                         <div className="text-sm font-medium text-ink tabular-nums">
                           {formatCurrency(inv.balance)}
                         </div>

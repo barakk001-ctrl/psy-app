@@ -63,26 +63,28 @@ export default async function InvoicesPage() {
                 <li key={inv.id}>
                   <Link
                     href={`/invoices/${inv.id}`}
-                    className="grid grid-cols-12 gap-3 items-center px-5 py-4 hover:bg-cream-100/60 transition-colors"
+                    className="flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 hover:bg-cream-100/60 transition-colors"
                   >
-                    <div className="col-span-2 font-display text-lg text-ink">
+                    <div className="font-display text-base sm:text-lg text-ink shrink-0 w-14 sm:w-20">
                       #{String(inv.number).padStart(4, "0")}
                     </div>
-                    <div className="col-span-4 min-w-0">
-                      <div className="font-medium text-ink truncate">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-ink truncate text-sm sm:text-base">
                         {inv.client.firstName} {inv.client.lastName}
                       </div>
-                      <div className="text-xs text-ink-muted mt-0.5">
-                        {formatDate(inv.issueDate)}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] sm:text-xs text-ink-muted">
+                          {formatDate(inv.issueDate)}
+                        </span>
+                        <InvoiceStatusBadge status={inv.status} />
                       </div>
                     </div>
-                    <div className="col-span-2">
-                      <InvoiceStatusBadge status={inv.status} />
-                    </div>
-                    <div className="col-span-4 text-left">
-                      <div className="font-medium text-ink">{formatCurrency(total)}</div>
+                    <div className="text-end shrink-0">
+                      <div className="font-medium text-ink text-sm sm:text-base">
+                        {formatCurrency(total)}
+                      </div>
                       {balance > 0 && balance !== total && (
-                        <div className="text-xs text-terracotta-600 mt-0.5">
+                        <div className="text-[10px] sm:text-xs text-terracotta-600 mt-0.5">
                           יתרה: {formatCurrency(balance)}
                         </div>
                       )}

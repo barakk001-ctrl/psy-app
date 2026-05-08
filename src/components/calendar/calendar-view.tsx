@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -22,9 +22,22 @@ const STATUS_BG: Record<string, string> = {
   NO_SHOW: "#B5654A",
 };
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isMobile;
+}
+
 export function CalendarView({ events }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const isMobile = useIsMobile();
 
   const styledEvents: EventInput[] = events.map((e) => ({
     ...e,
@@ -34,20 +47,44 @@ export function CalendarView({ events }: Props) {
   }));
 
   return (
-    <div className="rounded-lg bg-white border border-cream-300 shadow-soft p-4 calendar-shell">
+    <div className="rounded-lg bg-white border border-cream-300 shadow-soft p-2 sm:p-4 calendar-shell">
       <FullCalendar
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-        initialView="timeGridWeek"
+        // Day view as default on mobile — week view is unusable at <600px
+        initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
+        // Force re-render when viewport changes so initialView actually takes effect
+        key={isMobile ? "mobile" : "desktop"}
         locale={heLocale}
         direction="rtl"
         firstDay={0}
         height="auto"
-        headerToolbar={{
-          start: "prev,next today",
-          center: "title",
-          end: "dayGridMonth,timeGridWeek,timeGridDay",
-        }}
+        headerToolbar={
+          isMobile
+            ? {
+                start: "prev,next",
+                center: "title",
+                end: "today",
+              }
+            : {
+                start: "prev,next today",
+                center: "title",
+                end: "dayGridMonth,timeGridWeek,timeGridDay",
+              }
+        }
+        // On mobile, let users switch views via separate buttons we render below
+        footerToolbar={
+          isMobile
+            ? {
+                center: "dayGridMonth,timeGridWeek,timeGridDay",
+              }
+            : undefined
+        }
         buttonText={{
+          today: "היום",
+          month: "חודש",
+          week: "שבוע",
+          day: "יום",
+        }}
           today: "היום",
           month: "חודש",
           week: "שבוע",
@@ -61,6 +98,10 @@ export function CalendarView({ events }: Props) {
         editable
         selectable
         selectMirror
+        // Touch interactions: hold ~250ms to start a select / drag
+        longPressDelay={250}
+        selectLongPressDelay={250}
+        eventLongPressDelay={250}
         events={styledEvents}
         eventClick={(info) => {
           info.jsEvent.preventDefault();
@@ -155,6 +196,35 @@ export function CalendarView({ events }: Props) {
         }
         .calendar-shell .fc-timegrid-event-harness > .fc-timegrid-event {
           box-shadow: none;
+        }
+
+        /* Mobile-only adjustments */
+        @media (max-width: 767px) {
+          .calendar-shell .fc .fc-toolbar {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+          }
+          .calendar-shell .fc .fc-toolbar-title {
+            font-size: 1rem;
+          }
+          .calendar-shell .fc .fc-button {
+            font-size: 0.72rem;
+            padding: 0.3rem 0.55rem;
+          }
+          /* Footer toolbar (view switcher) on mobile */
+          .calendar-shell .fc .fc-footer-toolbar {
+            margin-top: 0.5rem;
+            justify-content: center;
+          }
+          .calendar-shell .fc-event {
+            font-size: 0.72rem;
+          }
+          .calendar-shell .fc .fc-timegrid-slot-label-cushion {
+            font-size: 0.65rem;
+          }
+          .calendar-shell .fc .fc-col-header-cell-cushion {
+            font-size: 0.7rem;
+          }
         }
       `}</style>
     </div>

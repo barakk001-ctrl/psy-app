@@ -115,16 +115,16 @@ export default async function InvoiceDetailPage({
             <table className="w-full">
               <thead>
                 <tr className="border-b border-cream-300">
-                  <th className="text-start text-xs uppercase tracking-wider text-ink-muted px-5 py-3 font-medium">
+                  <th className="text-start text-xs uppercase tracking-wider text-ink-muted px-4 sm:px-5 py-3 font-medium">
                     תיאור
                   </th>
-                  <th className="text-center text-xs uppercase tracking-wider text-ink-muted px-3 py-3 font-medium w-16">
+                  <th className="hidden sm:table-cell text-center text-xs uppercase tracking-wider text-ink-muted px-3 py-3 font-medium w-16">
                     כמות
                   </th>
-                  <th className="text-end text-xs uppercase tracking-wider text-ink-muted px-3 py-3 font-medium w-28">
+                  <th className="hidden sm:table-cell text-end text-xs uppercase tracking-wider text-ink-muted px-3 py-3 font-medium w-28">
                     מחיר
                   </th>
-                  <th className="text-end text-xs uppercase tracking-wider text-ink-muted px-5 py-3 font-medium w-28">
+                  <th className="text-end text-xs uppercase tracking-wider text-ink-muted px-4 sm:px-5 py-3 font-medium w-24 sm:w-28">
                     סה״כ
                   </th>
                 </tr>
@@ -132,14 +132,20 @@ export default async function InvoiceDetailPage({
               <tbody>
                 {invoice.items.map((it) => (
                   <tr key={it.id} className="border-b border-cream-200">
-                    <td className="px-5 py-3 text-sm text-ink-soft">{it.description}</td>
-                    <td className="px-3 py-3 text-sm text-ink-soft text-center">
+                    <td className="px-4 sm:px-5 py-3 text-sm text-ink-soft">
+                      <div>{it.description}</div>
+                      {/* Show qty × price inline on mobile (hidden as columns there) */}
+                      <div className="sm:hidden text-[10px] text-ink-muted mt-0.5">
+                        {Number(it.quantity)} × {formatCurrency(it.unitPrice.toString())}
+                      </div>
+                    </td>
+                    <td className="hidden sm:table-cell px-3 py-3 text-sm text-ink-soft text-center">
                       {Number(it.quantity)}
                     </td>
-                    <td className="px-3 py-3 text-sm text-ink-soft text-end">
+                    <td className="hidden sm:table-cell px-3 py-3 text-sm text-ink-soft text-end">
                       {formatCurrency(it.unitPrice.toString())}
                     </td>
-                    <td className="px-5 py-3 text-sm text-ink text-end font-medium">
+                    <td className="px-4 sm:px-5 py-3 text-sm text-ink text-end font-medium">
                       {formatCurrency(it.amount.toString())}
                     </td>
                   </tr>

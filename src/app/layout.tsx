@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Frank_Ruhl_Libre, Assistant } from "next/font/google";
 import "./globals.css";
 
@@ -19,6 +19,18 @@ const fontSans = Assistant({
 export const metadata: Metadata = {
   title: "מרפאה — ניהול קליניקה",
   description: "מערכת לניהול קליניקה: לקוחות, פגישות, חשבוניות ותשלומים",
+  appleWebApp: {
+    capable: true,
+    title: "מרפאה",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#FAF7F1",
 };
 
 export default function RootLayout({

@@ -50,6 +50,16 @@
     text-align: right;
   }
 
+  /* iOS Safari zooms in on form inputs whose font size is < 16px. Bump to 16px
+     on mobile so taps don't trigger a viewport zoom. */
+  @media (max-width: 767px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
   ::selection {
     background-color: #dce3d2;
     color: #1a1714;
