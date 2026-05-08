@@ -85,11 +85,6 @@ export function CalendarView({ events }: Props) {
           week: "שבוע",
           day: "יום",
         }}
-          today: "היום",
-          month: "חודש",
-          week: "שבוע",
-          day: "יום",
-        }}
         slotMinTime="07:00:00"
         slotMaxTime="22:00:00"
         slotDuration="00:30:00"
