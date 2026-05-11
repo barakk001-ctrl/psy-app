@@ -37,9 +37,16 @@ function loadFont(filename: string): Buffer {
   );
 }
 
-const heebo400 = loadFont("heebo-400.ttf");
-const heebo500 = loadFont("heebo-500.ttf");
-const heebo700 = loadFont("heebo-700.ttf");
+// Convert font buffers to data: URIs so they can be passed as `src` strings.
+// @react-pdf/renderer accepts these directly — no path resolution, no
+// network fetches, no TypeScript shenanigans.
+function asDataUri(buf: Buffer): string {
+  return `data:font/ttf;base64,${buf.toString("base64")}`;
+}
+
+const heebo400 = asDataUri(loadFont("heebo-400.ttf"));
+const heebo500 = asDataUri(loadFont("heebo-500.ttf"));
+const heebo700 = asDataUri(loadFont("heebo-700.ttf"));
 
 Font.register({
   family: "Heebo",
