@@ -37,28 +37,29 @@ function loadFont(filename: string): Buffer {
   );
 }
 
-// Convert font buffers to data: URIs so they can be passed as `src` strings.
-// @react-pdf/renderer accepts these directly — no path resolution, no
-// network fetches, no TypeScript shenanigans.
+// Convert a font buffer to a data: URI so it can be passed as `src` (a string).
+// @react-pdf/renderer accepts these directly — no path resolution at render time.
 function asDataUri(buf: Buffer): string {
   return `data:font/ttf;base64,${buf.toString("base64")}`;
 }
 
-const heebo400 = asDataUri(loadFont("heebo-400.ttf"));
-const heebo500 = asDataUri(loadFont("heebo-500.ttf"));
-const heebo700 = asDataUri(loadFont("heebo-700.ttf"));
-
-Font.register({
-  family: "Heebo",
-  fonts: [
-    { src: heebo400, fontWeight: 400 },
-    { src: heebo500, fontWeight: 500 },
-    { src: heebo700, fontWeight: 700 },
-  ],
-});
-
-// Disable hyphenation — important for Hebrew which doesn't use it
-Font.registerHyphenationCallback((word) => [word]);
+// Lazy registration: only run when the PDF is actually being rendered,
+// not at module-load time. This prevents `next build` from failing if the
+// fonts are missing during build (e.g. during "Collecting page data").
+let fontsRegistered = false;
+export function ensureFontsRegistered(): void {
+  if (fontsRegistered) return;
+  Font.register({
+    family: "Heebo",
+    fonts: [
+      { src: asDataUri(loadFont("heebo-400.ttf")), fontWeight: 400 },
+      { src: asDataUri(loadFont("heebo-500.ttf")), fontWeight: 500 },
+      { src: asDataUri(loadFont("heebo-700.ttf")), fontWeight: 700 },
+    ],
+  });
+  Font.registerHyphenationCallback((word) => [word]);
+  fontsRegistered = true;
+}
 
 const COLORS = {
   ink: "#1A1714",
