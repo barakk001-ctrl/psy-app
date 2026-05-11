@@ -66,14 +66,26 @@ export async function GET(
     })),
   };
 
-  const nodeStream = await renderToStream(<InvoicePDF data={data} />);
+  let nodeStream;
+  try {
+    nodeStream = await renderToStream(<InvoicePDF data={data} />);
+  } catch (err) {
+    console.error("PDF render failed:", err);
+    return new Response(
+      `PDF render failed: ${err instanceof Error ? err.message : String(err)}`,
+      { status: 500 },
+    );
+  }
 
   // Convert Node Readable → Web ReadableStream
   const webStream = new ReadableStream({
     start(controller) {
       nodeStream.on("data", (chunk: Buffer) => controller.enqueue(chunk));
       nodeStream.on("end", () => controller.close());
-      nodeStream.on("error", (err: Error) => controller.error(err));
+      nodeStream.on("error", (err: Error) => {
+        console.error("PDF stream error:", err);
+        controller.error(err);
+      });
     },
   });
 

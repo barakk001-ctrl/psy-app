@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import {
   Document,
@@ -9,15 +10,43 @@ import {
 } from "@react-pdf/renderer";
 
 // Register Heebo from local files in /public/fonts.
-// Bundling the fonts removes our dependency on any CDN being reachable at runtime —
-// previously we fetched from jsDelivr and that URL pattern changed, breaking PDF generation.
-const fontDir = path.join(process.cwd(), "public", "fonts");
+//
+// We read the TTF files into Buffers at module load time and pass them directly
+// to Font.register. This is more reliable than passing a path string, because:
+//   1. Next.js standalone builds change the working directory, breaking
+//      `process.cwd()`-based paths
+//   2. Any path resolution issue at render time produces an empty PDF (not an
+//      error you can see), since the response stream has already started
+//
+// `__dirname` is unreliable in bundled Next.js code, so we resolve relative to
+// process.cwd() but verify the files exist and fall through to a clear error.
+function loadFont(filename: string): Buffer {
+  // Try a few likely locations. First match wins.
+  const candidates = [
+    path.join(process.cwd(), "public", "fonts", filename),
+    path.join(process.cwd(), ".next", "standalone", "public", "fonts", filename),
+    path.join(process.cwd(), "..", "public", "fonts", filename),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      return fs.readFileSync(p);
+    }
+  }
+  throw new Error(
+    `Font file not found: ${filename}. Searched: ${candidates.join(", ")}`,
+  );
+}
+
+const heebo400 = loadFont("heebo-400.ttf");
+const heebo500 = loadFont("heebo-500.ttf");
+const heebo700 = loadFont("heebo-700.ttf");
+
 Font.register({
   family: "Heebo",
   fonts: [
-    { src: path.join(fontDir, "heebo-400.ttf"), fontWeight: 400 },
-    { src: path.join(fontDir, "heebo-500.ttf"), fontWeight: 500 },
-    { src: path.join(fontDir, "heebo-700.ttf"), fontWeight: 700 },
+    { src: heebo400, fontWeight: 400 },
+    { src: heebo500, fontWeight: 500 },
+    { src: heebo700, fontWeight: 700 },
   ],
 });
 
