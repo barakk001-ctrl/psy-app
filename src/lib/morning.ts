@@ -133,6 +133,7 @@ export async function testMorningConnection(
 // ── Document payload mapping (pure — unit tested) ──────────────────
 
 export type MorningDocumentInput = {
+  docType?: number; // MORNING_DOC_TYPES value; defaults to RECEIPT (400)
   clientName: string;
   clientEmail?: string | null;
   clientTaxId?: string | null;
@@ -150,7 +151,7 @@ function isoDate(d: Date): string {
 
 export function buildMorningReceiptPayload(input: MorningDocumentInput) {
   return {
-    type: MORNING_DOC_TYPES.RECEIPT,
+    type: input.docType ?? MORNING_DOC_TYPES.RECEIPT,
     lang: "he",
     currency: "ILS",
     description: input.description,

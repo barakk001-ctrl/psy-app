@@ -74,6 +74,8 @@ export async function saveMorningSettingsAction(
   const keyId = String(formData.get("morningApiKeyId") ?? "").trim();
   const secret = String(formData.get("morningApiSecret") ?? "").trim();
   const sandbox = formData.get("morningSandbox") === "on";
+  const docTypeRaw = Number(formData.get("morningDocType") ?? 400);
+  const docType = docTypeRaw === 320 ? 320 : 400;
 
   if (!keyId || !secret) {
     return { error: "יש להזין גם מזהה מפתח (ID) וגם מפתח סודי (Secret)" };
@@ -93,6 +95,7 @@ export async function saveMorningSettingsAction(
       morningApiKeyId: keyId,
       morningApiSecret: encryptSecret(secret),
       morningSandbox: sandbox,
+      morningDocType: docType,
     },
   });
 

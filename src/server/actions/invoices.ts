@@ -283,7 +283,13 @@ export async function issueMorningReceiptAction(
     return { error: "אין תשלומים רשומים — קבלה מופקת על תשלומים שהתקבלו" };
   }
 
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { morningDocType: true },
+  });
+
   const result = await createMorningReceipt(userId, creds, {
+    docType: user?.morningDocType ?? 400,
     clientName: `${invoice.client.firstName} ${invoice.client.lastName}`,
     clientEmail: invoice.client.email,
     clientTaxId: invoice.client.idNumber,
@@ -310,9 +316,18 @@ export async function issueMorningReceiptAction(
   const docUrl = result.data.url?.he ?? result.data.url?.origin ?? null;
   await db.invoice.update({
     where: { id, userId },
-    data: { morningDocId: result.data.id, morningDocUrl: docUrl },
+    data: {
+      morningDocId: result.data.id,
+      morningDocUrl: docUrl,
+      morningDocNumber: result.data.number ?? null,
+    },
   });
 
   revalidatePath(`/invoices/${id}`);
+  // The Morning doc number surfaces on the client card and treatment pages too
+  revalidatePath(`/clients/${invoice.clientId}`);
+  for (const it of invoice.items) {
+    if (it.sessionId) revalidatePath(`/sessions/${it.sessionId}`);
+  }
   return { issued: true, docUrl: docUrl ?? undefined };
 }

@@ -39,6 +39,7 @@ model User {
   morningApiKeyId  String?
   morningApiSecret String?  // packed AES-256-GCM (iv:tag:ciphertext, base64)
   morningSandbox   Boolean  @default(true)
+  morningDocType   Int      @default(400) // 400 = קבלה, 320 = חשבונית מס-קבלה
 
   clients         Client[]
   sessions        Session[]
@@ -186,8 +187,9 @@ model Invoice {
   pdfUrl        String?       // generated PDF location
 
   // Tax document issued in Morning (Green Invoice) for this invoice
-  morningDocId  String?
-  morningDocUrl String?
+  morningDocId     String?
+  morningDocUrl    String?
+  morningDocNumber String?
 
   items         InvoiceItem[]
   payments      Payment[]

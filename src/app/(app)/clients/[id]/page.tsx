@@ -23,6 +23,15 @@ export default async function ClientDetailPage({
       sessions: {
         orderBy: { startsAt: "desc" },
         take: 10,
+        include: {
+          invoiceItem: {
+            include: {
+              invoice: {
+                select: { number: true, morningDocNumber: true },
+              },
+            },
+          },
+        },
       },
       _count: { select: { sessions: true, invoices: true } },
     },
@@ -166,6 +175,20 @@ export default async function ClientDetailPage({
                           {s.status === "SCHEDULED" && "מתוכננת"}
                           {s.status === "CANCELLED" && "בוטלה"}
                           {s.status === "NO_SHOW" && "לא הופיע/ה"}
+                          {s.invoiceItem?.invoice && (
+                            <>
+                              {" · "}חשבונית #
+                              {String(s.invoiceItem.invoice.number).padStart(4, "0")}
+                              {s.invoiceItem.invoice.morningDocNumber && (
+                                <>
+                                  {" · "}קבלה{" "}
+                                  <span dir="ltr">
+                                    {s.invoiceItem.invoice.morningDocNumber}
+                                  </span>
+                                </>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                       {s.rate && (

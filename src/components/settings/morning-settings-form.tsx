@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   saveMorningSettingsAction,
   disconnectMorningAction,
@@ -15,10 +16,12 @@ export function MorningSettingsForm({
   connected,
   keyIdMasked,
   sandbox,
+  docType,
 }: {
   connected: boolean;
   keyIdMasked: string | null;
   sandbox: boolean;
+  docType: number;
 }) {
   const [state, formAction, pending] = useActionState<MorningSettingsState, FormData>(
     saveMorningSettingsAction,
@@ -96,6 +99,14 @@ export function MorningSettingsForm({
                 placeholder="••••••••"
               />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="morningDocType">סוג המסמך שמופק ב-morning</Label>
+            <Select id="morningDocType" name="morningDocType" defaultValue={String(docType)}>
+              <option value="400">קבלה (מתאים לעוסק פטור)</option>
+              <option value="320">חשבונית מס-קבלה מאוחדת (מתאים לעוסק מורשה)</option>
+            </Select>
           </div>
 
           <label className="flex items-center gap-2 text-sm text-ink-soft">

@@ -48,6 +48,19 @@ export default async function SessionDetailPage({
       reminderJobs: {
         orderBy: { scheduledFor: "asc" },
       },
+      invoiceItem: {
+        include: {
+          invoice: {
+            select: {
+              id: true,
+              number: true,
+              status: true,
+              morningDocNumber: true,
+              morningDocUrl: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -204,6 +217,35 @@ export default async function SessionDetailPage({
                   פתיחה
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
+              </div>
+            )}
+            {sess.invoiceItem?.invoice && (
+              <div className="pt-3 border-t border-cream-200 space-y-1.5">
+                <span className="text-xs text-ink-muted block">חיוב</span>
+                <Link
+                  href={`/invoices/${sess.invoiceItem.invoice.id}`}
+                  className="text-ink-soft hover:text-sage-600 block"
+                >
+                  חשבונית #{String(sess.invoiceItem.invoice.number).padStart(4, "0")}
+                </Link>
+                {sess.invoiceItem.invoice.morningDocNumber && (
+                  <div className="text-xs text-ink-muted">
+                    מסמך morning:{" "}
+                    {sess.invoiceItem.invoice.morningDocUrl ? (
+                      <a
+                        href={sess.invoiceItem.invoice.morningDocUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sage-600 hover:text-sage-700"
+                        dir="ltr"
+                      >
+                        {sess.invoiceItem.invoice.morningDocNumber}
+                      </a>
+                    ) : (
+                      <span dir="ltr">{sess.invoiceItem.invoice.morningDocNumber}</span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
             {seriesRootId && (

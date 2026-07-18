@@ -47,6 +47,14 @@ describe("buildMorningReceiptPayload", () => {
     expect(payload.payment[0].date).toBe("2026-07-18");
   });
 
+  it("supports the unified tax-invoice-receipt doc type", () => {
+    const payload = buildMorningReceiptPayload({
+      ...input,
+      docType: MORNING_DOC_TYPES.TAX_INVOICE_RECEIPT,
+    });
+    expect(payload.type).toBe(320);
+  });
+
   it("omits empty client fields", () => {
     const payload = buildMorningReceiptPayload({
       ...input,

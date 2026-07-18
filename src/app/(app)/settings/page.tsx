@@ -19,6 +19,7 @@ export default async function SettingsPage() {
       morningApiKeyId: true,
       morningApiSecret: true,
       morningSandbox: true,
+      morningDocType: true,
     },
   });
 
@@ -53,6 +54,7 @@ export default async function SettingsPage() {
         connected={morningConnected}
         keyIdMasked={keyIdMasked}
         sandbox={user.morningSandbox}
+        docType={user.morningDocType}
       />
     </div>
   );
