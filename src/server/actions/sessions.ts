@@ -10,6 +10,7 @@ import {
   scheduleSessionReminders,
 } from "@/lib/reminders";
 import { buildRecurrenceRule, seriesSlots, type Slot } from "@/lib/recurrence";
+import { encryptNote } from "@/lib/crypto";
 import {
   createSessionSchema,
   sessionStatusSchema,
@@ -81,6 +82,7 @@ export async function createSessionAction(
     recurrence: formData.get("recurrence") ?? "NONE",
     occurrences: formData.get("occurrences") ?? "",
     allowOverlap: formData.get("allowOverlap"),
+    note: formData.get("note") ?? "",
   });
 
   if (!parsed.success) {
@@ -145,6 +147,18 @@ export async function createSessionAction(
     }
     return ids;
   });
+
+  // Optional clinical note for the (first) session — encrypted like all notes
+  const noteContent = (data.note ?? "").trim();
+  if (noteContent) {
+    await db.sessionNote.create({
+      data: {
+        sessionId: createdIds[0],
+        clientId: client.id,
+        ...encryptNote(noteContent),
+      },
+    });
+  }
 
   for (const id of createdIds) {
     await scheduleSessionReminders(id);

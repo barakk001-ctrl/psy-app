@@ -40,6 +40,7 @@ export const createSessionSchema = z
       })
       .pipe(z.number().int().min(2, "לפחות 2 פגישות").max(52, "עד 52 פגישות").optional()),
     allowOverlap: checkbox,
+    note: z.string().max(20000).optional().or(z.literal("")),
   })
   .refine(
     (d) => d.location !== "ONLINE" || (d.meetingUrl && d.meetingUrl.length > 0),

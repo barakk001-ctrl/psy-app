@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   createSessionAction,
@@ -217,6 +218,16 @@ export function SessionForm({
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {!isEdit && (
+            <div>
+              <Label htmlFor="note">הערה לפגישה</Label>
+              <Textarea id="note" name="note" rows={3} placeholder="לא חובה" />
+              <p className="text-xs text-ink-muted mt-1">
+                נשמרת מוצפנת כמו כל סיכומי הפגישות, וניתן לערוך אותה בעמוד הפגישה.
+              </p>
             </div>
           )}
 
