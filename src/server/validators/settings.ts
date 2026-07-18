@@ -1,3 +1,4 @@
+import "./zod-hebrew";
 import { z } from "zod";
 
 export const businessInfoSchema = z.object({

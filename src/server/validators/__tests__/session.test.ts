@@ -59,6 +59,20 @@ describe("createSessionSchema", () => {
     ).toBe(true);
   });
 
+  it("reports Hebrew messages for missing/null fields", () => {
+    const parsed = createSessionSchema.safeParse({
+      ...base,
+      clientId: null,
+      recurrence: "NONE",
+    });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const msg = parsed.error.flatten().fieldErrors.clientId?.[0] ?? "";
+      expect(msg).toBe("שדה חובה");
+      expect(msg).not.toMatch(/Expected|received/);
+    }
+  });
+
   it("parses the allowOverlap checkbox", () => {
     const parsed = createSessionSchema.safeParse({
       ...base,

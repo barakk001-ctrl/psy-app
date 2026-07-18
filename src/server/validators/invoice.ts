@@ -1,3 +1,4 @@
+import "./zod-hebrew";
 import { z } from "zod";
 
 const decimalish = z

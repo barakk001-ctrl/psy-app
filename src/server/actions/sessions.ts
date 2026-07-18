@@ -74,9 +74,9 @@ export async function createSessionAction(
   const userId = await requireUserId();
 
   const parsed = createSessionSchema.safeParse({
-    clientId: formData.get("clientId"),
-    startsAt: formData.get("startsAt"),
-    durationMinutes: formData.get("durationMinutes"),
+    clientId: formData.get("clientId") ?? "",
+    startsAt: formData.get("startsAt") ?? "",
+    durationMinutes: formData.get("durationMinutes") ?? "50",
     location: formData.get("location"),
     meetingUrl: formData.get("meetingUrl") ?? "",
     rate: formData.get("rate") ?? "",
@@ -178,10 +178,10 @@ export async function updateSessionAction(
   const userId = await requireUserId();
 
   const parsed = updateSessionSchema.safeParse({
-    id: formData.get("id"),
-    clientId: formData.get("clientId"),
-    startsAt: formData.get("startsAt"),
-    durationMinutes: formData.get("durationMinutes"),
+    id: formData.get("id") ?? "",
+    clientId: formData.get("clientId") ?? "",
+    startsAt: formData.get("startsAt") ?? "",
+    durationMinutes: formData.get("durationMinutes") ?? "50",
     location: formData.get("location"),
     meetingUrl: formData.get("meetingUrl") ?? "",
     rate: formData.get("rate") ?? "",

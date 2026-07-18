@@ -39,9 +39,9 @@ export function NoteEditor({
         name="content"
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        rows={14}
+        rows={5}
         placeholder="הצג קליני, התערבויות, צעדים הבאים…"
-        className="font-sans leading-relaxed"
+        className="font-sans leading-relaxed max-h-64 sm:max-h-none sm:min-h-56 resize-y overflow-y-auto"
       />
 
       {state?.error && (
