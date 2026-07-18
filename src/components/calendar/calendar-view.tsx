@@ -50,14 +50,14 @@ export function CalendarView({ events }: Props) {
     <div className="rounded-lg bg-white border border-cream-300 shadow-soft p-2 sm:p-4 calendar-shell">
       <FullCalendar
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-        // Day view as default on mobile — week view is unusable at <600px
-        initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
-        // Force re-render when viewport changes so initialView actually takes effect
+        initialView="dayGridMonth"
+        // Force re-render when viewport changes so toolbar layout takes effect
         key={isMobile ? "mobile" : "desktop"}
         locale={heLocale}
         direction="rtl"
         firstDay={0}
-        height="auto"
+        // Fill the fixed-height shell; the grid scrolls internally, not the page
+        height="100%"
         headerToolbar={
           isMobile
             ? {
@@ -152,6 +152,18 @@ export function CalendarView({ events }: Props) {
       />
 
       <style jsx global>{`
+        /* Fixed-height shell: the calendar grid scrolls inside it, the page doesn't */
+        .calendar-shell {
+          height: calc(100dvh - 16rem);
+          min-height: 480px;
+        }
+        @media (max-width: 767px) {
+          .calendar-shell {
+            height: calc(100dvh - 21rem);
+            min-height: 420px;
+          }
+        }
+
         /* Calendar styling to match the design system */
         .calendar-shell .fc {
           font-family: var(--font-sans);
