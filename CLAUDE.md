@@ -66,6 +66,10 @@ Money is Prisma `Decimal` — don't do float math on it. Format money/dates only
 
 The layout is `dir="rtl"`. Directional CSS has caused bugs before (drawer transform needed an explicit inline style to bypass RTL flipping) — prefer logical properties (`ms-`/`me-`, `start`/`end`) and test any positioned/translated element in RTL.
 
+### Morning (Green Invoice) integration
+
+Per-user connection configured on the Settings page — API key ID stored plain, secret encrypted via `encryptSecret` (packed iv:tag:ciphertext, same key as notes). Client in `src/lib/morning.ts`: token cache per user, sandbox/production base URLs (`morningSandbox` on User, defaults true), receipt payload mapping (`buildMorningReceiptPayload`, pure + tested). `issueMorningReceiptAction` creates a Morning receipt (doc type 400) from an invoice's payments and stores `morningDocId`/`morningDocUrl` on Invoice (idempotent — refuses if already issued).
+
 ### Recurring sessions & double-booking
 
 `createSessionAction` supports weekly/biweekly series: it creates a parent (holding an RRULE string in `recurrenceRule`) plus child sessions (`parentSessionId`), each with its own reminders. All create/update/reschedule paths run an overlap check against SCHEDULED sessions (`findOverlaps` in `sessions.ts`); forms expose an `allowOverlap` checkbox to override, calendar drag just blocks with an alert. `deleteFutureSessionsAction` removes this-and-future sessions in a series (hard-delete unless a note exists).

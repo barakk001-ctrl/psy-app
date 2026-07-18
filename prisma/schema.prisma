@@ -35,6 +35,11 @@ model User {
   // For sequential invoice numbering
   nextInvoiceNumber Int     @default(1)
 
+  // Morning (Green Invoice) API connection — secret encrypted at app layer
+  morningApiKeyId  String?
+  morningApiSecret String?  // packed AES-256-GCM (iv:tag:ciphertext, base64)
+  morningSandbox   Boolean  @default(true)
+
   clients         Client[]
   sessions        Session[]
   invoices        Invoice[]
@@ -179,6 +184,10 @@ model Invoice {
   amountPaid    Decimal       @default(0) @db.Decimal(10, 2)
   notes         String?       @db.Text
   pdfUrl        String?       // generated PDF location
+
+  // Tax document issued in Morning (Green Invoice) for this invoice
+  morningDocId  String?
+  morningDocUrl String?
 
   items         InvoiceItem[]
   payments      Payment[]

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { encryptSecret } from "@/lib/crypto";
+import { testMorningConnection } from "@/lib/morning";
 import { businessInfoSchema } from "@/server/validators/settings";
 
 async function requireUserId(): Promise<string> {
@@ -55,4 +57,54 @@ export async function updateBusinessInfoAction(
 
   revalidatePath("/settings");
   return { saved: true };
+}
+
+export type MorningSettingsState = {
+  error?: string;
+  saved?: boolean;
+  connectionOk?: boolean;
+} | null;
+
+export async function saveMorningSettingsAction(
+  _: MorningSettingsState,
+  formData: FormData,
+): Promise<MorningSettingsState> {
+  const userId = await requireUserId();
+
+  const keyId = String(formData.get("morningApiKeyId") ?? "").trim();
+  const secret = String(formData.get("morningApiSecret") ?? "").trim();
+  const sandbox = formData.get("morningSandbox") === "on";
+
+  if (!keyId || !secret) {
+    return { error: "יש להזין גם מזהה מפתח (ID) וגם מפתח סודי (Secret)" };
+  }
+
+  // Verify the credentials against Morning before saving
+  const test = await testMorningConnection(userId, { keyId, secret, sandbox });
+  if (!test.ok) {
+    return {
+      error: `החיבור ל-morning נכשל — בדקו את המפתחות. (${test.error})`,
+    };
+  }
+
+  await db.user.update({
+    where: { id: userId },
+    data: {
+      morningApiKeyId: keyId,
+      morningApiSecret: encryptSecret(secret),
+      morningSandbox: sandbox,
+    },
+  });
+
+  revalidatePath("/settings");
+  return { saved: true, connectionOk: true };
+}
+
+export async function disconnectMorningAction() {
+  const userId = await requireUserId();
+  await db.user.update({
+    where: { id: userId },
+    data: { morningApiKeyId: null, morningApiSecret: null, morningSandbox: true },
+  });
+  revalidatePath("/settings");
 }

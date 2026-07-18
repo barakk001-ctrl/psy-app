@@ -44,3 +44,18 @@ export function decryptNote(parts: EncryptedPayload): string {
   const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
   return plaintext.toString("utf8");
 }
+
+// Single-column variant for short secrets (e.g. API credentials): packs
+// iv:tag:ciphertext into one string using the same key.
+export function encryptSecret(plaintext: string): string {
+  const p = encryptNote(plaintext);
+  return `${p.contentIv}:${p.contentTag}:${p.contentCiphertext}`;
+}
+
+export function decryptSecret(packed: string): string {
+  const [contentIv, contentTag, contentCiphertext] = packed.split(":");
+  if (!contentIv || !contentTag || !contentCiphertext) {
+    throw new Error("Malformed packed secret");
+  }
+  return decryptNote({ contentIv, contentTag, contentCiphertext });
+}

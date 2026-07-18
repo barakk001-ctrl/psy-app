@@ -32,6 +32,15 @@ describe("note encryption", () => {
     ).toThrow();
   });
 
+  it("round-trips packed secrets", async () => {
+    const { encryptSecret, decryptSecret } = await import("@/lib/crypto");
+    const secret = "morning-api-secret-אבג";
+    const packed = encryptSecret(secret);
+    expect(packed.split(":")).toHaveLength(3);
+    expect(decryptSecret(packed)).toBe(secret);
+    expect(() => decryptSecret("not-a-packed-secret")).toThrow();
+  });
+
   it("rejects a wrong-length key", async () => {
     const { encryptNote } = await import("@/lib/crypto");
     const prev = process.env.NOTES_ENCRYPTION_KEY;

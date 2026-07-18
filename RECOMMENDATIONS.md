@@ -84,7 +84,7 @@ A public booking page per practitioner: available slots derived from working hou
 ### 3.4 Invoice emailing ✅ implemented 2026-07-18 (stored PDFs still open)
 `Invoice.pdfUrl` exists but is unused, and no invoice email exists. Add "send invoice to client" via Resend with the PDF attached, and optionally store rendered PDFs (S3/Railway volume) for immutable records.
 
-### 3.5 Tax-compliant invoicing via provider
+### 3.5 Tax-compliant invoicing via provider ✅ Morning integration scaffold implemented 2026-07-18 (connect in Settings; receipts from invoices; income sync still open)
 The PDF footer explicitly says "not a tax invoice." Integrate Green Invoice / Morning / EZCount API to issue real חשבונית מס/קבלה, keeping your app as the source of truth. This turns the app from a tracker into a complete business tool.
 
 ### 3.6 Cancellation policy & no-show billing

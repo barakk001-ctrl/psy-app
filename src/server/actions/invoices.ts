@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { buildInvoiceEmail, renderInvoicePdfBuffer } from "@/lib/invoice-email";
 import { loadInvoicePdfData } from "@/lib/invoice-pdf-data";
+import { createMorningReceipt, getMorningCredentials } from "@/lib/morning";
 import { createInvoiceSchema } from "@/server/validators/invoice";
 
 async function requireUserId(): Promise<string> {
@@ -242,4 +243,76 @@ export async function sendInvoiceEmailAction(
   revalidatePath(`/invoices/${id}`);
   revalidatePath("/invoices");
   return { sent: true };
+}
+
+export type MorningReceiptState = {
+  error?: string;
+  issued?: boolean;
+  docUrl?: string;
+} | null;
+
+export async function issueMorningReceiptAction(
+  _: MorningReceiptState,
+  formData: FormData,
+): Promise<MorningReceiptState> {
+  const userId = await requireUserId();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "מזהה חשבונית חסר" };
+
+  const creds = await getMorningCredentials(userId);
+  if (!creds) {
+    return { error: "חשבון morning לא מחובר — יש להתחבר בעמוד ההגדרות" };
+  }
+
+  const invoice = await db.invoice.findFirst({
+    where: { id, userId },
+    include: {
+      client: true,
+      items: { orderBy: { id: "asc" } },
+      payments: { orderBy: { paidAt: "asc" } },
+    },
+  });
+  if (!invoice) return { error: "חשבונית לא נמצאה" };
+  if (invoice.status === "CANCELLED") {
+    return { error: "לא ניתן להפיק קבלה לחשבונית מבוטלת" };
+  }
+  if (invoice.morningDocId) {
+    return { error: "כבר הופקה קבלה ב-morning עבור חשבונית זו" };
+  }
+  if (invoice.payments.length === 0) {
+    return { error: "אין תשלומים רשומים — קבלה מופקת על תשלומים שהתקבלו" };
+  }
+
+  const result = await createMorningReceipt(userId, creds, {
+    clientName: `${invoice.client.firstName} ${invoice.client.lastName}`,
+    clientEmail: invoice.client.email,
+    clientTaxId: invoice.client.idNumber,
+    clientAddress: invoice.client.address,
+    clientPhone: invoice.client.phone,
+    description: `קבלה עבור חשבונית #${String(invoice.number).padStart(4, "0")}`,
+    items: invoice.items.map((it) => ({
+      description: it.description,
+      quantity: Number(it.quantity),
+      unitPrice: Number(it.unitPrice),
+    })),
+    payments: invoice.payments.map((p) => ({
+      method: p.method,
+      amount: Number(p.amount),
+      paidAt: p.paidAt,
+    })),
+    remarks: invoice.notes,
+  });
+
+  if (!result.ok) {
+    return { error: `הפקת הקבלה נכשלה: ${result.error}` };
+  }
+
+  const docUrl = result.data.url?.he ?? result.data.url?.origin ?? null;
+  await db.invoice.update({
+    where: { id, userId },
+    data: { morningDocId: result.data.id, morningDocUrl: docUrl },
+  });
+
+  revalidatePath(`/invoices/${id}`);
+  return { issued: true, docUrl: docUrl ?? undefined };
 }

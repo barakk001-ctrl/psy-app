@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { BusinessInfoForm } from "@/components/settings/business-info-form";
+import { MorningSettingsForm } from "@/components/settings/morning-settings-form";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -15,10 +16,18 @@ export default async function SettingsPage() {
       address: true,
       phone: true,
       defaultRate: true,
+      morningApiKeyId: true,
+      morningApiSecret: true,
+      morningSandbox: true,
     },
   });
 
   if (!user) return null;
+
+  const morningConnected = !!(user.morningApiKeyId && user.morningApiSecret);
+  const keyIdMasked = user.morningApiKeyId
+    ? `…${user.morningApiKeyId.slice(-6)}`
+    : null;
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -38,6 +47,12 @@ export default async function SettingsPage() {
           phone: user.phone,
           defaultRate: user.defaultRate ? user.defaultRate.toString() : null,
         }}
+      />
+
+      <MorningSettingsForm
+        connected={morningConnected}
+        keyIdMasked={keyIdMasked}
+        sandbox={user.morningSandbox}
       />
     </div>
   );

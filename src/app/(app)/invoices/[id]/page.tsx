@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { PaymentForm } from "@/components/invoices/payment-form";
 import { SendInvoiceEmailButton } from "@/components/invoices/send-invoice-email-button";
+import { MorningReceiptButton } from "@/components/invoices/morning-receipt-button";
+import { getMorningCredentials } from "@/lib/morning";
 import {
   markInvoiceSentAction,
   cancelInvoiceAction,
@@ -55,6 +57,7 @@ export default async function InvoiceDetailPage({
   const total = Number(invoice.total);
   const paid = Number(invoice.amountPaid);
   const balance = total - paid;
+  const morningConnected = !!(await getMorningCredentials(userId));
 
   return (
     <div className="max-w-5xl space-y-8">
@@ -92,6 +95,14 @@ export default async function InvoiceDetailPage({
               clientEmail={invoice.client.email}
             />
           )}
+          {morningConnected &&
+            invoice.status !== "CANCELLED" &&
+            (invoice.payments.length > 0 || invoice.morningDocUrl) && (
+              <MorningReceiptButton
+                invoiceId={invoice.id}
+                existingDocUrl={invoice.morningDocUrl}
+              />
+            )}
           {invoice.status === "DRAFT" && (
             <form action={markInvoiceSentAction}>
               <input type="hidden" name="id" value={invoice.id} />
