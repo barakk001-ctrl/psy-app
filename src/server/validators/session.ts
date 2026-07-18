@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const sessionLocations = ["OFFICE", "ONLINE", "HOME_VISIT", "OTHER"] as const;
 export const sessionStatuses = ["SCHEDULED", "COMPLETED", "CANCELLED", "NO_SHOW"] as const;
+export const recurrenceOptions = ["NONE", "WEEKLY", "BIWEEKLY"] as const;
+
+const checkbox = z.preprocess((v) => v === "on" || v === true, z.boolean());
 
 const datetimeLocal = z
   .string()
@@ -26,6 +29,17 @@ export const createSessionSchema = z
         const n = typeof v === "number" ? v : parseFloat(v);
         return Number.isNaN(n) ? undefined : n;
       }),
+    recurrence: z.enum(recurrenceOptions).default("NONE"),
+    occurrences: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((v) => {
+        if (v === undefined || v === "" || v === null) return undefined;
+        const n = typeof v === "number" ? v : parseInt(v, 10);
+        return Number.isNaN(n) ? undefined : n;
+      })
+      .pipe(z.number().int().min(2, "לפחות 2 פגישות").max(52, "עד 52 פגישות").optional()),
+    allowOverlap: checkbox,
   })
   .refine(
     (d) => d.location !== "ONLINE" || (d.meetingUrl && d.meetingUrl.length > 0),
@@ -33,7 +47,11 @@ export const createSessionSchema = z
       message: "פגישה מקוונת דורשת קישור",
       path: ["meetingUrl"],
     },
-  );
+  )
+  .refine((d) => d.recurrence === "NONE" || d.occurrences !== undefined, {
+    message: "נדרש מספר פגישות בסדרה",
+    path: ["occurrences"],
+  });
 
 export const updateSessionSchema = z
   .object({
@@ -54,6 +72,7 @@ export const updateSessionSchema = z
         const n = typeof v === "number" ? v : parseFloat(v);
         return Number.isNaN(n) ? undefined : n;
       }),
+    allowOverlap: checkbox,
   })
   .refine(
     (d) => d.location !== "ONLINE" || (d.meetingUrl && d.meetingUrl.length > 0),

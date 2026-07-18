@@ -8,6 +8,7 @@ import {
   ExternalLink,
   User as UserIcon,
   Pencil,
+  Repeat,
 } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -18,6 +19,7 @@ import { formatDateTime, formatTime, formatCurrency } from "@/lib/format";
 import { SessionStatusBadge } from "@/components/sessions/session-status-badge";
 import { SessionStatusActions } from "@/components/sessions/session-status-actions";
 import { NoteEditor } from "@/components/sessions/note-editor";
+import { DeleteSeriesButton } from "@/components/sessions/delete-series-button";
 
 const LOCATION_LABELS = {
   OFFICE: "קליניקה",
@@ -49,6 +51,19 @@ export default async function SessionDetailPage({
   });
 
   if (!sess) notFound();
+
+  // Recurring-series context: how many future scheduled sessions remain
+  const seriesRootId = sess.parentSessionId ?? (sess.recurrenceRule ? sess.id : null);
+  const futureInSeries = seriesRootId
+    ? await db.session.count({
+        where: {
+          userId,
+          status: "SCHEDULED",
+          startsAt: { gte: sess.startsAt },
+          OR: [{ id: seriesRootId }, { parentSessionId: seriesRootId }],
+        },
+      })
+    : 0;
 
   // Decrypt server-side. The plaintext flows down to the NoteEditor client component
   // because the user already has authorization to read their own note.
@@ -161,6 +176,20 @@ export default async function SessionDetailPage({
                   פתיחה
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
+              </div>
+            )}
+            {seriesRootId && (
+              <div className="pt-3 border-t border-cream-200 space-y-2">
+                <div className="inline-flex items-center gap-1.5 text-ink-soft">
+                  <Repeat className="w-4 h-4 text-ink-subtle" />
+                  פגישה חוזרת
+                  {futureInSeries > 0 && (
+                    <span className="text-xs text-ink-muted">
+                      ({futureInSeries} פגישות עתידיות בסדרה)
+                    </span>
+                  )}
+                </div>
+                {futureInSeries > 0 && <DeleteSeriesButton sessionId={sess.id} />}
               </div>
             )}
             <div className="pt-3 border-t border-cream-200 text-xs text-ink-muted space-y-1">

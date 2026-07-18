@@ -42,7 +42,7 @@ The cron marks a `ReminderJob` SENT *before* actually sending; a crash between c
 
 ## 2. High-value improvements
 
-### 2.1 Double-booking prevention
+### 2.1 Double-booking prevention ✅ implemented 2026-07-18
 `createSessionAction` / `rescheduleSessionAction` allow overlapping sessions. Check for conflicts (`startsAt < newEnd AND endsAt > newStart`, status SCHEDULED) and warn or block. The calendar drag-and-drop path especially needs this.
 
 ### 2.2 Pagination / search
@@ -72,7 +72,7 @@ For a clinical app, record who viewed/edited notes and client records (a simple 
 
 ## 3. New features (roughly in order of value)
 
-### 3.1 Recurring sessions ⭐ already scaffolded
+### 3.1 Recurring sessions ✅ implemented 2026-07-18 (weekly/biweekly series, delete-future)
 The schema has full RRULE support (`recurrenceRule`, `parentSessionId`, child relation) but no code uses it. Weekly recurring appointments are the bread and butter of therapy practices — this is the single highest-value feature. Implement with the `rrule` npm package: create N future instances (e.g. 12 weeks ahead), "edit this / edit all future" semantics, and a background top-up when instances run low.
 
 ### 3.2 Client portal / self-scheduling (v2)

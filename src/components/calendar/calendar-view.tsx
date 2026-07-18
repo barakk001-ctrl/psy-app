@@ -114,11 +114,16 @@ export function CalendarView({ events }: Props) {
         eventDrop={(info) => {
           startTransition(async () => {
             try {
-              await rescheduleSessionAction({
+              const res = await rescheduleSessionAction({
                 id: info.event.id,
                 startsAt: info.event.start!.toISOString(),
                 endsAt: info.event.end!.toISOString(),
               });
+              if (!res.ok) {
+                if (res.error) window.alert(res.error);
+                info.revert();
+                return;
+              }
               router.refresh();
             } catch {
               info.revert();
@@ -128,11 +133,16 @@ export function CalendarView({ events }: Props) {
         eventResize={(info) => {
           startTransition(async () => {
             try {
-              await rescheduleSessionAction({
+              const res = await rescheduleSessionAction({
                 id: info.event.id,
                 startsAt: info.event.start!.toISOString(),
                 endsAt: info.event.end!.toISOString(),
               });
+              if (!res.ok) {
+                if (res.error) window.alert(res.error);
+                info.revert();
+                return;
+              }
               router.refresh();
             } catch {
               info.revert();

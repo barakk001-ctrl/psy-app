@@ -62,9 +62,13 @@ Money is Prisma `Decimal` — don't do float math on it. Format money/dates only
 
 The layout is `dir="rtl"`. Directional CSS has caused bugs before (drawer transform needed an explicit inline style to bypass RTL flipping) — prefer logical properties (`ms-`/`me-`, `start`/`end`) and test any positioned/translated element in RTL.
 
+### Recurring sessions & double-booking
+
+`createSessionAction` supports weekly/biweekly series: it creates a parent (holding an RRULE string in `recurrenceRule`) plus child sessions (`parentSessionId`), each with its own reminders. All create/update/reschedule paths run an overlap check against SCHEDULED sessions (`findOverlaps` in `sessions.ts`); forms expose an `allowOverlap` checkbox to override, calendar drag just blocks with an alert. `deleteFutureSessionsAction` removes this-and-future sessions in a series (hard-delete unless a note exists).
+
 ### Schema fields that look used but aren't
 
-`Session.recurrenceRule`/`parentSessionId` (recurrence), `ReminderChannel.SMS`, `Payment.provider`/`providerTxId`, `Invoice.pdfUrl`, `User.logoUrl`, `Client.intakeDate` — all schema scaffolding with no code behind them yet.
+`ReminderChannel.SMS`, `Payment.provider`/`providerTxId`, `Invoice.pdfUrl`, `User.logoUrl`, `Client.intakeDate` — schema scaffolding with no code behind them yet.
 
 ## Deployment
 

@@ -54,6 +54,7 @@ export function SessionForm({
   const [clientId, setClientId] = useState<string>(
     initial?.clientId ?? defaults?.clientId ?? "",
   );
+  const [recurrence, setRecurrence] = useState<string>("NONE");
 
   const selectedClient = clients.find((c) => c.id === clientId);
   const ratePlaceholder = selectedClient?.defaultRate ?? "";
@@ -181,6 +182,52 @@ export function SessionForm({
               )}
             </div>
           )}
+
+          {!isEdit && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="recurrence">חזרתיות</Label>
+                <Select
+                  id="recurrence"
+                  name="recurrence"
+                  value={recurrence}
+                  onChange={(e) => setRecurrence(e.target.value)}
+                >
+                  <option value="NONE">ללא — פגישה בודדת</option>
+                  <option value="WEEKLY">כל שבוע</option>
+                  <option value="BIWEEKLY">כל שבועיים</option>
+                </Select>
+              </div>
+              {recurrence !== "NONE" && (
+                <div>
+                  <Label htmlFor="occurrences">מספר פגישות בסדרה</Label>
+                  <Input
+                    id="occurrences"
+                    name="occurrences"
+                    type="number"
+                    min="2"
+                    max="52"
+                    defaultValue="12"
+                    invalid={!!fieldErr.occurrences}
+                  />
+                  {fieldErr.occurrences && (
+                    <p className="text-xs text-terracotta-600 mt-1">
+                      {fieldErr.occurrences[0]}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
+            <input
+              type="checkbox"
+              name="allowOverlap"
+              className="h-4 w-4 rounded border-cream-300 accent-sage-600"
+            />
+            אפשר חפיפה עם פגישות קיימות
+          </label>
         </CardContent>
       </Card>
 

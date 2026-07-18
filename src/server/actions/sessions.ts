@@ -26,6 +26,61 @@ export type SessionFormState = {
   fieldErrors?: Record<string, string[]>;
 } | null;
 
+type Slot = { startsAt: Date; endsAt: Date };
+
+// Sessions overlapping any of the given slots (SCHEDULED only)
+async function findOverlaps(userId: string, slots: Slot[], excludeIds?: string[]) {
+  return db.session.findMany({
+    where: {
+      userId,
+      status: "SCHEDULED",
+      ...(excludeIds?.length ? { id: { notIn: excludeIds } } : {}),
+      OR: slots.map((s) => ({
+        startsAt: { lt: s.endsAt },
+        endsAt: { gt: s.startsAt },
+      })),
+    },
+    select: {
+      startsAt: true,
+      client: { select: { firstName: true, lastName: true } },
+    },
+    orderBy: { startsAt: "asc" },
+    take: 3,
+  });
+}
+
+function overlapError(
+  overlaps: Awaited<ReturnType<typeof findOverlaps>>,
+): SessionFormState {
+  const fmt = new Intl.DateTimeFormat("he-IL", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "Asia/Jerusalem",
+  });
+  const list = overlaps
+    .map((o) => `${o.client.firstName} ${o.client.lastName} — ${fmt.format(o.startsAt)}`)
+    .join(", ");
+  return {
+    error: `הזמן חופף לפגישה קיימת: ${list}. ניתן לסמן "אפשר חפיפה" כדי לשמור בכל זאת.`,
+  };
+}
+
+// Occurrence dates keep the same wall-clock time; interval in whole weeks
+function seriesSlots(first: Date, durationMs: number, intervalWeeks: number, count: number): Slot[] {
+  const slots: Slot[] = [];
+  for (let i = 0; i < count; i++) {
+    const start = new Date(
+      first.getFullYear(),
+      first.getMonth(),
+      first.getDate() + i * intervalWeeks * 7,
+      first.getHours(),
+      first.getMinutes(),
+    );
+    slots.push({ startsAt: start, endsAt: new Date(start.getTime() + durationMs) });
+  }
+  return slots;
+}
+
 export async function createSessionAction(
   _: SessionFormState,
   formData: FormData,
@@ -39,6 +94,9 @@ export async function createSessionAction(
     location: formData.get("location"),
     meetingUrl: formData.get("meetingUrl") ?? "",
     rate: formData.get("rate") ?? "",
+    recurrence: formData.get("recurrence") ?? "NONE",
+    occurrences: formData.get("occurrences") ?? "",
+    allowOverlap: formData.get("allowOverlap"),
   });
 
   if (!parsed.success) {
@@ -57,27 +115,63 @@ export async function createSessionAction(
   if (!client) return { error: "לקוח לא נמצא" };
 
   const startsAt = new Date(data.startsAt);
-  const endsAt = new Date(startsAt.getTime() + data.durationMinutes * 60 * 1000);
+  const durationMs = data.durationMinutes * 60 * 1000;
   const rate = data.rate ?? (client.defaultRate ? Number(client.defaultRate) : null);
 
-  const created = await db.session.create({
-    data: {
-      userId,
-      clientId: client.id,
-      startsAt,
-      endsAt,
-      location: data.location,
-      meetingUrl: data.meetingUrl || null,
-      rate: rate ?? undefined,
-    },
+  const intervalWeeks = data.recurrence === "BIWEEKLY" ? 2 : 1;
+  const count = data.recurrence === "NONE" ? 1 : data.occurrences!;
+  const slots = seriesSlots(startsAt, durationMs, intervalWeeks, count);
+
+  if (!data.allowOverlap) {
+    const overlaps = await findOverlaps(userId, slots);
+    if (overlaps.length > 0) return overlapError(overlaps);
+  }
+
+  const recurrenceRule =
+    data.recurrence === "NONE"
+      ? null
+      : `FREQ=WEEKLY;INTERVAL=${intervalWeeks};COUNT=${count}`;
+
+  const common = {
+    userId,
+    clientId: client.id,
+    location: data.location,
+    meetingUrl: data.meetingUrl || null,
+    rate: rate ?? undefined,
+  };
+
+  const createdIds = await db.$transaction(async (tx) => {
+    const parent = await tx.session.create({
+      data: {
+        ...common,
+        startsAt: slots[0].startsAt,
+        endsAt: slots[0].endsAt,
+        recurrenceRule,
+      },
+    });
+    const ids = [parent.id];
+    for (const slot of slots.slice(1)) {
+      const child = await tx.session.create({
+        data: {
+          ...common,
+          startsAt: slot.startsAt,
+          endsAt: slot.endsAt,
+          parentSessionId: parent.id,
+        },
+      });
+      ids.push(child.id);
+    }
+    return ids;
   });
 
-  await scheduleSessionReminders(created.id);
+  for (const id of createdIds) {
+    await scheduleSessionReminders(id);
+  }
 
   revalidatePath("/calendar");
   revalidatePath("/dashboard");
   revalidatePath(`/clients/${client.id}`);
-  redirect(`/sessions/${created.id}`);
+  redirect(`/sessions/${createdIds[0]}`);
 }
 
 export async function updateSessionAction(
@@ -94,6 +188,7 @@ export async function updateSessionAction(
     location: formData.get("location"),
     meetingUrl: formData.get("meetingUrl") ?? "",
     rate: formData.get("rate") ?? "",
+    allowOverlap: formData.get("allowOverlap"),
   });
 
   if (!parsed.success) {
@@ -120,6 +215,11 @@ export async function updateSessionAction(
 
   const startsAt = new Date(data.startsAt);
   const endsAt = new Date(startsAt.getTime() + data.durationMinutes * 60 * 1000);
+
+  if (!data.allowOverlap) {
+    const overlaps = await findOverlaps(userId, [{ startsAt, endsAt }], [data.id]);
+    if (overlaps.length > 0) return overlapError(overlaps);
+  }
 
   await db.session.update({
     where: { id: data.id, userId },
@@ -179,11 +279,19 @@ export async function rescheduleSessionAction(input: {
   id: string;
   startsAt: string;
   endsAt: string;
-}) {
+}): Promise<{ ok: boolean; error?: string }> {
   const userId = await requireUserId();
   const startsAt = new Date(input.startsAt);
   const endsAt = new Date(input.endsAt);
-  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) return;
+  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+    return { ok: false, error: "תאריך לא תקין" };
+  }
+
+  const overlaps = await findOverlaps(userId, [{ startsAt, endsAt }], [input.id]);
+  if (overlaps.length > 0) {
+    const state = overlapError(overlaps);
+    return { ok: false, error: state?.error };
+  }
 
   await db.session.update({
     where: { id: input.id, userId },
@@ -194,6 +302,52 @@ export async function rescheduleSessionAction(input: {
 
   revalidatePath("/calendar");
   revalidatePath(`/sessions/${input.id}`);
+  return { ok: true };
+}
+
+// Delete this session and all future SCHEDULED sessions in the same recurring series
+export async function deleteFutureSessionsAction(formData: FormData) {
+  const userId = await requireUserId();
+  const id = formData.get("id");
+  if (typeof id !== "string") return;
+
+  const sess = await db.session.findFirst({
+    where: { id, userId },
+    select: { id: true, startsAt: true, parentSessionId: true, recurrenceRule: true },
+  });
+  if (!sess) return;
+  if (!sess.parentSessionId && !sess.recurrenceRule) return;
+
+  const rootId = sess.parentSessionId ?? sess.id;
+  const future = await db.session.findMany({
+    where: {
+      userId,
+      status: "SCHEDULED",
+      startsAt: { gte: sess.startsAt },
+      OR: [{ id: rootId }, { parentSessionId: rootId }],
+    },
+    select: { id: true, note: { select: { id: true } } },
+  });
+
+  const ids = future.map((s) => s.id);
+  const deletableIds = future.filter((s) => !s.note).map((s) => s.id);
+  const keepIds = future.filter((s) => s.note).map((s) => s.id);
+
+  await db.$transaction([
+    db.reminderJob.updateMany({
+      where: { sessionId: { in: ids }, status: "PENDING" },
+      data: { status: "CANCELLED" },
+    }),
+    db.session.updateMany({
+      where: { id: { in: keepIds } },
+      data: { status: "CANCELLED" },
+    }),
+    db.session.deleteMany({ where: { id: { in: deletableIds } } }),
+  ]);
+
+  revalidatePath("/calendar");
+  revalidatePath("/dashboard");
+  redirect("/calendar");
 }
 
 export async function deleteSessionAction(formData: FormData) {
