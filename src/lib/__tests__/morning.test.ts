@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   MORNING_DOC_TYPES,
   buildMorningReceiptPayload,
+  mapMorningSearchItem,
   morningBaseUrl,
 } from "@/lib/morning";
 
@@ -53,6 +54,33 @@ describe("buildMorningReceiptPayload", () => {
       docType: MORNING_DOC_TYPES.TAX_INVOICE_RECEIPT,
     });
     expect(payload.type).toBe(320);
+  });
+
+  it("normalizes search items for the general inbox", () => {
+    const mapped = mapMorningSearchItem({
+      id: "doc-1",
+      number: 20017,
+      type: 400,
+      documentDate: "2026-07-10",
+      amount: 450,
+      client: { name: "דנה כהן" },
+      url: { he: "https://morning.example/doc-1" },
+    });
+    expect(mapped).toEqual({
+      id: "doc-1",
+      number: "20017",
+      docType: 400,
+      docDate: new Date("2026-07-10"),
+      amount: 450,
+      description: null,
+      morningClientName: "דנה כהן",
+      url: "https://morning.example/doc-1",
+    });
+
+    const sparse = mapMorningSearchItem({ id: "doc-2" });
+    expect(sparse.number).toBeNull();
+    expect(sparse.docDate).toBeNull();
+    expect(sparse.url).toBeNull();
   });
 
   it("omits empty client fields", () => {

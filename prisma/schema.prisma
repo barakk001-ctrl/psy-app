@@ -45,6 +45,7 @@ model User {
   sessions        Session[]
   invoices        Invoice[]
   reminderJobs    ReminderJob[]
+  morningDocuments MorningDocument[]
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -75,6 +76,7 @@ model Client {
   sessions      Session[]
   sessionNotes  SessionNote[]
   invoices      Invoice[]
+  morningDocuments MorningDocument[]
 
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
@@ -260,6 +262,29 @@ enum PaymentMethod {
 // ─────────────────────────────────────────────────────────────
 // Reminders (queued jobs to send email/SMS before a session)
 // ─────────────────────────────────────────────────────────────
+
+// Documents issued directly in Morning (outside the app's schedule) — synced
+// into a general inbox and manually assigned to a client afterwards.
+model MorningDocument {
+  id                String    @id // Morning document id
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  number            String?
+  docType           Int?
+  docDate           DateTime?
+  amount            Decimal?  @db.Decimal(10, 2)
+  description       String?
+  morningClientName String?
+  url               String?
+
+  clientId          String?
+  client            Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime  @default(now())
+
+  @@index([userId, clientId])
+}
 
 model ReminderJob {
   id            String         @id @default(cuid())

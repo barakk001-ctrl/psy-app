@@ -33,6 +33,10 @@ export default async function ClientDetailPage({
           },
         },
       },
+      morningDocuments: {
+        orderBy: { docDate: "desc" },
+        take: 20,
+      },
       _count: { select: { sessions: true, invoices: true } },
     },
   });
@@ -203,6 +207,47 @@ export default async function ClientDetailPage({
             )}
           </CardContent>
         </Card>
+
+        {client.morningDocuments.length > 0 && (
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle>מסמכי morning משויכים</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ul className="divide-y divide-cream-200">
+                {client.morningDocuments.map((d) => (
+                  <li
+                    key={d.id}
+                    className="px-5 py-3 flex items-center justify-between gap-3"
+                  >
+                    <div>
+                      <div className="text-sm text-ink">
+                        {{ 400: "קבלה", 320: "חשבונית מס-קבלה", 305: "חשבונית מס" }[
+                          d.docType ?? 0
+                        ] ?? "מסמך"}{" "}
+                        {d.number && <span dir="ltr">{d.number}</span>}
+                      </div>
+                      <div className="text-xs text-ink-muted mt-0.5">
+                        {d.docDate && formatDate(d.docDate)}
+                        {d.amount && <> · {formatCurrency(d.amount.toString())}</>}
+                      </div>
+                    </div>
+                    {d.url && (
+                      <a
+                        href={d.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-sage-600 hover:text-sage-700"
+                      >
+                        פתיחה ב-morning ←
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

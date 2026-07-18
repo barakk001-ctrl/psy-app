@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
+import { MorningDocsPanel } from "@/components/invoices/morning-docs-panel";
+import { getMorningCredentials } from "@/lib/morning";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 export default async function InvoicesPage() {
@@ -18,6 +20,24 @@ export default async function InvoicesPage() {
       client: { select: { firstName: true, lastName: true } },
     },
   });
+
+  const morningConnected = !!(await getMorningCredentials(userId));
+  const unassignedDocs = morningConnected
+    ? await db.morningDocument.findMany({
+        where: { userId, clientId: null },
+        orderBy: { docDate: "desc" },
+        take: 50,
+      })
+    : [];
+  const clientOptions = morningConnected
+    ? (
+        await db.client.findMany({
+          where: { userId, status: { not: "ARCHIVED" } },
+          orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+          select: { id: true, firstName: true, lastName: true },
+        })
+      ).map((c) => ({ id: c.id, name: `${c.firstName} ${c.lastName}` }))
+    : [];
 
   return (
     <div className="space-y-6">
@@ -36,6 +56,21 @@ export default async function InvoicesPage() {
           </Button>
         </Link>
       </header>
+
+      {morningConnected && (
+        <MorningDocsPanel
+          docs={unassignedDocs.map((d) => ({
+            id: d.id,
+            number: d.number,
+            docType: d.docType,
+            docDate: d.docDate ? formatDate(d.docDate) : null,
+            amount: d.amount ? formatCurrency(d.amount.toString()) : null,
+            morningClientName: d.morningClientName,
+            url: d.url,
+          }))}
+          clients={clientOptions}
+        />
+      )}
 
       {invoices.length === 0 ? (
         <Card>

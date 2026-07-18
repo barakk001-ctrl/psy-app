@@ -198,3 +198,54 @@ export async function createMorningReceipt(
     body: buildMorningReceiptPayload(input),
   });
 }
+
+// ── Document search (sync of docs issued directly in Morning) ──────
+
+export type MorningSearchItem = {
+  id: string;
+  number?: string | number;
+  type?: number;
+  documentDate?: string;
+  amount?: number;
+  description?: string;
+  client?: { name?: string };
+  url?: { origin?: string; he?: string; en?: string };
+};
+
+/** Normalizes a raw search item to the shape stored in MorningDocument. */
+export function mapMorningSearchItem(item: MorningSearchItem) {
+  return {
+    id: item.id,
+    number: item.number != null ? String(item.number) : null,
+    docType: item.type ?? null,
+    docDate: item.documentDate ? new Date(item.documentDate) : null,
+    amount: typeof item.amount === "number" ? item.amount : null,
+    description: item.description || null,
+    morningClientName: item.client?.name || null,
+    url: item.url?.he ?? item.url?.origin ?? null,
+  };
+}
+
+export async function searchMorningDocuments(
+  userId: string,
+  creds: MorningCredentials,
+  params: { fromDate: string; toDate: string },
+): Promise<MorningResult<MorningSearchItem[]>> {
+  const res = await morningRequest<{ items?: MorningSearchItem[] }>(
+    creds,
+    userId,
+    "/documents/search",
+    {
+      method: "POST",
+      body: {
+        page: 1,
+        pageSize: 100,
+        fromDate: params.fromDate,
+        toDate: params.toDate,
+        sort: "documentDate",
+      },
+    },
+  );
+  if (!res.ok) return res;
+  return { ok: true, data: res.data.items ?? [] };
+}
