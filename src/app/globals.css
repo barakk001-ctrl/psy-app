@@ -68,6 +68,20 @@
     background-color: #dce3d2;
     color: #1a1714;
   }
+
+  /* iOS gives date/time inputs an intrinsic width and height that ignore the
+     container — force them to behave like regular text inputs. */
+  input[type="datetime-local"],
+  input[type="date"],
+  input[type="time"] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    min-height: 2.5rem;
+  }
 }
 
 @layer utilities {

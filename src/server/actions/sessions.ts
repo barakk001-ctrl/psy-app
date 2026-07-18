@@ -10,6 +10,7 @@ import {
   scheduleSessionReminders,
 } from "@/lib/reminders";
 import { buildRecurrenceRule, seriesSlots, type Slot } from "@/lib/recurrence";
+import { fromZonedDateTimeLocal } from "@/lib/timezone";
 import { encryptNote } from "@/lib/crypto";
 import {
   createSessionSchema,
@@ -100,13 +101,13 @@ export async function createSessionAction(
   });
   if (!client) return { error: "לקוח לא נמצא" };
 
-  const startsAt = new Date(data.startsAt);
   const durationMs = data.durationMinutes * 60 * 1000;
   const rate = data.rate ?? (client.defaultRate ? Number(client.defaultRate) : null);
 
   const intervalWeeks = data.recurrence === "BIWEEKLY" ? 2 : 1;
   const count = data.recurrence === "NONE" ? 1 : data.occurrences!;
-  const slots = seriesSlots(startsAt, durationMs, intervalWeeks, count);
+  // data.startsAt is a datetime-local string — interpreted as clinic wall-clock
+  const slots = seriesSlots(data.startsAt, durationMs, intervalWeeks, count);
 
   if (!data.allowOverlap) {
     const overlaps = await findOverlaps(userId, slots);
@@ -209,7 +210,7 @@ export async function updateSessionAction(
   });
   if (!client) return { error: "לקוח לא נמצא" };
 
-  const startsAt = new Date(data.startsAt);
+  const startsAt = fromZonedDateTimeLocal(data.startsAt);
   const endsAt = new Date(startsAt.getTime() + data.durationMinutes * 60 * 1000);
 
   if (!data.allowOverlap) {

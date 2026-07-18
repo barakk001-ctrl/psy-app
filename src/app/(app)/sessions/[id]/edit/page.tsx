@@ -3,20 +3,8 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { toZonedDateTimeLocal } from "@/lib/timezone";
 import { SessionForm } from "@/components/sessions/session-form";
-
-/**
- * Convert a Date (UTC under the hood) to the local-time string
- * required by an <input type="datetime-local"> element.
- * Format: yyyy-MM-ddTHH:mm (no timezone suffix)
- */
-function toDatetimeLocal(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return (
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
-  );
-}
 
 export default async function EditSessionPage({
   params,
@@ -84,7 +72,7 @@ export default async function EditSessionPage({
         initial={{
           id: sess.id,
           clientId: sess.clientId,
-          startsAt: toDatetimeLocal(sess.startsAt),
+          startsAt: toZonedDateTimeLocal(sess.startsAt),
           durationMinutes,
           location: sess.location,
           meetingUrl: sess.meetingUrl,

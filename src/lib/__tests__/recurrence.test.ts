@@ -1,41 +1,63 @@
 import { describe, expect, it } from "vitest";
 import { buildRecurrenceRule, seriesSlots } from "@/lib/recurrence";
 
-describe("seriesSlots", () => {
-  const first = new Date(2026, 0, 5, 10, 0); // Mon 2026-01-05 10:00
-  const hour = 60 * 60 * 1000;
+const hour = 60 * 60 * 1000;
 
-  it("generates weekly occurrences on the same weekday and time", () => {
-    const slots = seriesSlots(first, hour, 1, 4);
+function jerusalemClock(d: Date): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Jerusalem",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(d);
+}
+
+function jerusalemWeekday(d: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    weekday: "short",
+  }).format(d);
+}
+
+describe("seriesSlots", () => {
+  it("generates weekly occurrences on the same weekday and Israel time", () => {
+    const slots = seriesSlots("2026-01-05T10:00", hour, 1, 4); // Monday
     expect(slots).toHaveLength(4);
-    for (const [i, slot] of slots.entries()) {
-      expect(slot.startsAt.getDay()).toBe(1); // Monday
-      expect(slot.startsAt.getHours()).toBe(10);
-      expect(slot.startsAt.getDate()).toBe(5 + i * 7);
+    for (const slot of slots) {
+      expect(jerusalemWeekday(slot.startsAt)).toBe("Mon");
+      expect(jerusalemClock(slot.startsAt)).toBe("10:00");
       expect(slot.endsAt.getTime() - slot.startsAt.getTime()).toBe(hour);
     }
   });
 
   it("supports biweekly intervals", () => {
-    const slots = seriesSlots(first, hour, 2, 3);
-    const days = slots.map((s) => s.startsAt.getDate());
+    const slots = seriesSlots("2026-01-05T10:00", hour, 2, 3);
+    const days = slots.map((s) =>
+      Number(
+        new Intl.DateTimeFormat("en-US", {
+          timeZone: "Asia/Jerusalem",
+          day: "numeric",
+        }).format(s.startsAt),
+      ),
+    );
     expect(days).toEqual([5, 19, 2]); // Jan 5, Jan 19, Feb 2
-    expect(slots[2].startsAt.getMonth()).toBe(1);
   });
 
-  it("keeps wall-clock time across the Israeli spring DST change", () => {
-    // DST in Israel starts late March; a weekly series spanning it must stay at 10:00
-    const beforeDst = new Date(2026, 2, 23, 10, 0); // Mon 2026-03-23
-    const slots = seriesSlots(beforeDst, hour, 1, 3);
+  it("keeps Israel wall-clock time across the spring DST change", () => {
+    // Israel DST starts 2026-03-27; a weekly 10:00 series spanning it must stay 10:00
+    const slots = seriesSlots("2026-03-23T10:00", hour, 1, 3);
     for (const slot of slots) {
-      expect(slot.startsAt.getHours()).toBe(10);
+      expect(jerusalemClock(slot.startsAt)).toBe("10:00");
     }
+    // UTC hour actually shifts when DST kicks in (07:00Z winter → 07:00Z? no: 08:00Z → 07:00Z)
+    expect(slots[0].startsAt.getUTCHours()).not.toBe(slots[2].startsAt.getUTCHours());
   });
 
   it("returns a single slot for count 1", () => {
-    const slots = seriesSlots(first, hour, 1, 1);
+    const slots = seriesSlots("2026-07-19T10:00", hour, 1, 1);
     expect(slots).toHaveLength(1);
-    expect(slots[0].startsAt.getTime()).toBe(first.getTime());
+    // July = IDT (UTC+3): 10:00 Israel = 07:00Z
+    expect(slots[0].startsAt.toISOString()).toBe("2026-07-19T07:00:00.000Z");
   });
 });
 
