@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { BusinessInfoForm } from "@/components/settings/business-info-form";
 import { MorningSettingsForm } from "@/components/settings/morning-settings-form";
+import { BiometricSettings } from "@/components/settings/biometric-settings";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -11,6 +12,7 @@ export default async function SettingsPage() {
     where: { id: userId },
     select: {
       name: true,
+      email: true,
       businessName: true,
       businessId: true,
       address: true,
@@ -49,6 +51,8 @@ export default async function SettingsPage() {
           defaultRate: user.defaultRate ? user.defaultRate.toString() : null,
         }}
       />
+
+      <BiometricSettings userEmail={user.email} userName={user.name} />
 
       <MorningSettingsForm
         connected={morningConnected}

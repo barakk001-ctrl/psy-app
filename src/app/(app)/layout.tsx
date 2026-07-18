@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { DesktopSidebar } from "@/components/nav/desktop-sidebar";
 import { MobileTopBar } from "@/components/nav/mobile-top-bar";
 import { MobileTabBar } from "@/components/nav/mobile-tab-bar";
+import { BiometricLockOverlay } from "@/components/security/biometric-lock-overlay";
 
 export default async function AppLayout({
   children,
@@ -14,6 +15,7 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen flex">
+      <BiometricLockOverlay />
       <DesktopSidebar userName={session.user.name} />
       <div className="flex-1 min-w-0 flex flex-col">
         <MobileTopBar userName={session.user.name} />
