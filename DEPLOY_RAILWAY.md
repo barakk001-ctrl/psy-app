@@ -25,6 +25,10 @@ On the **app service** → **Variables**, add:
 AUTH_SECRET=<paste your generated secret>
 AUTH_TRUST_HOST=true
 
+# Registration allowlist — REQUIRED to register in production.
+# Only these emails can create an account; leave it set to just yours.
+ALLOWED_EMAILS=you@example.com
+
 # Encryption for clinical notes — must be 32 bytes base64
 # Generate locally: openssl rand -base64 32
 NOTES_ENCRYPTION_KEY=<paste your generated key>
@@ -49,18 +53,17 @@ Then add one more variable:
 NEXTAUTH_URL=https://your-app.up.railway.app
 ```
 
-## 5. Generate the first migration locally, then redeploy
+## 5. Migrations run automatically
 
-Railway runs `npx prisma migrate deploy` on every deploy (configured in `railway.json`). It only applies migrations that already exist — it doesn't generate them. So generate the first one locally against your Railway DB:
+Railway runs `npx prisma migrate deploy` on every deploy (configured in `railway.json`). The baseline migration is committed at `prisma/migrations/0_init/`, so a **fresh database gets all tables automatically** — nothing to do.
 
-```bash
-# Get the Postgres DATABASE_URL from Railway (the public one, with sslmode=require)
-# Variables tab on the Postgres service → DATABASE_PUBLIC_URL
+> **Existing database only** (one that was previously created with `prisma db push`): the tables already exist, so `migrate deploy` would fail trying to re-create them. Mark the baseline as already applied, once:
+> ```bash
+> DATABASE_URL="postgresql://..." npx prisma migrate resolve --applied 0_init
+> ```
+> (Use the `DATABASE_PUBLIC_URL` from the Postgres service's Variables tab.)
 
-DATABASE_URL="postgresql://..." npx prisma migrate dev --name init
-```
-
-This creates `prisma/migrations/<timestamp>_init/migration.sql`. Commit and push it. Railway will pick it up and run `migrate deploy` on the next build.
+For future schema changes: edit `prisma/schema.prisma`, run `npx prisma migrate dev --name <change>` locally, commit the new migration folder, push.
 
 ## 6. Set up the cron for reminders
 
@@ -91,7 +94,7 @@ Sign up at [cron-job.org](https://cron-job.org) (free), create a job:
 
 ## 7. Verify
 
-Visit `https://your-app.up.railway.app` → register an account → add a client → schedule a session. Then test the cron once manually:
+Visit `https://your-app.up.railway.app` → register with an email from `ALLOWED_EMAILS` → add a client → schedule a session. Then test the cron once manually:
 
 ```bash
 curl -X POST \
@@ -112,6 +115,7 @@ curl -X POST \
 |---|---|
 | Build fails: `Can't reach database` | Add the `DATABASE_URL` reference variable from the Postgres service to the app service. |
 | `AuthError: MissingSecret` | `AUTH_SECRET` not set. |
-| Login page returns 500 with `relation "User" does not exist` | Migrations haven't been applied. Run `prisma migrate dev --name init` locally against the Railway DB and push the migration files, or run `prisma db push` once via `railway run` from the CLI. |
-| PDF route returns 500 about fonts | Heebo loads from jsDelivr at runtime. Check the Railway service has outbound internet (it does by default — only worry about this if you set up egress restrictions). |
+| Login page returns 500 with `relation "User" does not exist` | Migrations haven't been applied — check the deploy logs for `prisma migrate deploy` errors. If the DB was previously set up with `db push`, run the `migrate resolve --applied 0_init` step from section 5. |
+| `migrate deploy` fails with "already exists" errors | The DB predates the committed migrations. Run the `migrate resolve --applied 0_init` step from section 5. |
+| PDF route returns 500 about fonts | Fonts are bundled locally in `public/fonts/` (Heebo). Make sure those files exist in the repo and the build isn't excluding `public/`. |
 | Reminders never send | Check the cron service is running, that `CRON_SECRET` matches, and that `RESEND_API_KEY` + `EMAIL_FROM` are set on the app service. |

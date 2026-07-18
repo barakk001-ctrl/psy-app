@@ -1,11 +1,31 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { db } from "@/lib/db";
+import { rateLimit } from "@/lib/rate-limit";
 import { signIn, signOut } from "@/auth";
 import { loginSchema, registerSchema } from "@/server/validators/auth";
+
+async function clientIp(): Promise<string> {
+  const h = await headers();
+  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+}
+
+function registrationAllowed(email: string): boolean {
+  const allowed = process.env.ALLOWED_EMAILS;
+  if (allowed) {
+    return allowed
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+      .includes(email);
+  }
+  // No allowlist configured: open in dev, closed in production.
+  return process.env.NODE_ENV !== "production";
+}
 
 export type FormState = {
   error?: string;
@@ -27,6 +47,14 @@ export async function loginAction(_: FormState, formData: FormData): Promise<For
       error: "פרטים שגויים",
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
+  }
+
+  const email = parsed.data.email.toLowerCase();
+  const ip = await clientIp();
+  const byEmail = rateLimit(`login:email:${email}`, { limit: 5, windowMs: 15 * 60_000 });
+  const byIp = rateLimit(`login:ip:${ip}`, { limit: 20, windowMs: 15 * 60_000 });
+  if (!byEmail.allowed || !byIp.allowed) {
+    return { error: "יותר מדי ניסיונות התחברות. נסה שוב בעוד מספר דקות." };
   }
 
   try {
@@ -63,6 +91,17 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
   }
 
   const email = parsed.data.email.toLowerCase();
+
+  const ip = await clientIp();
+  const byIp = rateLimit(`register:ip:${ip}`, { limit: 5, windowMs: 60 * 60_000 });
+  if (!byIp.allowed) {
+    return { error: "יותר מדי ניסיונות הרשמה. נסה שוב מאוחר יותר." };
+  }
+
+  if (!registrationAllowed(email)) {
+    return { error: "ההרשמה סגורה. פנה למנהל המערכת." };
+  }
+
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {
     return { error: "כתובת אימייל זו כבר רשומה במערכת" };

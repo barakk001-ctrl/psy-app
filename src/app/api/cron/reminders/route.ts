@@ -33,6 +33,14 @@ async function run(req: Request) {
 
   const now = new Date();
 
+  // Reclaim jobs that were claimed (SENT with no sentAt) but never confirmed —
+  // a crash between claim and send would otherwise lose them forever.
+  const staleCutoff = new Date(now.getTime() - 10 * 60 * 1000);
+  await db.reminderJob.updateMany({
+    where: { status: "SENT", sentAt: null, updatedAt: { lt: staleCutoff } },
+    data: { status: "PENDING" },
+  });
+
   // Find due reminders. Limit per run so a backlog doesn't blow timeouts.
   const due = await db.reminderJob.findMany({
     where: {
@@ -57,10 +65,11 @@ async function run(req: Request) {
 
   for (const job of due) {
     // Optimistic claim — only proceed if we successfully flip from PENDING.
-    // This prevents double-sending if the cron overlaps itself.
+    // This prevents double-sending if the cron overlaps itself. sentAt stays
+    // null until the send is confirmed; SENT+null-sentAt marks "claimed".
     const claim = await db.reminderJob.updateMany({
       where: { id: job.id, status: "PENDING" },
-      data: { status: "SENT", sentAt: now },
+      data: { status: "SENT" },
     });
     if (claim.count === 0) {
       skipped++;
@@ -114,7 +123,10 @@ async function run(req: Request) {
     });
 
     if (result.ok) {
-      // already marked SENT during claim; nothing more to do
+      await db.reminderJob.update({
+        where: { id: job.id },
+        data: { sentAt: new Date() },
+      });
       sent++;
     } else {
       await db.reminderJob.update({

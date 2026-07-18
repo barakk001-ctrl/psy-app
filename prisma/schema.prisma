@@ -262,6 +262,7 @@ model ReminderJob {
   status        ReminderStatus @default(PENDING)
   sentAt        DateTime?
   error         String?
+  updatedAt     DateTime       @default(now()) @updatedAt
 
   @@index([status, scheduledFor])
 }

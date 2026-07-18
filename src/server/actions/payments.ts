@@ -50,6 +50,14 @@ export async function recordPaymentAction(
     return { error: "לא ניתן לרשום תשלום לחשבונית מבוטלת" };
   }
 
+  const remaining = Number(invoice.total) - Number(invoice.amountPaid);
+  if (data.amount > remaining + 0.005) {
+    return {
+      error: `הסכום גבוה מהיתרה לתשלום (₪${remaining.toLocaleString("he-IL")})`,
+      fieldErrors: { amount: ["הסכום גבוה מהיתרה לתשלום"] },
+    };
+  }
+
   // Insert payment + recalculate amountPaid + flip status atomically
   await db.$transaction(async (tx) => {
     await tx.payment.create({
@@ -114,6 +122,15 @@ export async function deletePaymentAction(formData: FormData) {
     });
     const amountPaid = Number(agg._sum.amount ?? 0);
     const total = Number(inv.total);
+
+    // A cancelled invoice stays cancelled — only recalc payment-driven statuses
+    if (inv.status === "CANCELLED") {
+      await tx.invoice.update({
+        where: { id: payment.invoiceId },
+        data: { amountPaid },
+      });
+      return;
+    }
 
     let status: "DRAFT" | "SENT" | "PARTIALLY_PAID" | "PAID" =
       inv.status === "DRAFT" ? "DRAFT" : "SENT";
