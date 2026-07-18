@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { PaymentForm } from "@/components/invoices/payment-form";
+import { SendInvoiceEmailButton } from "@/components/invoices/send-invoice-email-button";
 import {
   markInvoiceSentAction,
   cancelInvoiceAction,
@@ -85,6 +86,12 @@ export default async function InvoiceDetailPage({
               הורדת PDF
             </Button>
           </a>
+          {invoice.status !== "CANCELLED" && (
+            <SendInvoiceEmailButton
+              invoiceId={invoice.id}
+              clientEmail={invoice.client.email}
+            />
+          )}
           {invoice.status === "DRAFT" && (
             <form action={markInvoiceSentAction}>
               <input type="hidden" name="id" value={invoice.id} />

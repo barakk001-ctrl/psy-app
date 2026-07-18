@@ -17,7 +17,11 @@ npm run db:studio        # Prisma Studio
 npm run db:generate      # regenerate Prisma client after schema changes
 ```
 
-No test runner is configured — there are no tests.
+```bash
+npm test                 # Vitest — pure-logic tests in src/**/__tests__ (no DB needed)
+```
+
+CI (`.github/workflows/ci.yml`) runs lint, tsc, tests, and build on pushes/PRs to main. Testable logic lives in `src/lib` as pure functions (e.g. `invoice-status.ts`, `recurrence.ts`, `whatsapp.ts`, `rate-limit.ts`) — server actions import them; put new business rules there, not inline in actions.
 
 Requires a `.env` (copy from `.env.example`): `DATABASE_URL` (Postgres), `AUTH_SECRET`, and `NOTES_ENCRYPTION_KEY` (base64, exactly 32 bytes — crypto.ts throws otherwise). `RESEND_API_KEY`/`EMAIL_FROM`/`CRON_SECRET` are optional (reminders degrade gracefully).
 

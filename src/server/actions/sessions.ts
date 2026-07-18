@@ -9,6 +9,7 @@ import {
   rescheduleSessionReminders,
   scheduleSessionReminders,
 } from "@/lib/reminders";
+import { buildRecurrenceRule, seriesSlots, type Slot } from "@/lib/recurrence";
 import {
   createSessionSchema,
   sessionStatusSchema,
@@ -25,8 +26,6 @@ export type SessionFormState = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
 } | null;
-
-type Slot = { startsAt: Date; endsAt: Date };
 
 // Sessions overlapping any of the given slots (SCHEDULED only)
 async function findOverlaps(userId: string, slots: Slot[], excludeIds?: string[]) {
@@ -65,21 +64,6 @@ function overlapError(
   };
 }
 
-// Occurrence dates keep the same wall-clock time; interval in whole weeks
-function seriesSlots(first: Date, durationMs: number, intervalWeeks: number, count: number): Slot[] {
-  const slots: Slot[] = [];
-  for (let i = 0; i < count; i++) {
-    const start = new Date(
-      first.getFullYear(),
-      first.getMonth(),
-      first.getDate() + i * intervalWeeks * 7,
-      first.getHours(),
-      first.getMinutes(),
-    );
-    slots.push({ startsAt: start, endsAt: new Date(start.getTime() + durationMs) });
-  }
-  return slots;
-}
 
 export async function createSessionAction(
   _: SessionFormState,
@@ -128,9 +112,7 @@ export async function createSessionAction(
   }
 
   const recurrenceRule =
-    data.recurrence === "NONE"
-      ? null
-      : `FREQ=WEEKLY;INTERVAL=${intervalWeeks};COUNT=${count}`;
+    data.recurrence === "NONE" ? null : buildRecurrenceRule(intervalWeeks, count);
 
   const common = {
     userId,

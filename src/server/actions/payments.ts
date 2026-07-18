@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { computeInvoiceStatus } from "@/lib/invoice-status";
 import { recordPaymentSchema } from "@/server/validators/invoice";
 
 async function requireUserId(): Promise<string> {
@@ -78,13 +79,9 @@ export async function recordPaymentAction(
     const amountPaid = Number(agg._sum.amount ?? 0);
     const total = Number(invoice.total);
 
-    let status: "DRAFT" | "SENT" | "PARTIALLY_PAID" | "PAID" = invoice.status as never;
-    if (amountPaid >= total) status = "PAID";
-    else if (amountPaid > 0) status = "PARTIALLY_PAID";
-
     await tx.invoice.update({
       where: { id: data.invoiceId },
-      data: { amountPaid, status },
+      data: { amountPaid, status: computeInvoiceStatus(invoice.status, amountPaid, total) },
     });
   });
 
@@ -123,23 +120,9 @@ export async function deletePaymentAction(formData: FormData) {
     const amountPaid = Number(agg._sum.amount ?? 0);
     const total = Number(inv.total);
 
-    // A cancelled invoice stays cancelled — only recalc payment-driven statuses
-    if (inv.status === "CANCELLED") {
-      await tx.invoice.update({
-        where: { id: payment.invoiceId },
-        data: { amountPaid },
-      });
-      return;
-    }
-
-    let status: "DRAFT" | "SENT" | "PARTIALLY_PAID" | "PAID" =
-      inv.status === "DRAFT" ? "DRAFT" : "SENT";
-    if (amountPaid >= total) status = "PAID";
-    else if (amountPaid > 0) status = "PARTIALLY_PAID";
-
     await tx.invoice.update({
       where: { id: payment.invoiceId },
-      data: { amountPaid, status },
+      data: { amountPaid, status: computeInvoiceStatus(inv.status, amountPaid, total) },
     });
   });
 

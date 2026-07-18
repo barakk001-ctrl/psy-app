@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { sendEmail } from "@/lib/email";
+import { buildInvoiceEmail, renderInvoicePdfBuffer } from "@/lib/invoice-email";
+import { loadInvoicePdfData } from "@/lib/invoice-pdf-data";
 import { createInvoiceSchema } from "@/server/validators/invoice";
 
 async function requireUserId(): Promise<string> {
@@ -167,4 +170,76 @@ export async function cancelInvoiceAction(formData: FormData) {
   });
   revalidatePath(`/invoices/${id}`);
   revalidatePath("/invoices");
+}
+
+export type SendInvoiceEmailState = {
+  error?: string;
+  sent?: boolean;
+} | null;
+
+export async function sendInvoiceEmailAction(
+  _: SendInvoiceEmailState,
+  formData: FormData,
+): Promise<SendInvoiceEmailState> {
+  const userId = await requireUserId();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "מזהה חשבונית חסר" };
+
+  const loaded = await loadInvoicePdfData(id, userId);
+  if (!loaded) return { error: "חשבונית לא נמצאה" };
+  const { invoice, data } = loaded;
+
+  if (invoice.status === "CANCELLED") {
+    return { error: "לא ניתן לשלוח חשבונית מבוטלת" };
+  }
+  if (!invoice.client.email) {
+    return { error: "ללקוח/ה אין כתובת אימייל — יש להוסיף אותה בכרטיס הלקוח" };
+  }
+
+  let pdf: Buffer;
+  try {
+    pdf = await renderInvoicePdfBuffer(data);
+  } catch (err) {
+    console.error("Invoice PDF render failed:", err);
+    return { error: "יצירת קובץ ה-PDF נכשלה" };
+  }
+
+  const businessName = invoice.user.businessName ?? invoice.user.name;
+  const { subject, html, text } = buildInvoiceEmail({
+    clientFirstName: invoice.client.firstName,
+    businessName,
+    invoiceNumber: invoice.number,
+    issueDate: invoice.issueDate,
+    total: Number(invoice.total),
+    balance: Number(invoice.total) - Number(invoice.amountPaid),
+  });
+
+  const result = await sendEmail({
+    to: invoice.client.email,
+    subject,
+    html,
+    text,
+    replyTo: invoice.user.email,
+    attachments: [
+      {
+        filename: `invoice-${String(invoice.number).padStart(4, "0")}.pdf`,
+        content: pdf,
+      },
+    ],
+  });
+
+  if (!result.ok) {
+    return { error: `שליחת האימייל נכשלה: ${result.error}` };
+  }
+
+  if (invoice.status === "DRAFT") {
+    await db.invoice.update({
+      where: { id, userId },
+      data: { status: "SENT" },
+    });
+  }
+
+  revalidatePath(`/invoices/${id}`);
+  revalidatePath("/invoices");
+  return { sent: true };
 }

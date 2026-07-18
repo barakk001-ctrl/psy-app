@@ -20,6 +20,7 @@ import { SessionStatusBadge } from "@/components/sessions/session-status-badge";
 import { SessionStatusActions } from "@/components/sessions/session-status-actions";
 import { NoteEditor } from "@/components/sessions/note-editor";
 import { DeleteSeriesButton } from "@/components/sessions/delete-series-button";
+import { buildWhatsappReminderText, buildWhatsappUrl } from "@/lib/whatsapp";
 
 const LOCATION_LABELS = {
   OFFICE: "קליניקה",
@@ -164,6 +165,33 @@ export default async function SessionDetailPage({
                 </a>
               </div>
             )}
+            {sess.client.phone &&
+              sess.status === "SCHEDULED" &&
+              (() => {
+                const waUrl = buildWhatsappUrl(
+                  sess.client.phone,
+                  buildWhatsappReminderText({
+                    clientFirstName: sess.client.firstName,
+                    startsAt: sess.startsAt,
+                    location: sess.location,
+                    meetingUrl: sess.meetingUrl,
+                  }),
+                );
+                if (!waUrl) return null;
+                return (
+                  <div>
+                    <a
+                      href={waUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded bg-sage-50 border border-sage-100 px-3 py-1.5 text-sage-700 hover:bg-sage-100 transition-colors"
+                    >
+                      שליחת תזכורת בוואטסאפ
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                );
+              })()}
             {sess.meetingUrl && (
               <div>
                 <span className="text-xs text-ink-muted block mb-0.5">קישור לפגישה</span>

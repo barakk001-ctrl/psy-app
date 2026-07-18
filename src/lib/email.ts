@@ -16,6 +16,7 @@ export type SendEmailParams = {
   html: string;
   text?: string;
   replyTo?: string;
+  attachments?: { filename: string; content: Buffer }[];
 };
 
 export type SendEmailResult =
@@ -46,6 +47,7 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
       html: params.html,
       text: params.text,
       replyTo: params.replyTo,
+      attachments: params.attachments,
     });
     if (error) return { ok: false, error: error.message };
     if (!data?.id) return { ok: false, error: "No id returned by Resend" };

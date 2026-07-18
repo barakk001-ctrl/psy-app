@@ -54,7 +54,7 @@ Clients, invoices, and the calendar query are unbounded `findMany`s. Fine today,
 ### 2.3 Encrypt remaining PII
 Only clinical notes are encrypted. `idNumber` (ת.ז), `dateOfBirth`, `address`, and `generalNotes` are plaintext — the schema comment at `prisma/schema.prisma:58` already anticipates encrypting `idNumber`. Reuse `src/lib/crypto.ts` for at least `idNumber` and `generalNotes`. (Trade-off: encrypted fields aren't searchable — keep names/phone plaintext for search.)
 
-### 2.4 Basic test coverage + CI
+### 2.4 Basic test coverage + CI ✅ implemented 2026-07-18 (Vitest, 30 tests, GitHub Actions)
 Zero tests today. Highest-ROI targets (pure logic, no mocking pain):
 - `src/lib/crypto.ts` — round-trip, tamper detection
 - `src/lib/reminders.ts` — scheduling/cancellation idempotency
@@ -78,10 +78,10 @@ The schema has full RRULE support (`recurrenceRule`, `parentSessionId`, child re
 ### 3.2 Client portal / self-scheduling (v2)
 A public booking page per practitioner: available slots derived from working hours minus existing sessions, client picks a slot → session created as pending-confirmation. Big differentiator; needs the double-booking check (2.1) first.
 
-### 3.3 WhatsApp/SMS reminders ⭐ enum already exists
+### 3.3 WhatsApp/SMS reminders ✅ wa.me link implemented 2026-07-18 (Twilio API automation still open)
 `ReminderChannel.SMS` is in the schema. In Israel, **WhatsApp is far more effective than email** for appointment reminders. Options: Twilio WhatsApp API, or the simpler interim step — a "send reminder" button that opens `wa.me/<phone>?text=<prefilled Hebrew message>` for manual sending (zero cost, no API approval).
 
-### 3.4 Invoice emailing + stored PDFs
+### 3.4 Invoice emailing ✅ implemented 2026-07-18 (stored PDFs still open)
 `Invoice.pdfUrl` exists but is unused, and no invoice email exists. Add "send invoice to client" via Resend with the PDF attached, and optionally store rendered PDFs (S3/Railway volume) for immutable records.
 
 ### 3.5 Tax-compliant invoicing via provider

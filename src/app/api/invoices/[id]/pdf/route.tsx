@@ -1,11 +1,7 @@
 import { renderToStream } from "@react-pdf/renderer";
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
-import {
-  InvoicePDF,
-  ensureFontsRegistered,
-  type InvoicePDFData,
-} from "@/components/invoices/invoice-pdf";
+import { loadInvoicePdfData } from "@/lib/invoice-pdf-data";
+import { InvoicePDF, ensureFontsRegistered } from "@/components/invoices/invoice-pdf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,54 +17,9 @@ export async function GET(
 
   const { id } = await params;
 
-  const invoice = await db.invoice.findFirst({
-    where: { id, userId: session.user.id },
-    include: {
-      client: true,
-      user: true,
-      items: { orderBy: { id: "asc" } },
-      payments: { orderBy: { paidAt: "asc" } },
-    },
-  });
-  if (!invoice) return new Response("Not found", { status: 404 });
-
-  const data: InvoicePDFData = {
-    number: invoice.number,
-    issueDate: invoice.issueDate,
-    dueDate: invoice.dueDate,
-    status: invoice.status,
-    subtotal: Number(invoice.subtotal),
-    total: Number(invoice.total),
-    amountPaid: Number(invoice.amountPaid),
-    notes: invoice.notes,
-    business: {
-      name: invoice.user.businessName ?? invoice.user.name,
-      businessId: invoice.user.businessId,
-      address: invoice.user.address,
-      phone: invoice.user.phone,
-      email: invoice.user.email,
-    },
-    client: {
-      firstName: invoice.client.firstName,
-      lastName: invoice.client.lastName,
-      idNumber: invoice.client.idNumber,
-      address: invoice.client.address,
-      email: invoice.client.email,
-      phone: invoice.client.phone,
-    },
-    items: invoice.items.map((it) => ({
-      description: it.description,
-      quantity: Number(it.quantity),
-      unitPrice: Number(it.unitPrice),
-      amount: Number(it.amount),
-    })),
-    payments: invoice.payments.map((p) => ({
-      amount: Number(p.amount),
-      method: p.method,
-      paidAt: p.paidAt,
-      reference: p.reference,
-    })),
-  };
+  const loaded = await loadInvoicePdfData(id, session.user.id);
+  if (!loaded) return new Response("Not found", { status: 404 });
+  const { invoice, data } = loaded;
 
   let nodeStream;
   try {
