@@ -18,7 +18,8 @@ export default async function DashboardPage() {
   const [activeClients, upcomingSessions, monthPayments, outstanding] = await Promise.all([
     db.client.count({ where: { userId, status: "ACTIVE" } }),
     db.session.findMany({
-      where: { userId, startsAt: { gte: now }, status: "SCHEDULED" },
+      // endsAt ≥ now so a meeting that's happening right now stays in the list
+      where: { userId, endsAt: { gte: now }, status: "SCHEDULED" },
       orderBy: { startsAt: "asc" },
       take: 5,
       include: { client: { select: { firstName: true, lastName: true } } },
@@ -39,6 +40,11 @@ export default async function DashboardPage() {
   const monthIncome = Number(monthPayments._sum.amount ?? 0);
   const outstandingAmount =
     Number(outstanding._sum.total ?? 0) - Number(outstanding._sum.amountPaid ?? 0);
+
+  const nowMs = now.getTime();
+  const isInProgress = (s: { startsAt: Date; endsAt: Date }) =>
+    s.startsAt.getTime() <= nowMs && s.endsAt.getTime() >= nowMs;
+  const nextSessionId = upcomingSessions.find((s) => !isInProgress(s))?.id;
 
   return (
     <div className="space-y-8">
@@ -110,24 +116,45 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <ul className="divide-y divide-cream-200">
-                {upcomingSessions.map((s) => (
-                  <li key={s.id} className="flex items-center justify-between px-5 py-4">
-                    <div>
-                      <div className="font-medium text-ink">
-                        {s.client.firstName} {s.client.lastName}
-                      </div>
-                      <div className="text-xs text-ink-muted mt-0.5">
-                        {formatDateTime(s.startsAt)}
-                      </div>
-                    </div>
-                    <Link
-                      href={`/sessions/${s.id}`}
-                      className="text-xs text-sage-600 hover:text-sage-700"
+                {upcomingSessions.map((s) => {
+                  const inProgress = isInProgress(s);
+                  return (
+                    <li
+                      key={s.id}
+                      className={`flex items-center justify-between px-5 py-4 ${
+                        inProgress ? "bg-sage-50" : ""
+                      }`}
                     >
-                      פרטים ←
-                    </Link>
-                  </li>
-                ))}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-ink">
+                            {s.client.firstName} {s.client.lastName}
+                          </span>
+                          {inProgress && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-sage-300 bg-sage-100 px-2 py-0.5 text-[11px] font-medium text-sage-700">
+                              <span className="h-1.5 w-1.5 rounded-full bg-sage-600 animate-pulse" />
+                              מתקיימת עכשיו
+                            </span>
+                          )}
+                          {!inProgress && s.id === nextSessionId && (
+                            <span className="rounded-full border border-cream-300 bg-cream-100 px-2 py-0.5 text-[11px] text-ink-muted">
+                              הפגישה הבאה
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-ink-muted mt-0.5">
+                          {formatDateTime(s.startsAt)}
+                        </div>
+                      </div>
+                      <Link
+                        href={`/sessions/${s.id}`}
+                        className="text-xs text-sage-600 hover:text-sage-700"
+                      >
+                        פרטים ←
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardContent>
