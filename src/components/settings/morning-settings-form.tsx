@@ -109,15 +109,22 @@ export function MorningSettingsForm({
             </Select>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-ink-soft">
-            <input
-              type="checkbox"
-              name="morningSandbox"
-              defaultChecked={sandbox}
-              className="h-4 w-4 rounded border-cream-300 accent-sage-600"
-            />
-            סביבת ניסיון (Sandbox) — מסמכים לא אמיתיים, מומלץ להתחיל כאן
-          </label>
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 text-sm text-ink-soft">
+              <input
+                type="checkbox"
+                name="morningSandbox"
+                defaultChecked={sandbox}
+                className="h-4 w-4 rounded border-cream-300 accent-sage-600"
+              />
+              סביבת ניסיון (Sandbox) — מסמכים לא אמיתיים
+            </label>
+            <p className="text-xs text-ink-muted ps-6">
+              שימו לב: ל-Sandbox יש חשבון נפרד ומפתחות נפרדים (נרשמים ב-
+              sandbox.d.greeninvoice.co.il). מפתחות מהחשבון האמיתי עובדים רק
+              כשהתיבה <b>לא</b> מסומנת — אחרת מתקבלת שגיאת 401.
+            </p>
+          </div>
 
           {state?.error && (
             <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">

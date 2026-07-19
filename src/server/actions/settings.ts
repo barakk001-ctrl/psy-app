@@ -84,8 +84,13 @@ export async function saveMorningSettingsAction(
   // Verify the credentials against Morning before saving
   const test = await testMorningConnection(userId, { keyId, secret, sandbox });
   if (!test.ok) {
+    const envHint = test.error.includes("401")
+      ? sandbox
+        ? " שימו לב: מפתחות מהחשבון האמיתי לא עובדים מול Sandbox — בטלו את הסימון של סביבת הניסיון ונסו שוב."
+        : " שימו לב: מפתחות של חשבון Sandbox עובדים רק כשסביבת הניסיון מסומנת."
+      : "";
     return {
-      error: `החיבור ל-morning נכשל — בדקו את המפתחות. (${test.error})`,
+      error: `החיבור ל-morning נכשל — בדקו את המפתחות. (${test.error})${envHint}`,
     };
   }
 
