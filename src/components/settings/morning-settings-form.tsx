@@ -120,9 +120,18 @@ export function MorningSettingsForm({
               סביבת ניסיון (Sandbox) — מסמכים לא אמיתיים
             </label>
             <p className="text-xs text-ink-muted ps-6">
-              שימו לב: ל-Sandbox יש חשבון נפרד ומפתחות נפרדים (נרשמים ב-
-              sandbox.d.greeninvoice.co.il). מפתחות מהחשבון האמיתי עובדים רק
-              כשהתיבה <b>לא</b> מסומנת — אחרת מתקבלת שגיאת 401.
+              שימו לב: ל-Sandbox יש חשבון נפרד ומפתחות נפרדים — נרשמים ב-
+              <a
+                href="https://lp.sandbox.d.greeninvoice.co.il/join/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sage-600 hover:text-sage-700"
+                dir="ltr"
+              >
+                lp.sandbox.d.greeninvoice.co.il/join
+              </a>
+              . מפתחות מהחשבון האמיתי עובדים רק כשהתיבה <b>לא</b> מסומנת —
+              אחרת מתקבלת שגיאת 401.
             </p>
           </div>
 
