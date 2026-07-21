@@ -5,6 +5,7 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   updateBusinessInfoAction,
@@ -19,6 +20,7 @@ type Props = {
     address: string | null;
     phone: string | null;
     defaultRate: string | null;
+    vatLiable: boolean;
   };
 };
 
@@ -107,6 +109,22 @@ export function BusinessInfoForm({ initial }: Props) {
               name="address"
               defaultValue={initial.address ?? ""}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="vatLiable">סטטוס מע״מ</Label>
+            <Select
+              id="vatLiable"
+              name="vatLiable"
+              defaultValue={initial.vatLiable ? "true" : "false"}
+            >
+              <option value="false">עוסק פטור — ללא מע״מ (ברירת מחדל)</option>
+              <option value="true">עוסק מורשה — המחירים כוללים מע״מ</option>
+            </Select>
+            <p className="text-xs text-ink-muted mt-1">
+              לעוסק מורשה, החשבוניות יציגו פירוט מע״מ (המחיר ללקוח נשאר זהה —
+              המע״מ מחושב מתוכו).
+            </p>
           </div>
         </CardContent>
       </Card>

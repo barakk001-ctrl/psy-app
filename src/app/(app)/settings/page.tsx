@@ -18,6 +18,7 @@ export default async function SettingsPage() {
       address: true,
       phone: true,
       defaultRate: true,
+      vatLiable: true,
       morningApiKeyId: true,
       morningApiSecret: true,
       morningSandbox: true,
@@ -49,6 +50,7 @@ export default async function SettingsPage() {
           address: user.address,
           phone: user.phone,
           defaultRate: user.defaultRate ? user.defaultRate.toString() : null,
+          vatLiable: user.vatLiable,
         }}
       />
 

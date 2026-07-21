@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Font,
 } from "@react-pdf/renderer";
+import { VAT_RATE, vatBreakdown } from "@/lib/vat";
 
 // Register Heebo from local files in /public/fonts.
 //
@@ -308,6 +309,7 @@ export type InvoicePDFData = {
     address: string | null;
     phone: string | null;
     email: string | null;
+    vatLiable: boolean;
   };
   client: {
     firstName: string;
@@ -429,10 +431,29 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
         {/* Totals */}
         <View style={styles.totalsBlock}>
           <View style={styles.totalsTable}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>סכום ביניים</Text>
-              <Text style={styles.totalValue}>{formatILS(data.subtotal)}</Text>
-            </View>
+            {data.business.vatLiable ? (
+              <>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>סכום לפני מע״מ</Text>
+                  <Text style={styles.totalValue}>
+                    {formatILS(vatBreakdown(data.total).net)}
+                  </Text>
+                </View>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>
+                    מע״מ ({Math.round(VAT_RATE * 100)}%)
+                  </Text>
+                  <Text style={styles.totalValue}>
+                    {formatILS(vatBreakdown(data.total).vat)}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>סכום ביניים</Text>
+                <Text style={styles.totalValue}>{formatILS(data.subtotal)}</Text>
+              </View>
+            )}
             <View style={styles.totalGrand}>
               <Text style={styles.totalGrandLabel}>סה״כ לתשלום</Text>
               <Text style={styles.totalGrandValue}>{formatILS(data.total)}</Text>

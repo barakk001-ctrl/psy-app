@@ -23,6 +23,7 @@ import {
 } from "@/server/actions/invoices";
 import { deletePaymentAction } from "@/server/actions/payments";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { VAT_RATE, vatBreakdown } from "@/lib/vat";
 
 const METHOD_LABELS = {
   CASH: "מזומן",
@@ -58,6 +59,11 @@ export default async function InvoiceDetailPage({
   const paid = Number(invoice.amountPaid);
   const balance = total - paid;
   const morningConnected = !!(await getMorningCredentials(userId));
+  const owner = await db.user.findUnique({
+    where: { id: userId },
+    select: { vatLiable: true },
+  });
+  const vat = owner?.vatLiable ? vatBreakdown(total) : null;
 
   return (
     <div className="max-w-5xl space-y-8">
@@ -172,10 +178,27 @@ export default async function InvoiceDetailPage({
             </table>
 
             <div className="px-5 py-4 space-y-2 border-t border-cream-300">
-              <div className="flex justify-between text-sm">
-                <span className="text-ink-muted">סכום ביניים</span>
-                <span className="text-ink">{formatCurrency(invoice.subtotal.toString())}</span>
-              </div>
+              {vat ? (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-ink-muted">סכום לפני מע״מ</span>
+                    <span className="text-ink">{formatCurrency(vat.net)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-ink-muted">
+                      מע״מ ({Math.round(VAT_RATE * 100)}%)
+                    </span>
+                    <span className="text-ink">{formatCurrency(vat.vat)}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between text-sm">
+                  <span className="text-ink-muted">סכום ביניים</span>
+                  <span className="text-ink">
+                    {formatCurrency(invoice.subtotal.toString())}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between pt-2 border-t border-cream-200">
                 <span className="font-display text-lg text-ink">סה״כ</span>
                 <span className="font-display text-lg text-ink">{formatCurrency(total)}</span>

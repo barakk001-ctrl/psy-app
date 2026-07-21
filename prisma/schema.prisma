@@ -31,6 +31,8 @@ model User {
   defaultRate     Decimal?  @db.Decimal(10, 2)
   currency        String    @default("ILS")
   timezone        String    @default("Asia/Jerusalem")
+  // עוסק מורשה = true (prices include VAT, show breakdown); עוסק פטור = false
+  vatLiable       Boolean   @default(false)
 
   // For sequential invoice numbering
   nextInvoiceNumber Int     @default(1)

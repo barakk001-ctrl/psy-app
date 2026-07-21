@@ -37,6 +37,7 @@ export async function loadInvoicePdfData(
       address: invoice.user.address,
       phone: invoice.user.phone,
       email: invoice.user.email,
+      vatLiable: invoice.user.vatLiable,
     },
     client: {
       firstName: invoice.client.firstName,
