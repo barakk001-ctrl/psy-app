@@ -42,7 +42,7 @@ describe("buildMorningReceiptPayload", () => {
   it("maps items and payment methods to Morning codes", () => {
     const payload = buildMorningReceiptPayload(input);
     expect(payload.income).toHaveLength(1);
-    expect(payload.income[0]).toMatchObject({ quantity: 4, price: 350 });
+    expect(payload.income[0]).toMatchObject({ quantity: 4, price: 350, vatType: 1 });
     expect(payload.payment[0].type).toBe(10); // BIT → payment app
     expect(payload.payment[1].type).toBe(1); // cash
     expect(payload.payment[0].date).toBe("2026-07-18");

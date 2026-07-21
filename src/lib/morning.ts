@@ -171,7 +171,10 @@ export function buildMorningReceiptPayload(input: MorningDocumentInput) {
       quantity: it.quantity,
       price: it.unitPrice,
       currency: "ILS",
-      vatType: 0, // business default VAT handling (exempt for most therapists)
+      // 1 = price includes VAT (gross). Keeps income total equal to the
+      // payments total (Morning error 2422 otherwise); exempt businesses
+      // simply show no VAT on receipts.
+      vatType: 1,
     })),
     payment: input.payments.map((p) => ({
       type: MORNING_PAYMENT_TYPES[p.method] ?? MORNING_PAYMENT_TYPES.OTHER,
