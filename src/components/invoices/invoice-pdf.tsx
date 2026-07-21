@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   },
   brandBlock: {
     flexDirection: "column",
-    alignItems: "flex-start",
+    alignItems: "flex-end",
     maxWidth: 260,
   },
   businessName: {
@@ -109,6 +109,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: COLORS.inkMuted,
     marginBottom: 1,
+    textAlign: "right",
   },
   invoiceMeta: {
     flexDirection: "column",
@@ -136,6 +137,7 @@ const styles = StyleSheet.create({
   },
   billedToSection: {
     marginBottom: 24,
+    alignItems: "flex-end",
   },
   sectionLabel: {
     fontSize: 8,
@@ -143,16 +145,19 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 6,
+    textAlign: "right",
   },
   clientName: {
     fontSize: 13,
     fontWeight: 500,
     marginBottom: 2,
+    textAlign: "right",
   },
   clientLine: {
     fontSize: 9,
     color: COLORS.inkMuted,
     marginBottom: 1,
+    textAlign: "right",
   },
   table: {
     marginTop: 8,
@@ -181,7 +186,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: COLORS.inkSoft,
   },
-  colDescription: { flex: 4, paddingHorizontal: 4 },
+  colDescription: { flex: 4, paddingHorizontal: 4, textAlign: "right" },
   colQty: { flex: 1, paddingHorizontal: 4, textAlign: "center" },
   colUnit: { flex: 1.4, paddingHorizontal: 4, textAlign: "left" },
   colAmount: { flex: 1.4, paddingHorizontal: 4, textAlign: "left" },
@@ -248,6 +253,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: COLORS.inkSoft,
     lineHeight: 1.5,
+    textAlign: "right",
   },
   footer: {
     position: "absolute",
