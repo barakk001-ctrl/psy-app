@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ChevronLeft,
-  Download,
   Send,
   XCircle,
   Trash2,
@@ -15,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { PaymentForm } from "@/components/invoices/payment-form";
 import { SendInvoiceEmailButton } from "@/components/invoices/send-invoice-email-button";
+import { InvoicePdfButton } from "@/components/invoices/invoice-pdf-button";
 import { MorningReceiptButton } from "@/components/invoices/morning-receipt-button";
 import { getMorningCredentials } from "@/lib/morning";
 import {
@@ -89,12 +89,7 @@ export default async function InvoiceDetailPage({
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <a href={`/api/invoices/${invoice.id}/pdf`} target="_blank" rel="noopener noreferrer">
-            <Button variant="secondary" size="sm">
-              <Download className="w-4 h-4" />
-              הורדת PDF
-            </Button>
-          </a>
+          <InvoicePdfButton invoiceId={invoice.id} invoiceNumber={invoice.number} />
           {invoice.status !== "CANCELLED" && (
             <SendInvoiceEmailButton
               invoiceId={invoice.id}
