@@ -270,13 +270,14 @@ const METHOD_LABELS: Record<string, string> = {
   OTHER: "אחר",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "טיוטה",
-  SENT: "נשלחה",
-  PARTIALLY_PAID: "שולמה חלקית",
-  PAID: "שולמה",
-  CANCELLED: "מבוטלת",
-};
+// Client-facing wording: internal workflow statuses (DRAFT/SENT) mean nothing
+// to the client — derive the label from the actual payment state instead.
+function clientStatusLabel(status: string, total: number, amountPaid: number): string {
+  if (status === "CANCELLED") return "מבוטלת";
+  if (total > 0 && amountPaid >= total) return "שולמה";
+  if (amountPaid > 0) return "שולמה חלקית";
+  return "ממתינה לתשלום";
+}
 
 function formatILS(n: number) {
   return new Intl.NumberFormat("he-IL", {
@@ -384,7 +385,7 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>סטטוס:</Text>
               <Text style={styles.metaValue}>
-                {STATUS_LABELS[data.status] ?? data.status}
+                {clientStatusLabel(data.status, data.total, data.amountPaid)}
               </Text>
             </View>
           </View>
