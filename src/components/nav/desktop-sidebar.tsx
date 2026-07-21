@@ -10,10 +10,10 @@ export function DesktopSidebar({ userName }: { userName?: string | null }) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:flex w-64 shrink-0 border-l border-cream-300 bg-cream-50 flex-col h-screen sticky top-0">
-      <div className="p-6 border-b border-cream-300">
+    <aside className="hidden lg:flex w-64 shrink-0 border-l border-cream-200/60 glass flex-col h-screen sticky top-0">
+      <div className="p-6 border-b border-cream-200/60">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-sage-700 flex items-center justify-center text-cream-50 font-display text-sm">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sage-500 to-sage-700 flex items-center justify-center text-cream-50 font-display text-sm shadow-glow">
             מ
           </div>
           <span className="font-display text-xl text-ink">מרפאה</span>
@@ -31,10 +31,10 @@ export function DesktopSidebar({ userName }: { userName?: string | null }) {
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded text-sm transition-colors",
+                    "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm transition-all duration-200",
                     active
-                      ? "bg-sage-100 text-sage-700 font-medium"
-                      : "text-ink-soft hover:bg-cream-200 hover:text-ink",
+                      ? "bg-gradient-to-l from-sage-600 to-sage-500 text-cream-50 font-medium shadow-glow"
+                      : "text-ink-soft hover:bg-cream-200/70 hover:text-ink",
                   )}
                 >
                   <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />

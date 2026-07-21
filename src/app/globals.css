@@ -10,6 +10,12 @@
   html,
   body {
     background-color: #faf7f1;
+    /* Soft ambient glow — subtle depth behind the glass surfaces */
+    background-image:
+      radial-gradient(48rem 32rem at 85% -5%, rgba(92, 117, 89, 0.08), transparent 60%),
+      radial-gradient(40rem 28rem at -10% 40%, rgba(181, 101, 74, 0.05), transparent 60%),
+      radial-gradient(36rem 24rem at 50% 110%, rgba(92, 117, 89, 0.06), transparent 60%);
+    background-attachment: fixed;
     color: #1a1714;
     /* Belt-and-suspenders: prevent any single element from creating horizontal scroll
        on the document. Mobile drawers, wide tables, etc. should clip rather than
@@ -87,5 +93,32 @@
 @layer utilities {
   .container-page {
     @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Frosted glass surface */
+  .glass {
+    background-color: rgba(253, 251, 247, 0.75);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  }
+}
+
+/* Gentle rise-in for page content */
+@keyframes page-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-page {
+  animation: page-rise 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-page {
+    animation: none;
   }
 }

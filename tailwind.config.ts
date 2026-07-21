@@ -37,11 +37,13 @@ export default {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       borderRadius: {
-        DEFAULT: "0.375rem",
+        DEFAULT: "0.625rem",
       },
       boxShadow: {
-        soft: "0 1px 2px rgba(26, 23, 20, 0.04), 0 2px 8px rgba(26, 23, 20, 0.04)",
-        lift: "0 2px 4px rgba(26, 23, 20, 0.06), 0 8px 24px rgba(26, 23, 20, 0.06)",
+        soft: "0 1px 2px rgba(26, 23, 20, 0.03), 0 4px 16px rgba(26, 23, 20, 0.05)",
+        lift: "0 2px 6px rgba(26, 23, 20, 0.05), 0 12px 32px rgba(26, 23, 20, 0.08)",
+        glow: "0 2px 8px rgba(92, 117, 89, 0.25), 0 6px 20px rgba(92, 117, 89, 0.2)",
+        bar: "0 -1px 2px rgba(26, 23, 20, 0.03), 0 8px 32px rgba(26, 23, 20, 0.12)",
       },
     },
   },

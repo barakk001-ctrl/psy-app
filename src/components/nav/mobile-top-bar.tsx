@@ -31,9 +31,9 @@ export function MobileTopBar({ userName }: { userName?: string | null }) {
 
   return (
     <>
-      <header className="lg:hidden sticky top-0 z-30 bg-cream-50/95 backdrop-blur border-b border-cream-300 px-4 h-14 flex items-center justify-between">
+      <header className="lg:hidden sticky top-0 z-30 glass border-b border-cream-200/60 px-4 h-14 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-sage-700 flex items-center justify-center text-cream-50 font-display text-xs">
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-sage-500 to-sage-700 flex items-center justify-center text-cream-50 font-display text-xs shadow-glow">
             מ
           </div>
           <span className="font-display text-lg text-ink">מרפאה</span>
@@ -63,8 +63,8 @@ export function MobileTopBar({ userName }: { userName?: string | null }) {
           stay visible when closed. */}
       <div
         className={cn(
-          "lg:hidden fixed inset-y-0 z-50 w-72 max-w-[85vw] bg-cream-50 border-l border-cream-300 shadow-lift",
-          "transition-transform duration-200 ease-out flex flex-col",
+          "lg:hidden fixed inset-y-0 z-50 w-72 max-w-[85vw] glass border-l border-cream-200/60 shadow-lift",
+          "rounded-s-3xl transition-transform duration-300 ease-out flex flex-col",
         )}
         style={{
           right: 0,
@@ -95,10 +95,10 @@ export function MobileTopBar({ userName }: { userName?: string | null }) {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-3 rounded text-base transition-colors",
+                      "flex items-center gap-3 px-3.5 py-3 rounded-xl text-base transition-all duration-200",
                       active
-                        ? "bg-sage-100 text-sage-700 font-medium"
-                        : "text-ink-soft hover:bg-cream-200 hover:text-ink",
+                        ? "bg-gradient-to-l from-sage-600 to-sage-500 text-cream-50 font-medium shadow-glow"
+                        : "text-ink-soft hover:bg-cream-200/70 hover:text-ink",
                     )}
                   >
                     <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />

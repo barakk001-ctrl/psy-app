@@ -8,9 +8,10 @@ export const Select = React.forwardRef<
   <select
     ref={ref}
     className={cn(
-      "w-full h-10 px-3 rounded border bg-cream-50 text-ink",
+      "w-full h-11 px-3.5 rounded-xl border bg-white/60 text-ink",
       "border-cream-300 focus:border-sage-500 focus:bg-white",
-      "focus:outline-none focus:ring-2 focus:ring-sage-500/20",
+      "focus:outline-none focus:ring-4 focus:ring-sage-500/15",
+      "transition-colors duration-200",
       "appearance-none bg-no-repeat",
       // Caret on the start side (RTL → left)
       "bg-[length:12px_12px] bg-[position:left_0.75rem_center]",

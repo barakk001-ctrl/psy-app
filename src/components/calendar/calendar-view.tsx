@@ -47,7 +47,7 @@ export function CalendarView({ events }: Props) {
   }));
 
   return (
-    <div className="rounded-lg bg-white border border-cream-300 shadow-soft p-2 sm:p-4 calendar-shell">
+    <div className="rounded-2xl bg-white/85 backdrop-blur-sm border border-cream-200/80 shadow-soft p-2 sm:p-4 calendar-shell">
       <FullCalendar
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"

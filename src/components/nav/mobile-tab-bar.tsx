@@ -10,10 +10,11 @@ export function MobileTabBar() {
 
   return (
     <nav
-      className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-cream-50/95 backdrop-blur border-t border-cream-300 pb-[env(safe-area-inset-bottom,0px)]"
+      className="lg:hidden fixed inset-x-3 z-30 glass rounded-3xl border border-cream-200/80 shadow-bar"
+      style={{ bottom: "calc(0.625rem + env(safe-area-inset-bottom, 0px))" }}
       aria-label="ניווט ראשי"
     >
-      <ul className="flex items-stretch">
+      <ul className="flex items-stretch px-1.5 py-1.5">
         {PRIMARY_MOBILE_ITEMS.map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(item.href + "/");
@@ -23,8 +24,11 @@ export function MobileTabBar() {
               <Link
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 py-2 transition-colors",
-                  active ? "text-sage-700" : "text-ink-muted hover:text-ink",
+                  "flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-2xl",
+                  "transition-all duration-300",
+                  active
+                    ? "bg-sage-600 text-cream-50 shadow-glow"
+                    : "text-ink-muted hover:text-ink active:scale-95",
                 )}
               >
                 <Icon className="w-5 h-5" strokeWidth={active ? 2 : 1.75} />

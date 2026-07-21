@@ -20,8 +20,8 @@ export default async function AppLayout({
       <div className="flex-1 min-w-0 flex flex-col">
         <MobileTopBar userName={session.user.name} />
         <main className="flex-1">
-          {/* pb-24 on mobile so content isn't hidden behind the bottom tab bar */}
-          <div className="container-page py-6 lg:py-8 pb-24 lg:pb-8">
+          {/* pb-28 on mobile so content isn't hidden behind the floating tab bar */}
+          <div className="container-page py-6 lg:py-8 pb-28 lg:pb-8 animate-page">
             {children}
           </div>
         </main>
