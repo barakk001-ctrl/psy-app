@@ -279,6 +279,14 @@ function clientStatusLabel(status: string, total: number, amountPaid: number): s
   return "ממתינה לתשלום";
 }
 
+// Wraps a string in Right-to-Left Marks so neutral characters (colons, digits,
+// punctuation) at run boundaries resolve in RTL context — otherwise the BiDi
+// algorithm pushes them to the wrong visual side.
+const RLM = "‏";
+function rtl(s: string): string {
+  return `${RLM}${s}${RLM}`;
+}
+
 function formatILS(n: number) {
   return new Intl.NumberFormat("he-IL", {
     style: "currency",
@@ -350,14 +358,16 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
             <Text style={styles.businessName}>{data.business.name}</Text>
             {data.business.businessId && (
               <Text style={styles.businessLine}>
-                ע.מ / ע.פ: {data.business.businessId}
+                {rtl(`ע.מ / ע.פ: ${data.business.businessId}`)}
               </Text>
             )}
             {data.business.address && (
-              <Text style={styles.businessLine}>{data.business.address}</Text>
+              <Text style={styles.businessLine}>{rtl(data.business.address)}</Text>
             )}
             {data.business.phone && (
-              <Text style={styles.businessLine}>טל׳: {data.business.phone}</Text>
+              <Text style={styles.businessLine}>
+                {rtl(`טל׳: ${data.business.phone}`)}
+              </Text>
             )}
             {data.business.email && (
               <Text style={styles.businessLine}>{data.business.email}</Text>
@@ -367,23 +377,23 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
           <View style={styles.invoiceMeta}>
             <Text style={styles.docTitle}>חשבונית</Text>
             <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>מס׳:</Text>
+              <Text style={styles.metaLabel}>{rtl("מס׳:")}</Text>
               <Text style={styles.metaValue}>
                 {String(data.number).padStart(4, "0")}
               </Text>
             </View>
             <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>תאריך:</Text>
+              <Text style={styles.metaLabel}>{rtl("תאריך:")}</Text>
               <Text style={styles.metaValue}>{formatDate(data.issueDate)}</Text>
             </View>
             {data.dueDate && (
               <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>לתשלום עד:</Text>
+                <Text style={styles.metaLabel}>{rtl("לתשלום עד:")}</Text>
                 <Text style={styles.metaValue}>{formatDate(data.dueDate)}</Text>
               </View>
             )}
             <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>סטטוס:</Text>
+              <Text style={styles.metaLabel}>{rtl("סטטוס:")}</Text>
               <Text style={styles.metaValue}>
                 {clientStatusLabel(data.status, data.total, data.amountPaid)}
               </Text>
@@ -398,13 +408,13 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
             {data.client.firstName} {data.client.lastName}
           </Text>
           {data.client.idNumber && (
-            <Text style={styles.clientLine}>ת.ז: {data.client.idNumber}</Text>
+            <Text style={styles.clientLine}>{rtl(`ת.ז: ${data.client.idNumber}`)}</Text>
           )}
           {data.client.address && (
-            <Text style={styles.clientLine}>{data.client.address}</Text>
+            <Text style={styles.clientLine}>{rtl(data.client.address)}</Text>
           )}
           {data.client.phone && (
-            <Text style={styles.clientLine}>טל׳: {data.client.phone}</Text>
+            <Text style={styles.clientLine}>{rtl(`טל׳: ${data.client.phone}`)}</Text>
           )}
           {data.client.email && (
             <Text style={styles.clientLine}>{data.client.email}</Text>
@@ -421,7 +431,9 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
           </View>
           {data.items.map((it, idx) => (
             <View key={idx} style={styles.tableRow}>
-              <Text style={[styles.td, styles.colDescription]}>{it.description}</Text>
+              <Text style={[styles.td, styles.colDescription]}>
+                {rtl(it.description)}
+              </Text>
               <Text style={[styles.td, styles.colQty]}>{it.quantity}</Text>
               <Text style={[styles.td, styles.colUnit]}>{formatILS(it.unitPrice)}</Text>
               <Text style={[styles.td, styles.colAmount]}>{formatILS(it.amount)}</Text>
@@ -483,8 +495,11 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
             {data.payments.map((p, idx) => (
               <View key={idx} style={styles.paymentRow}>
                 <Text>
-                  {formatDate(p.paidAt)} · {METHOD_LABELS[p.method] ?? p.method}
-                  {p.reference ? ` · ${p.reference}` : ""}
+                  {rtl(
+                    `${formatDate(p.paidAt)} · ${METHOD_LABELS[p.method] ?? p.method}${
+                      p.reference ? ` · ${p.reference}` : ""
+                    }`,
+                  )}
                 </Text>
                 <Text>{formatILS(p.amount)}</Text>
               </View>
@@ -496,12 +511,16 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
         {data.notes && (
           <View style={styles.notesSection}>
             <Text style={styles.sectionLabel}>הערות</Text>
-            <Text style={styles.notesText}>{data.notes}</Text>
+            <Text style={styles.notesText}>{rtl(data.notes)}</Text>
           </View>
         )}
 
         <Text style={styles.footer} fixed>
-          מסמך זה אינו חשבונית מס. לבירורים: {data.business.phone ?? data.business.email ?? ""}
+          {rtl(
+            `מסמך זה אינו חשבונית מס. לבירורים: ${
+              data.business.phone ?? data.business.email ?? ""
+            }`,
+          )}
         </Text>
       </Page>
     </Document>
