@@ -319,7 +319,7 @@ export async function issueMorningReceiptAction(
     data: {
       morningDocId: result.data.id,
       morningDocUrl: docUrl,
-      morningDocNumber: result.data.number ?? null,
+      morningDocNumber: result.data.number != null ? String(result.data.number) : null,
     },
   });
 

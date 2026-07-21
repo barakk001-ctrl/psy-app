@@ -187,7 +187,7 @@ export function buildMorningReceiptPayload(input: MorningDocumentInput) {
 
 export type MorningDocumentResponse = {
   id: string;
-  number?: string;
+  number?: string | number;
   url?: { origin?: string; he?: string; en?: string };
 };
 
