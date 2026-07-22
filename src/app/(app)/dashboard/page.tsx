@@ -32,7 +32,8 @@ export default async function DashboardPage() {
       _sum: { amount: true },
     }),
     db.invoice.aggregate({
-      where: { userId, status: { in: ["SENT", "PARTIALLY_PAID"] } },
+      // Drafts count too — an unpaid invoice is a debt even before it's sent
+      where: { userId, status: { in: ["DRAFT", "SENT", "PARTIALLY_PAID"] } },
       _sum: { total: true, amountPaid: true },
     }),
   ]);

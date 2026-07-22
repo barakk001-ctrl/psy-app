@@ -121,7 +121,7 @@ export async function loadReportData(
     db.invoice.aggregate({
       where: {
         userId,
-        status: { in: ["SENT", "PARTIALLY_PAID"] },
+        status: { in: ["DRAFT", "SENT", "PARTIALLY_PAID"] },
       },
       _sum: { total: true, amountPaid: true },
     }),
@@ -224,7 +224,7 @@ export async function loadReportData(
 
   // ── Outstanding invoices (regardless of period) ──
   const outstandingRows = await db.invoice.findMany({
-    where: { userId, status: { in: ["SENT", "PARTIALLY_PAID"] } },
+    where: { userId, status: { in: ["DRAFT", "SENT", "PARTIALLY_PAID"] } },
     include: { client: { select: { firstName: true, lastName: true } } },
     orderBy: [{ dueDate: "asc" }, { issueDate: "asc" }],
     take: 50,
