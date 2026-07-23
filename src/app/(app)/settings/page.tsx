@@ -4,6 +4,7 @@ import { BusinessInfoForm } from "@/components/settings/business-info-form";
 import { MorningSettingsForm } from "@/components/settings/morning-settings-form";
 import { BiometricSettings } from "@/components/settings/biometric-settings";
 import { InboxSettings } from "@/components/settings/inbox-settings";
+import { TwoFactorSettings } from "@/components/settings/two-factor-settings";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -21,6 +22,7 @@ export default async function SettingsPage() {
       defaultRate: true,
       vatLiable: true,
       inboxToken: true,
+      totpEnabled: true,
       morningApiKeyId: true,
       morningApiSecret: true,
       morningSandbox: true,
@@ -57,6 +59,8 @@ export default async function SettingsPage() {
       />
 
       <InboxSettings token={user.inboxToken} />
+
+      <TwoFactorSettings enabled={user.totpEnabled} />
 
       <BiometricSettings userEmail={user.email} userName={user.name} />
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,13 @@ export function LoginForm() {
     loginAction,
     null,
   );
+  // Controlled so values survive the two-step (password → 2FA code) flow;
+  // React 19 resets uncontrolled fields after each form action.
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
+
+  const needTotp = !!state?.needTotp;
 
   return (
     <div>
@@ -21,7 +29,7 @@ export function LoginForm() {
       </div>
 
       <form action={formAction} className="space-y-4" noValidate>
-        <div>
+        <div className={needTotp ? "hidden" : undefined}>
           <Label htmlFor="email">אימייל</Label>
           <Input
             id="email"
@@ -29,6 +37,8 @@ export function LoginForm() {
             type="email"
             autoComplete="email"
             required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             invalid={!!state?.fieldErrors?.email}
           />
           {state?.fieldErrors?.email && (
@@ -38,7 +48,7 @@ export function LoginForm() {
           )}
         </div>
 
-        <div>
+        <div className={needTotp ? "hidden" : undefined}>
           <Label htmlFor="password">סיסמה</Label>
           <Input
             id="password"
@@ -46,6 +56,8 @@ export function LoginForm() {
             type="password"
             autoComplete="current-password"
             required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             invalid={!!state?.fieldErrors?.password}
           />
           {state?.fieldErrors?.password && (
@@ -55,6 +67,31 @@ export function LoginForm() {
           )}
         </div>
 
+        {needTotp && (
+          <>
+            <div className="rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              אימות דו-שלבי פעיל — הזינו את הקוד מאפליקציית האימות
+            </div>
+            <div>
+              <Label htmlFor="totp">קוד אימות</Label>
+              <Input
+                id="totp"
+                name="totp"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="123456"
+                maxLength={6}
+                dir="ltr"
+                className="text-center tracking-[0.5em] font-medium"
+                value={totp}
+                onChange={(e) => setTotp(e.target.value.replace(/\D/g, ""))}
+                autoFocus
+              />
+            </div>
+          </>
+        )}
+
         {state?.error && (
           <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
             {state.error}
@@ -62,7 +99,7 @@ export function LoginForm() {
         )}
 
         <Button type="submit" size="lg" disabled={pending} className="w-full">
-          {pending ? "מתחבר…" : "התחברות"}
+          {pending ? "מתחבר…" : needTotp ? "אימות והתחברות" : "התחברות"}
         </Button>
       </form>
 

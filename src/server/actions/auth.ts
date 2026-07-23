@@ -30,6 +30,8 @@ function registrationAllowed(email: string): boolean {
 export type FormState = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
+  /** Password was correct but a 2FA code is required — show the code field */
+  needTotp?: boolean;
 } | null;
 
 export async function signOutAction() {
@@ -40,6 +42,7 @@ export async function loginAction(_: FormState, formData: FormData): Promise<For
   const raw = {
     email: formData.get("email"),
     password: formData.get("password"),
+    totp: formData.get("totp") ?? "",
   };
   const parsed = loginSchema.safeParse(raw);
   if (!parsed.success) {
@@ -51,22 +54,41 @@ export async function loginAction(_: FormState, formData: FormData): Promise<For
 
   const email = parsed.data.email.toLowerCase();
   const ip = await clientIp();
-  const byEmail = rateLimit(`login:email:${email}`, { limit: 5, windowMs: 15 * 60_000 });
-  const byIp = rateLimit(`login:ip:${ip}`, { limit: 20, windowMs: 15 * 60_000 });
+  const byEmail = rateLimit(`login:email:${email}`, { limit: 8, windowMs: 15 * 60_000 });
+  const byIp = rateLimit(`login:ip:${ip}`, { limit: 25, windowMs: 15 * 60_000 });
   if (!byEmail.allowed || !byIp.allowed) {
     return { error: "יותר מדי ניסיונות התחברות. נסה שוב בעוד מספר דקות." };
+  }
+
+  // Two-step: if the password is right and 2FA is on but no code was given,
+  // ask for the code instead of failing.
+  if (!parsed.data.totp) {
+    const user = await db.user.findUnique({
+      where: { email },
+      select: { hashedPassword: true, totpEnabled: true },
+    });
+    if (
+      user?.hashedPassword &&
+      user.totpEnabled &&
+      (await bcrypt.compare(parsed.data.password, user.hashedPassword))
+    ) {
+      return { needTotp: true };
+    }
   }
 
   try {
     await signIn("credentials", {
       email: parsed.data.email,
       password: parsed.data.password,
+      totp: parsed.data.totp ?? "",
       redirect: false,
     });
   } catch (err) {
     if (err instanceof AuthError) {
       if (err.type === "CredentialsSignin") {
-        return { error: "אימייל או סיסמה שגויים" };
+        return parsed.data.totp
+          ? { error: "קוד האימות שגוי או שפג תוקפו", needTotp: true }
+          : { error: "אימייל או סיסמה שגויים" };
       }
       return { error: "אירעה שגיאה בהתחברות" };
     }

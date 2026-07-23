@@ -40,6 +40,11 @@ model User {
   // Token for the inbound message API (/api/inbox) — iOS Shortcuts etc.
   inboxToken       String?   @unique
 
+  // Two-factor auth (TOTP) — secret encrypted at app layer; enabled only
+  // after the first code is verified during enrollment
+  totpSecret       String?
+  totpEnabled      Boolean   @default(false)
+
   // Morning (Green Invoice) API connection — secret encrypted at app layer
   morningApiKeyId  String?
   morningApiSecret String?  // packed AES-256-GCM (iv:tag:ciphertext, base64)

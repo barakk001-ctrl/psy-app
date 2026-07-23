@@ -4,6 +4,7 @@ import { z } from "zod";
 export const loginSchema = z.object({
   email: z.string().email("כתובת אימייל לא תקינה"),
   password: z.string().min(1, "נדרשת סיסמה"),
+  totp: z.string().optional().or(z.literal("")),
 });
 
 export const registerSchema = z.object({
