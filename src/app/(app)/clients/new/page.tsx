@@ -2,7 +2,17 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { ClientForm } from "@/components/clients/client-form";
 
-export default function NewClientPage() {
+export default async function NewClientPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    nextStart?: string;
+  }>;
+}) {
+  const params = await searchParams;
   return (
     <div className="max-w-3xl space-y-6">
       <Link
@@ -18,7 +28,14 @@ export default function NewClientPage() {
           רק שם פרטי ושם משפחה הם חובה. כל היתר אופציונלי וניתן להשלים מאוחר יותר.
         </p>
       </header>
-      <ClientForm />
+      <ClientForm
+        defaults={{
+          firstName: params.firstName,
+          lastName: params.lastName,
+          phone: params.phone,
+        }}
+        nextStart={params.nextStart}
+      />
     </div>
   );
 }

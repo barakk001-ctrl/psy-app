@@ -26,7 +26,15 @@ export type ClientFormInitial = {
   generalNotes: string | null;
 };
 
-export function ClientForm({ initial }: { initial?: ClientFormInitial }) {
+export function ClientForm({
+  initial,
+  defaults,
+  nextStart,
+}: {
+  initial?: ClientFormInitial;
+  defaults?: { firstName?: string; lastName?: string; phone?: string };
+  nextStart?: string;
+}) {
   const isEdit = !!initial;
   const action = isEdit ? updateClientAction : createClientAction;
 
@@ -39,6 +47,9 @@ export function ClientForm({ initial }: { initial?: ClientFormInitial }) {
   return (
     <form action={formAction} className="space-y-6" noValidate>
       {isEdit && <input type="hidden" name="id" value={initial!.id} />}
+      {!isEdit && nextStart && (
+        <input type="hidden" name="nextStart" value={nextStart} />
+      )}
 
       <Card>
         <CardContent className="space-y-5">
@@ -51,7 +62,7 @@ export function ClientForm({ initial }: { initial?: ClientFormInitial }) {
                 id="firstName"
                 name="firstName"
                 required
-                defaultValue={initial?.firstName ?? ""}
+                defaultValue={initial?.firstName ?? defaults?.firstName ?? ""}
                 invalid={!!fieldErr.firstName}
               />
               {fieldErr.firstName && (
@@ -64,7 +75,7 @@ export function ClientForm({ initial }: { initial?: ClientFormInitial }) {
                 id="lastName"
                 name="lastName"
                 required
-                defaultValue={initial?.lastName ?? ""}
+                defaultValue={initial?.lastName ?? defaults?.lastName ?? ""}
                 invalid={!!fieldErr.lastName}
               />
               {fieldErr.lastName && (
@@ -121,7 +132,7 @@ export function ClientForm({ initial }: { initial?: ClientFormInitial }) {
                 name="phone"
                 type="tel"
                 inputMode="tel"
-                defaultValue={initial?.phone ?? ""}
+                defaultValue={initial?.phone ?? defaults?.phone ?? ""}
               />
             </div>
           </div>

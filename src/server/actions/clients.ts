@@ -62,6 +62,14 @@ export async function createClientAction(
   });
 
   revalidatePath("/clients");
+
+  // Imported-message flow: continue straight to creating the meeting
+  const nextStart = String(formData.get("nextStart") ?? "");
+  if (nextStart) {
+    redirect(
+      `/sessions/new?clientId=${created.id}&start=${encodeURIComponent(nextStart)}`,
+    );
+  }
   redirect(`/clients/${created.id}`);
 }
 

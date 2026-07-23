@@ -5,7 +5,7 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, formatCurrency } from "@/lib/format";
-import { Calendar, UserPlus, FileText } from "lucide-react";
+import { Calendar, UserPlus, FileText, ClipboardPaste } from "lucide-react";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -186,6 +186,13 @@ export default async function DashboardPage() {
             >
               <FileText className="w-4 h-4 text-sage-600" />
               <span className="text-sm">חשבונית חדשה</span>
+            </Link>
+            <Link
+              href="/import"
+              className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
+            >
+              <ClipboardPaste className="w-4 h-4 text-sage-600" />
+              <span className="text-sm">ייבוא פגישה מהודעה</span>
             </Link>
           </CardContent>
         </Card>
