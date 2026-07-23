@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { BusinessInfoForm } from "@/components/settings/business-info-form";
 import { MorningSettingsForm } from "@/components/settings/morning-settings-form";
 import { BiometricSettings } from "@/components/settings/biometric-settings";
+import { InboxSettings } from "@/components/settings/inbox-settings";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -19,6 +20,7 @@ export default async function SettingsPage() {
       phone: true,
       defaultRate: true,
       vatLiable: true,
+      inboxToken: true,
       morningApiKeyId: true,
       morningApiSecret: true,
       morningSandbox: true,
@@ -53,6 +55,8 @@ export default async function SettingsPage() {
           vatLiable: user.vatLiable,
         }}
       />
+
+      <InboxSettings token={user.inboxToken} />
 
       <BiometricSettings userEmail={user.email} userName={user.name} />
 

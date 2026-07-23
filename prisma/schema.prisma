@@ -37,6 +37,9 @@ model User {
   // For sequential invoice numbering
   nextInvoiceNumber Int     @default(1)
 
+  // Token for the inbound message API (/api/inbox) — iOS Shortcuts etc.
+  inboxToken       String?   @unique
+
   // Morning (Green Invoice) API connection — secret encrypted at app layer
   morningApiKeyId  String?
   morningApiSecret String?  // packed AES-256-GCM (iv:tag:ciphertext, base64)
@@ -48,6 +51,7 @@ model User {
   invoices        Invoice[]
   reminderJobs    ReminderJob[]
   morningDocuments MorningDocument[]
+  inboxMessages    InboxMessage[]
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -264,6 +268,19 @@ enum PaymentMethod {
 // ─────────────────────────────────────────────────────────────
 // Reminders (queued jobs to send email/SMS before a session)
 // ─────────────────────────────────────────────────────────────
+
+// Messages sent to the inbound API (iOS Shortcut / automations) awaiting
+// processing on the import page.
+model InboxMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String   @db.Text
+  processed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, processed])
+}
 
 // Documents issued directly in Morning (outside the app's schedule) — synced
 // into a general inbox and manually assigned to a client afterwards.

@@ -1,14 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarPlus, ClipboardPaste, Sparkles, UserPlus } from "lucide-react";
+import {
+  CalendarPlus,
+  ClipboardPaste,
+  Inbox,
+  Sparkles,
+  Trash2,
+  UserPlus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import {
+  deleteInboxMessageAction,
+  processInboxMessageAction,
+} from "@/server/actions/inbox";
 import {
   matchClient,
   parseAppointmentMessage,
@@ -16,19 +27,48 @@ import {
   type ParsedMessage,
 } from "@/lib/message-parse";
 
-export function ImportMessageForm({ clients }: { clients: ClientCandidate[] }) {
+export type InboxItem = { id: string; text: string; createdAt: string };
+
+export function ImportMessageForm({
+  clients,
+  inbox = [],
+}: {
+  clients: ClientCandidate[];
+  inbox?: InboxItem[];
+}) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [text, setText] = useState("");
   const [parsed, setParsed] = useState<ParsedMessage | null>(null);
   const [clientId, setClientId] = useState("");
   const [startsAt, setStartsAt] = useState("");
 
-  function handleParse() {
-    const result = parseAppointmentMessage(text);
+  function runParse(input: string) {
+    const result = parseAppointmentMessage(input);
     setParsed(result);
     setStartsAt(result.startsAt ?? "");
-    const match = matchClient(clients, text, result.phone);
+    const match = matchClient(clients, input, result.phone);
     setClientId(match?.id ?? "");
+  }
+
+  function handleParse() {
+    runParse(text);
+  }
+
+  function loadInboxItem(item: InboxItem) {
+    setText(item.text);
+    runParse(item.text);
+    startTransition(async () => {
+      await processInboxMessageAction(item.id);
+      router.refresh();
+    });
+  }
+
+  function removeInboxItem(id: string) {
+    startTransition(async () => {
+      await deleteInboxMessageAction(id);
+      router.refresh();
+    });
   }
 
   async function pasteFromClipboard() {
@@ -59,6 +99,58 @@ export function ImportMessageForm({ clients }: { clients: ClientCandidate[] }) {
 
   return (
     <div className="space-y-6">
+      {inbox.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Inbox className="w-5 h-5 text-sage-600" />
+              הודעות שהתקבלו ({inbox.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ul className="divide-y divide-cream-200">
+              {inbox.map((item) => (
+                <li
+                  key={item.id}
+                  className="px-5 py-3 flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-ink-soft line-clamp-2 whitespace-pre-wrap">
+                      {item.text}
+                    </p>
+                    <p className="text-xs text-ink-subtle mt-0.5">
+                      {new Intl.DateTimeFormat("he-IL", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                        timeZone: "Asia/Jerusalem",
+                      }).format(new Date(item.createdAt))}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => loadInboxItem(item)}
+                    >
+                      עיבוד
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => removeInboxItem(item.id)}
+                      className="text-ink-muted hover:text-terracotta-500 p-1"
+                      aria-label="מחיקה"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between gap-3">
