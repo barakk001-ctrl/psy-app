@@ -7,6 +7,24 @@ export const dynamic = "force-dynamic";
 // Inbound message API: iOS Shortcuts, automations, and email webhooks POST
 // free text here; it lands in the user's inbox for processing on /import.
 // Auth: personal token (Settings) via Authorization: Bearer or ?token=.
+
+// GET = connectivity/token check (open the URL in a browser to verify setup)
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const token = url.searchParams.get("token") ?? "";
+  if (!token) {
+    return Response.json({ ok: false, error: "Missing token" }, { status: 401 });
+  }
+  const user = await db.user.findUnique({
+    where: { inboxToken: token },
+    select: { id: true },
+  });
+  if (!user) {
+    return Response.json({ ok: false, error: "Invalid token" }, { status: 401 });
+  }
+  return Response.json({ ok: true, ping: "התחברות תקינה — הטוקן והכתובת נכונים" });
+}
+
 export async function POST(req: Request) {
   const url = new URL(req.url);
   const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
