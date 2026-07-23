@@ -22,7 +22,10 @@ export async function GET(req: Request) {
   if (!user) {
     return Response.json({ ok: false, error: "Invalid token" }, { status: 401 });
   }
-  return Response.json({ ok: true, ping: "התחברות תקינה — הטוקן והכתובת נכונים" });
+  return new Response(
+    JSON.stringify({ ok: true, ping: "התחברות תקינה — הטוקן והכתובת נכונים" }),
+    { headers: { "Content-Type": "application/json; charset=utf-8" } },
+  );
 }
 
 export async function POST(req: Request) {
