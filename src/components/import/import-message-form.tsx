@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   CalendarPlus,
   ClipboardPaste,
+  FileText,
   Inbox,
   Sparkles,
   Trash2,
@@ -20,6 +21,7 @@ import {
   deleteInboxMessageAction,
   processInboxMessageAction,
 } from "@/server/actions/inbox";
+import { appendNoteToSessionAction } from "@/server/actions/notes";
 import {
   matchClient,
   parseAppointmentMessage,
@@ -29,12 +31,23 @@ import {
 
 export type InboxItem = { id: string; text: string; createdAt: string };
 
+export type SessionOption = {
+  id: string;
+  clientId: string;
+  label: string;
+  /** yyyy-MM-dd in clinic time, for matching a date mentioned in the message */
+  localDate: string;
+  isPast: boolean;
+};
+
 export function ImportMessageForm({
   clients,
   inbox = [],
+  sessions = [],
 }: {
   clients: ClientCandidate[];
   inbox?: InboxItem[];
+  sessions?: SessionOption[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -42,13 +55,45 @@ export function ImportMessageForm({
   const [parsed, setParsed] = useState<ParsedMessage | null>(null);
   const [clientId, setClientId] = useState("");
   const [startsAt, setStartsAt] = useState("");
+  const [attachSessionId, setAttachSessionId] = useState("");
+  const [attachState, setAttachState] = useState<{
+    saving?: boolean;
+    savedSessionId?: string;
+    error?: string;
+  }>({});
+
+  function suggestSession(cid: string, parsedDate: string | null): string {
+    const pool = sessions.filter((s) => !cid || s.clientId === cid);
+    if (parsedDate) {
+      const onDate = pool.find((s) => s.localDate === parsedDate);
+      if (onDate) return onDate.id;
+    }
+    // Most recent past session (list is sorted desc)
+    return pool.find((s) => s.isPast)?.id ?? pool[0]?.id ?? "";
+  }
 
   function runParse(input: string) {
     const result = parseAppointmentMessage(input);
     setParsed(result);
     setStartsAt(result.startsAt ?? "");
     const match = matchClient(clients, input, result.phone);
-    setClientId(match?.id ?? "");
+    const cid = match?.id ?? "";
+    setClientId(cid);
+    setAttachSessionId(suggestSession(cid, result.startsAt?.slice(0, 10) ?? null));
+    setAttachState({});
+  }
+
+  function attachToSession() {
+    if (!attachSessionId || !text.trim()) return;
+    setAttachState({ saving: true });
+    startTransition(async () => {
+      const res = await appendNoteToSessionAction(attachSessionId, text);
+      if (res.ok) {
+        setAttachState({ savedSessionId: attachSessionId });
+      } else {
+        setAttachState({ error: res.error });
+      }
+    });
   }
 
   function handleParse() {
@@ -232,7 +277,12 @@ export function ImportMessageForm({
                 <Select
                   id="importClient"
                   value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
+                  onChange={(e) => {
+                    setClientId(e.target.value);
+                    setAttachSessionId(
+                      suggestSession(e.target.value, parsed?.startsAt?.slice(0, 10) ?? null),
+                    );
+                  }}
                 >
                   <option value="">— לא זוהה, בחר/י —</option>
                   {clients.map((c) => (
@@ -259,6 +309,60 @@ export function ImportMessageForm({
                 המשך ליצירת הפגישה
               </Button>
             </div>
+
+            {sessions.length > 0 && (
+              <div className="border-t border-cream-200 pt-4 space-y-3">
+                <p className="text-sm font-medium text-ink">
+                  או: ההודעה היא סיכום — שמירה לפגישה קיימת
+                </p>
+                <p className="text-xs text-ink-muted">
+                  התוכן יתווסף לסיכום המוצפן של הפגישה שתיבחר.
+                </p>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="flex-1 min-w-56">
+                    <Label htmlFor="attachSession">פגישה</Label>
+                    <Select
+                      id="attachSession"
+                      value={attachSessionId}
+                      onChange={(e) => setAttachSessionId(e.target.value)}
+                    >
+                      <option value="">— בחר/י פגישה —</option>
+                      {sessions
+                        .filter((s) => !clientId || s.clientId === clientId)
+                        .map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.label}
+                          </option>
+                        ))}
+                    </Select>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={attachToSession}
+                    disabled={!attachSessionId || !!attachState.saving}
+                  >
+                    <FileText className="w-4 h-4" />
+                    {attachState.saving ? "שומר…" : "שמירה כסיכום"}
+                  </Button>
+                </div>
+                {attachState.savedSessionId && (
+                  <p className="text-sm text-sage-700">
+                    הסיכום נשמר ✓{" "}
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/sessions/${attachState.savedSessionId}`)}
+                      className="underline text-sage-600 hover:text-sage-700"
+                    >
+                      לפגישה ←
+                    </button>
+                  </p>
+                )}
+                {attachState.error && (
+                  <p className="text-sm text-terracotta-600">{attachState.error}</p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

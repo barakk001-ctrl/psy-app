@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { encryptNote } from "@/lib/crypto";
+import { decryptNote, encryptNote } from "@/lib/crypto";
 import { noteSchema } from "@/server/validators/session";
 
 async function requireUserId(): Promise<string> {
@@ -61,4 +61,48 @@ export async function saveNoteAction(
 
   revalidatePath(`/sessions/${session.id}`);
   return { saved: true };
+}
+
+/**
+ * Appends imported message text to a session's encrypted note (creates the
+ * note if none exists). Used by the message-import flow for post-meeting
+ * summaries.
+ */
+export async function appendNoteToSessionAction(
+  sessionId: string,
+  text: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const userId = await requireUserId();
+  const content = text.trim().slice(0, 20000);
+  if (!content) return { ok: false, error: "אין תוכן לשמירה" };
+
+  const session = await db.session.findFirst({
+    where: { id: sessionId, userId },
+    include: { note: true },
+  });
+  if (!session) return { ok: false, error: "פגישה לא נמצאה" };
+
+  let combined = content;
+  if (session.note) {
+    try {
+      const existing = decryptNote({
+        contentCiphertext: session.note.contentCiphertext,
+        contentIv: session.note.contentIv,
+        contentTag: session.note.contentTag,
+      });
+      if (existing.trim()) combined = `${existing}\n\n— הודעה מיובאת —\n${content}`;
+    } catch {
+      return { ok: false, error: "שגיאה בפענוח הסיכום הקיים" };
+    }
+  }
+
+  const encrypted = encryptNote(combined);
+  await db.sessionNote.upsert({
+    where: { sessionId: session.id },
+    create: { sessionId: session.id, clientId: session.clientId, ...encrypted },
+    update: encrypted,
+  });
+
+  revalidatePath(`/sessions/${session.id}`);
+  return { ok: true };
 }
