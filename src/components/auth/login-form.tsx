@@ -78,16 +78,20 @@ export function LoginForm() {
               <Input
                 id="totp"
                 name="totp"
-                inputMode="numeric"
                 autoComplete="one-time-code"
                 placeholder="123456"
-                maxLength={6}
+                maxLength={9}
                 dir="ltr"
-                className="text-center tracking-[0.5em] font-medium"
+                className="text-center tracking-[0.3em] font-medium"
                 value={totp}
-                onChange={(e) => setTotp(e.target.value.replace(/\D/g, ""))}
+                onChange={(e) =>
+                  setTotp(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))
+                }
                 autoFocus
               />
+              <p className="text-xs text-ink-subtle mt-1">
+                אפשר גם להזין קוד גיבוי חד-פעמי (XXXX-XXXX)
+              </p>
             </div>
           </>
         )}

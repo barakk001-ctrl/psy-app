@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildOtpAuthUri,
+  generateBackupCodes,
   generateTotpCode,
   generateTotpSecret,
+  hashBackupCode,
+  looksLikeBackupCode,
   verifyTotp,
 } from "@/lib/totp";
 
@@ -33,6 +36,25 @@ describe("totp", () => {
     expect(verifyTotp(secret, "", T)).toBe(false);
     expect(verifyTotp(secret, "12345", T)).toBe(false);
     expect(verifyTotp(secret, "abcdef", T)).toBe(false);
+  });
+
+  it("generates one-time backup codes with matching hashes", () => {
+    const { codes, hashes } = generateBackupCodes(5);
+    expect(codes).toHaveLength(5);
+    expect(new Set(codes).size).toBe(5);
+    for (const [i, code] of codes.entries()) {
+      expect(code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+      expect(hashBackupCode(code)).toBe(hashes[i]);
+      // Case/format-insensitive: lowercase without the dash still hashes equal
+      expect(hashBackupCode(code.toLowerCase().replace("-", ""))).toBe(hashes[i]);
+    }
+  });
+
+  it("distinguishes backup codes from TOTP codes", () => {
+    expect(looksLikeBackupCode("ABCD-EFGH")).toBe(true);
+    expect(looksLikeBackupCode("abcdefgh")).toBe(true);
+    expect(looksLikeBackupCode("123456")).toBe(false);
+    expect(looksLikeBackupCode("")).toBe(false);
   });
 
   it("builds a scannable otpauth URI", () => {

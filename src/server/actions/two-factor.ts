@@ -7,7 +7,12 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
-import { buildOtpAuthUri, generateTotpSecret, verifyTotp } from "@/lib/totp";
+import {
+  buildOtpAuthUri,
+  generateBackupCodes,
+  generateTotpSecret,
+  verifyTotp,
+} from "@/lib/totp";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -21,6 +26,8 @@ export type TotpEnrollState = {
   manualKey?: string;
   enabled?: boolean;
   disabled?: boolean;
+  /** Shown exactly once — not retrievable later */
+  backupCodes?: string[];
 } | null;
 
 /** Step 1: create a pending secret and return the QR to scan. */
@@ -73,9 +80,46 @@ export async function confirmTotpEnrollmentAction(
     return { error: "יש להתחיל את ההגדרה מחדש" };
   }
 
-  await db.user.update({ where: { id: userId }, data: { totpEnabled: true } });
+  const backup = generateBackupCodes(5);
+  await db.user.update({
+    where: { id: userId },
+    data: { totpEnabled: true, totpBackupCodes: JSON.stringify(backup.hashes) },
+  });
   revalidatePath("/settings");
-  return { enabled: true };
+  return { enabled: true, backupCodes: backup.codes };
+}
+
+/** Issues a fresh set of one-time backup codes (invalidates the old ones). */
+export async function regenerateBackupCodesAction(
+  _: TotpEnrollState,
+  formData: FormData,
+): Promise<TotpEnrollState> {
+  const userId = await requireUserId();
+  const code = String(formData.get("code") ?? "");
+
+  const limited = rateLimit(`totp:${userId}`, { limit: 10, windowMs: 15 * 60_000 });
+  if (!limited.allowed) return { error: "יותר מדי ניסיונות — נסו שוב בעוד רבע שעה" };
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { totpSecret: true, totpEnabled: true },
+  });
+  if (!user?.totpEnabled || !user.totpSecret) return { error: "אימות דו-שלבי אינו פעיל" };
+
+  try {
+    const secret = decryptSecret(user.totpSecret);
+    if (!verifyTotp(secret, code)) return { error: "הקוד שגוי — נסו שוב" };
+  } catch {
+    return { error: "שגיאה ביצירת הקודים" };
+  }
+
+  const backup = generateBackupCodes(5);
+  await db.user.update({
+    where: { id: userId },
+    data: { totpBackupCodes: JSON.stringify(backup.hashes) },
+  });
+  revalidatePath("/settings");
+  return { backupCodes: backup.codes };
 }
 
 /** Turning off requires a valid current code. */
@@ -104,7 +148,7 @@ export async function disableTotpAction(
 
   await db.user.update({
     where: { id: userId },
-    data: { totpEnabled: false, totpSecret: null },
+    data: { totpEnabled: false, totpSecret: null, totpBackupCodes: null },
   });
   revalidatePath("/settings");
   return { disabled: true };

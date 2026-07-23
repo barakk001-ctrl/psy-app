@@ -11,11 +11,42 @@ import { Label } from "@/components/ui/label";
 import {
   confirmTotpEnrollmentAction,
   disableTotpAction,
+  regenerateBackupCodesAction,
   startTotpEnrollmentAction,
   type TotpEnrollState,
 } from "@/server/actions/two-factor";
 
-export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
+function BackupCodesBox({ codes }: { codes: string[] }) {
+  return (
+    <div className="rounded-xl border border-terracotta-500/30 bg-terracotta-500/5 p-4 space-y-2">
+      <p className="text-sm font-medium text-ink">
+        קודי גיבוי חד-פעמיים — שמרו אותם עכשיו!
+      </p>
+      <p className="text-xs text-ink-muted">
+        כל קוד עובד פעם אחת במקום קוד האימות (למשל אם הטלפון אבד). הם מוצגים{" "}
+        <b>פעם אחת בלבד</b> — צלמו מסך או העתיקו למקום בטוח.
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1" dir="ltr">
+        {codes.map((c) => (
+          <code
+            key={c}
+            className="rounded-lg bg-white border border-cream-300 px-2 py-1.5 text-center text-sm tracking-wider"
+          >
+            {c}
+          </code>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function TwoFactorSettings({
+  enabled,
+  backupCount,
+}: {
+  enabled: boolean;
+  backupCount: number;
+}) {
   const [startState, startAction, startPending] = useActionState<
     TotpEnrollState,
     FormData
@@ -28,6 +59,10 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
     TotpEnrollState,
     FormData
   >(disableTotpAction, null);
+  const [regenState, regenAction, regenPending] = useActionState<
+    TotpEnrollState,
+    FormData
+  >(regenerateBackupCodesAction, null);
 
   const isEnabled = (enabled || confirmState?.enabled) && !disableState?.disabled;
   const enrolling = !isEnabled && !!startState?.qrDataUrl && !confirmState?.enabled;
@@ -50,6 +85,39 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
               <ShieldCheck className="w-4 h-4" />
               אימות דו-שלבי פעיל בחשבון
             </div>
+
+            {confirmState?.backupCodes && (
+              <BackupCodesBox codes={confirmState.backupCodes} />
+            )}
+            {regenState?.backupCodes && <BackupCodesBox codes={regenState.backupCodes} />}
+
+            <div className="rounded-xl border border-cream-300 bg-cream-100 px-4 py-3 space-y-3">
+              <p className="text-sm text-ink-soft">
+                קודי גיבוי שנותרו:{" "}
+                <b>{regenState?.backupCodes ? 5 : backupCount}</b> מתוך 5
+              </p>
+              <form action={regenAction} className="flex items-end gap-3">
+                <div className="flex-1 max-w-40">
+                  <Label htmlFor="regenCode">קוד אימות ליצירה מחדש</Label>
+                  <Input
+                    id="regenCode"
+                    name="code"
+                    inputMode="numeric"
+                    maxLength={6}
+                    dir="ltr"
+                    placeholder="123456"
+                    className="text-center"
+                  />
+                </div>
+                <Button type="submit" variant="secondary" size="sm" disabled={regenPending}>
+                  {regenPending ? "יוצר…" : "קודים חדשים"}
+                </Button>
+              </form>
+              {regenState?.error && (
+                <p className="text-sm text-terracotta-600">{regenState.error}</p>
+              )}
+            </div>
+
             <form action={disableAction} className="flex items-end gap-3">
               <div className="flex-1 max-w-40">
                 <Label htmlFor="disableCode">קוד לביטול</Label>

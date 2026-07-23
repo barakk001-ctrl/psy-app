@@ -44,6 +44,7 @@ model User {
   // after the first code is verified during enrollment
   totpSecret       String?
   totpEnabled      Boolean   @default(false)
+  totpBackupCodes  String?   // JSON array of sha256 hashes; entries removed on use
 
   // Morning (Green Invoice) API connection — secret encrypted at app layer
   morningApiKeyId  String?

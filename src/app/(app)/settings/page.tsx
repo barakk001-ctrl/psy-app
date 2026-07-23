@@ -23,6 +23,7 @@ export default async function SettingsPage() {
       vatLiable: true,
       inboxToken: true,
       totpEnabled: true,
+      totpBackupCodes: true,
       morningApiKeyId: true,
       morningApiSecret: true,
       morningSandbox: true,
@@ -60,7 +61,12 @@ export default async function SettingsPage() {
 
       <InboxSettings token={user.inboxToken} />
 
-      <TwoFactorSettings enabled={user.totpEnabled} />
+      <TwoFactorSettings
+        enabled={user.totpEnabled}
+        backupCount={
+          user.totpBackupCodes ? (JSON.parse(user.totpBackupCodes) as string[]).length : 0
+        }
+      />
 
       <BiometricSettings userEmail={user.email} userName={user.name} />
 
