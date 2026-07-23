@@ -8,7 +8,9 @@ export const dynamic = "force-dynamic";
 // free text here; it lands in the user's inbox for processing on /import.
 // Auth: personal token (Settings) via Authorization: Bearer or ?token=.
 
-// GET = connectivity/token check (open the URL in a browser to verify setup)
+// GET without ?message= = connectivity/token check (open in a browser).
+// GET with ?message= = ingestion fallback for clients whose POST is flaky
+// (e.g. iOS Shortcuts on some networks) — same auth and rate limit.
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const token = url.searchParams.get("token") ?? "";
@@ -22,6 +24,19 @@ export async function GET(req: Request) {
   if (!user) {
     return Response.json({ ok: false, error: "Invalid token" }, { status: 401 });
   }
+
+  const message = (url.searchParams.get("message") ?? "").trim().slice(0, 5000);
+  if (message) {
+    const limited = rateLimit(`inbox:${user.id}`, { limit: 60, windowMs: 60 * 60_000 });
+    if (!limited.allowed) {
+      return Response.json({ ok: false, error: "Rate limited" }, { status: 429 });
+    }
+    await db.inboxMessage.create({ data: { userId: user.id, text: message } });
+    return new Response(JSON.stringify({ ok: true, saved: true }), {
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+    });
+  }
+
   return new Response(
     JSON.stringify({ ok: true, ping: "התחברות תקינה — הטוקן והכתובת נכונים" }),
     { headers: { "Content-Type": "application/json; charset=utf-8" } },
