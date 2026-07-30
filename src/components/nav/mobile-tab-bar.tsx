@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -7,6 +8,25 @@ import { PRIMARY_MOBILE_ITEMS } from "./nav-items";
 
 export function MobileTabBar() {
   const pathname = usePathname();
+  const [hidden, setHidden] = useState(false);
+
+  // iOS drags fixed elements along with the keyboard's "visual viewport",
+  // which can strand the bar mid-screen. Hide it while the keyboard is open.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      setHidden(window.innerHeight - vv.height > 120);
+    };
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  if (hidden) return null;
 
   return (
     <nav

@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Frank_Ruhl_Libre, Assistant } from "next/font/google";
+import { Rubik, Assistant } from "next/font/google";
 import "./globals.css";
 
-const fontDisplay = Frank_Ruhl_Libre({
+// Bold rounded Hebrew sans for headings — clean, modern, friendly
+const fontDisplay = Rubik({
   subsets: ["hebrew", "latin"],
-  weight: ["400", "500", "700", "900"],
+  weight: ["500", "600", "700", "800"],
   variable: "--font-display",
   display: "swap",
 });
