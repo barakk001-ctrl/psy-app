@@ -89,6 +89,21 @@ export function CalendarView({ events }: Props) {
         slotMaxTime="22:00:00"
         slotDuration="00:30:00"
         slotLabelInterval="01:00"
+        // Month view: solid pills showing "HH:MM name" instead of dot+time
+        eventDisplay="block"
+        eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+        eventContent={(arg) => {
+          if (arg.view.type === "dayGridMonth") {
+            return (
+              <div className="fc-month-pill">
+                <span className="fc-month-pill-time">{arg.timeText}</span>{" "}
+                <span className="fc-month-pill-name">{arg.event.title}</span>
+              </div>
+            );
+          }
+          return true;
+        }}
+        dayMaxEvents={3}
         nowIndicator
         editable
         selectable
@@ -211,6 +226,22 @@ export function CalendarView({ events }: Props) {
           padding: 1px 4px;
           cursor: pointer;
         }
+        /* Month-view pills: time + client name on one line, ellipsized */
+        .calendar-shell .fc-month-pill {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 0.68rem;
+          line-height: 1.35;
+          direction: rtl;
+        }
+        .calendar-shell .fc-month-pill-time {
+          font-weight: 600;
+          font-variant-numeric: tabular-nums;
+        }
+        .calendar-shell .fc-daygrid-event {
+          margin-inline: 1px;
+        }
         .calendar-shell .fc-timegrid-event-harness > .fc-timegrid-event {
           box-shadow: none;
         }
@@ -235,6 +266,9 @@ export function CalendarView({ events }: Props) {
           }
           .calendar-shell .fc-event {
             font-size: 0.72rem;
+          }
+          .calendar-shell .fc-month-pill {
+            font-size: 0.6rem;
           }
           .calendar-shell .fc .fc-timegrid-slot-label-cushion {
             font-size: 0.65rem;
