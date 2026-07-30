@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -15,6 +16,7 @@ import {
 
 export type ClientFormInitial = {
   id: string;
+  status?: "ACTIVE" | "INACTIVE" | "ARCHIVED";
   firstName: string;
   lastName: string;
   idNumber: string | null;
@@ -49,6 +51,21 @@ export function ClientForm({
       {isEdit && <input type="hidden" name="id" value={initial!.id} />}
       {!isEdit && nextStart && (
         <input type="hidden" name="nextStart" value={nextStart} />
+      )}
+
+      {isEdit && initial!.status !== "ARCHIVED" && (
+        <Card>
+          <CardContent className="space-y-2">
+            <Label htmlFor="status">סטטוס</Label>
+            <Select id="status" name="status" defaultValue={initial!.status ?? "ACTIVE"}>
+              <option value="ACTIVE">פעיל/ה</option>
+              <option value="INACTIVE">לא פעיל/ה — בהפסקה או סיים/ה טיפול</option>
+            </Select>
+            <p className="text-xs text-ink-muted">
+              לקוחות לא פעילים לא מוצגים ברשימות הבחירה של פגישות וחשבוניות חדשות.
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       <Card>

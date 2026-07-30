@@ -13,19 +13,28 @@ export default async function ClientsPage({
   searchParams: Promise<{ view?: string }>;
 }) {
   const params = await searchParams;
-  const showArchived = params.view === "archived";
+  const view =
+    params.view === "archived" ? "ARCHIVED" : params.view === "inactive" ? "INACTIVE" : "ACTIVE";
 
   const session = await auth();
   const userId = session!.user.id;
 
-  const [clients, archivedCount] = await Promise.all([
+  const [clients, activeCount, inactiveCount, archivedCount] = await Promise.all([
     db.client.findMany({
-      where: { userId, status: showArchived ? "ARCHIVED" : { not: "ARCHIVED" } },
-      orderBy: [{ status: "asc" }, { lastName: "asc" }, { firstName: "asc" }],
+      where: { userId, status: view },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       include: { _count: { select: { sessions: true } } },
     }),
+    db.client.count({ where: { userId, status: "ACTIVE" } }),
+    db.client.count({ where: { userId, status: "INACTIVE" } }),
     db.client.count({ where: { userId, status: "ARCHIVED" } }),
   ]);
+
+  const VIEWS = [
+    { key: "ACTIVE", href: "/clients", label: `פעילים (${activeCount})` },
+    { key: "INACTIVE", href: "/clients?view=inactive", label: `לא פעילים (${inactiveCount})` },
+    { key: "ARCHIVED", href: "/clients?view=archived", label: `מאוחסנים (${archivedCount})` },
+  ] as const;
 
   return (
     <div className="space-y-6">
@@ -33,9 +42,9 @@ export default async function ClientsPage({
         <div>
           <h1 className="font-display text-3xl text-ink">לקוחות</h1>
           <p className="text-ink-muted mt-1 text-sm">
-            {showArchived
-              ? `${clients.length} לקוחות מאוחסנים`
-              : `${clients.length} לקוחות פעילים`}
+            {view === "ARCHIVED" && `${clients.length} לקוחות מאוחסנים`}
+            {view === "INACTIVE" && `${clients.length} לקוחות לא פעילים`}
+            {view === "ACTIVE" && `${clients.length} לקוחות פעילים`}
           </p>
         </div>
         <Link href="/clients/new">
@@ -45,31 +54,23 @@ export default async function ClientsPage({
         </Link>
       </header>
 
-      {/* View toggle */}
-      {(archivedCount > 0 || showArchived) && (
-        <div className="inline-flex bg-cream-100 border border-cream-300 rounded-full p-1">
-          <Link
-            href="/clients"
-            className={cn(
-              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-              !showArchived
-                ? "bg-white text-ink shadow-soft"
-                : "text-ink-muted hover:text-ink",
-            )}
-          >
-            פעילים
-          </Link>
-          <Link
-            href="/clients?view=archived"
-            className={cn(
-              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-              showArchived
-                ? "bg-white text-ink shadow-soft"
-                : "text-ink-muted hover:text-ink",
-            )}
-          >
-            מאוחסנים ({archivedCount})
-          </Link>
+      {/* View filter */}
+      {activeCount + inactiveCount + archivedCount > 0 && (
+        <div className="inline-flex bg-cream-100 border border-cream-300 rounded-full p-1 flex-wrap">
+          {VIEWS.map((v) => (
+            <Link
+              key={v.key}
+              href={v.href}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+                view === v.key
+                  ? "bg-white text-ink shadow-soft"
+                  : "text-ink-muted hover:text-ink",
+              )}
+            >
+              {v.label}
+            </Link>
+          ))}
         </div>
       )}
 
@@ -78,9 +79,11 @@ export default async function ClientsPage({
           <CardContent className="py-16 text-center">
             <Users className="w-12 h-12 mx-auto text-ink-subtle mb-4" strokeWidth={1.25} />
             <h3 className="font-display text-xl text-ink">
-              {showArchived ? "אין לקוחות מאוחסנים" : "עדיין אין לקוחות"}
+              {view === "ARCHIVED" && "אין לקוחות מאוחסנים"}
+              {view === "INACTIVE" && "אין לקוחות לא פעילים"}
+              {view === "ACTIVE" && "עדיין אין לקוחות"}
             </h3>
-            {!showArchived && (
+            {view === "ACTIVE" && (
               <>
                 <p className="text-ink-muted text-sm mt-1 max-w-sm mx-auto">
                   הוספת לקוחות תאפשר לך לקבוע עבורם פגישות, לכתוב סיכומים ולהפיק חשבוניות.

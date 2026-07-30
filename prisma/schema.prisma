@@ -62,6 +62,7 @@ model User {
   reminderJobs    ReminderJob[]
   morningDocuments MorningDocument[]
   inboxMessages    InboxMessage[]
+  todos            Todo[]
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -278,6 +279,18 @@ enum PaymentMethod {
 // ─────────────────────────────────────────────────────────────
 // Reminders (queued jobs to send email/SMS before a session)
 // ─────────────────────────────────────────────────────────────
+
+// Personal task list shown on the dashboard
+model Todo {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, done])
+}
 
 // Messages sent to the inbound API (iOS Shortcut / automations) awaiting
 // processing on the import page.

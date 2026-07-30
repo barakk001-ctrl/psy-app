@@ -36,6 +36,7 @@ export default async function EditClientPage({
       <ClientForm
         initial={{
           id: client.id,
+          status: client.status,
           firstName: client.firstName,
           lastName: client.lastName,
           idNumber: client.idNumber,

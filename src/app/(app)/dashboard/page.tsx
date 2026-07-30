@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { TodoCard } from "@/components/dashboard/todo-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, formatCurrency } from "@/lib/format";
@@ -15,7 +16,7 @@ export default async function DashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  const [activeClients, upcomingSessions, monthPayments, outstanding] = await Promise.all([
+  const [activeClients, upcomingSessions, monthPayments, outstanding, todos] = await Promise.all([
     db.client.count({ where: { userId, status: "ACTIVE" } }),
     db.session.findMany({
       // endsAt ≥ now so a meeting that's happening right now stays in the list
@@ -35,6 +36,12 @@ export default async function DashboardPage() {
       // Drafts count too — an unpaid invoice is a debt even before it's sent
       where: { userId, status: { in: ["DRAFT", "SENT", "PARTIALLY_PAID"] } },
       _sum: { total: true, amountPaid: true },
+    }),
+    db.todo.findMany({
+      where: { userId },
+      orderBy: [{ done: "asc" }, { createdAt: "desc" }],
+      take: 20,
+      select: { id: true, text: true, done: true },
     }),
   ]);
 
@@ -161,6 +168,8 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
+        <div className="space-y-6">
+        <TodoCard todos={todos} />
         <Card>
           <CardHeader>
             <CardTitle>פעולות מהירות</CardTitle>
@@ -196,6 +205,7 @@ export default async function DashboardPage() {
             </Link>
           </CardContent>
         </Card>
+        </div>
       </section>
     </div>
   );
