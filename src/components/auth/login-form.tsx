@@ -107,7 +107,13 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <p className="text-sm text-ink-muted mt-8 text-center">
+      <p className="text-sm text-ink-muted mt-6 text-center">
+        <Link href="/forgot-password" className="text-sage-600 hover:text-sage-700">
+          שכחת סיסמה?
+        </Link>
+      </p>
+
+      <p className="text-sm text-ink-muted mt-4 text-center">
         אין לך חשבון עדיין?{" "}
         <Link href="/register" className="text-sage-600 hover:text-sage-700 font-medium">
           הרשמה
