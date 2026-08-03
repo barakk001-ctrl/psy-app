@@ -6,7 +6,14 @@ import { TodoCard } from "@/components/dashboard/todo-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, formatCurrency } from "@/lib/format";
-import { Calendar, UserPlus, FileText, ClipboardPaste } from "lucide-react";
+import {
+  Calendar,
+  UserPlus,
+  FileText,
+  ClipboardPaste,
+  NotebookPen,
+  Receipt,
+} from "lucide-react";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -16,7 +23,7 @@ export default async function DashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  const [activeClients, upcomingSessions, monthPayments, outstanding, todos] = await Promise.all([
+  const [activeClients, upcomingSessions, monthPayments, outstanding, todos, monthExpected] = await Promise.all([
     db.client.count({ where: { userId, status: "ACTIVE" } }),
     db.session.findMany({
       // endsAt ≥ now so a meeting that's happening right now stays in the list
@@ -42,6 +49,15 @@ export default async function DashboardPage() {
       orderBy: [{ done: "asc" }, { createdAt: "desc" }],
       take: 20,
       select: { id: true, text: true, done: true },
+    }),
+    // Expected income: rates of this month's scheduled + completed meetings
+    db.session.aggregate({
+      where: {
+        userId,
+        startsAt: { gte: monthStart, lt: monthEnd },
+        status: { in: ["SCHEDULED", "COMPLETED"] },
+      },
+      _sum: { rate: true },
     }),
   ]);
 
@@ -84,8 +100,13 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 grid-cols-2 lg:grid-cols-5">
         <StatCard label="לקוחות פעילים" value={activeClients} />
+        <StatCard
+          label="הכנסה צפויה החודש"
+          value={formatCurrency(Number(monthExpected._sum.rate ?? 0))}
+          hint="לפי הפגישות ביומן החודש"
+        />
         <StatCard
           label="הכנסות החודש"
           value={formatCurrency(monthIncome)}
@@ -97,6 +118,31 @@ export default async function DashboardPage() {
           hint="חשבוניות שטרם שולמו במלואן"
         />
         <StatCard label="פגישות קרובות" value={upcomingSessions.length} hint="ב-5 הפגישות הבאות" />
+      </section>
+
+      <section className="grid grid-cols-2 gap-4">
+        <Link
+          href="/document"
+          className="flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur-sm border border-cream-200/80 shadow-soft px-4 py-4 hover:shadow-lift transition-all active:scale-[0.98]"
+        >
+          <span className="w-10 h-10 rounded-xl bg-sage-100 text-sage-700 grid place-items-center shrink-0">
+            <NotebookPen className="w-5 h-5" />
+          </span>
+          <span className="font-medium text-ink text-sm sm:text-base">
+            תיעוד פגישה
+          </span>
+        </Link>
+        <Link
+          href="/collect"
+          className="flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur-sm border border-cream-200/80 shadow-soft px-4 py-4 hover:shadow-lift transition-all active:scale-[0.98]"
+        >
+          <span className="w-10 h-10 rounded-xl bg-sage-100 text-sage-700 grid place-items-center shrink-0">
+            <Receipt className="w-5 h-5" />
+          </span>
+          <span className="font-medium text-ink text-sm sm:text-base">
+            אישור תשלום
+          </span>
+        </Link>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">

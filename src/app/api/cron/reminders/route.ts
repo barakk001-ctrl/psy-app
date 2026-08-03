@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { buildReminderEmail } from "@/lib/reminder-email";
+import { topUpOpenEndedSeries } from "@/lib/series-topup";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -137,5 +138,21 @@ async function run(req: Request) {
     }
   }
 
-  return Response.json({ ok: true, considered: due.length, sent, failed, skipped });
+  // Extend ongoing (קבוע) recurring series that are running low on future
+  // instances. Failures here must not affect reminder delivery.
+  let seriesExtended = 0;
+  try {
+    seriesExtended = await topUpOpenEndedSeries();
+  } catch (err) {
+    console.error("Series top-up failed:", err);
+  }
+
+  return Response.json({
+    ok: true,
+    considered: due.length,
+    sent,
+    failed,
+    skipped,
+    seriesExtended,
+  });
 }

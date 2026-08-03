@@ -31,6 +31,20 @@ export function seriesSlots(
   return slots;
 }
 
-export function buildRecurrenceRule(intervalWeeks: number, count: number): string {
-  return `FREQ=WEEKLY;INTERVAL=${intervalWeeks};COUNT=${count}`;
+/** Without `count` the rule is open-ended (קבוע) — the cron keeps extending it. */
+export function buildRecurrenceRule(intervalWeeks: number, count?: number): string {
+  const base = `FREQ=WEEKLY;INTERVAL=${intervalWeeks}`;
+  return count ? `${base};COUNT=${count}` : base;
 }
+
+export function isOpenEndedRule(rule: string | null | undefined): boolean {
+  return !!rule && !rule.includes("COUNT=");
+}
+
+export function ruleInterval(rule: string): number {
+  const m = rule.match(/INTERVAL=(\d+)/);
+  return m ? Number(m[1]) : 1;
+}
+
+/** How many instances to create/maintain ahead for an open-ended series. */
+export const OPEN_ENDED_BATCH = 26;

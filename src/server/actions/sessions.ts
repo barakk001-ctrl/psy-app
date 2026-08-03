@@ -9,7 +9,12 @@ import {
   rescheduleSessionReminders,
   scheduleSessionReminders,
 } from "@/lib/reminders";
-import { buildRecurrenceRule, seriesSlots, type Slot } from "@/lib/recurrence";
+import {
+  OPEN_ENDED_BATCH,
+  buildRecurrenceRule,
+  seriesSlots,
+  type Slot,
+} from "@/lib/recurrence";
 import { fromZonedDateTimeLocal } from "@/lib/timezone";
 import { encryptNote } from "@/lib/crypto";
 import {
@@ -80,7 +85,9 @@ export async function createSessionAction(
     location: formData.get("location"),
     meetingUrl: formData.get("meetingUrl") ?? "",
     rate: formData.get("rate") ?? "",
+    treatmentType: formData.get("treatmentType") ?? "INDIVIDUAL",
     recurrence: formData.get("recurrence") ?? "NONE",
+    openEnded: formData.get("openEnded"),
     occurrences: formData.get("occurrences") ?? "",
     allowOverlap: formData.get("allowOverlap"),
     note: formData.get("note") ?? "",
@@ -105,7 +112,9 @@ export async function createSessionAction(
   const rate = data.rate ?? (client.defaultRate ? Number(client.defaultRate) : null);
 
   const intervalWeeks = data.recurrence === "BIWEEKLY" ? 2 : 1;
-  const count = data.recurrence === "NONE" ? 1 : data.occurrences!;
+  const openEnded = data.recurrence !== "NONE" && data.openEnded;
+  const count =
+    data.recurrence === "NONE" ? 1 : openEnded ? OPEN_ENDED_BATCH : data.occurrences!;
   // data.startsAt is a datetime-local string — interpreted as clinic wall-clock
   const slots = seriesSlots(data.startsAt, durationMs, intervalWeeks, count);
 
@@ -115,7 +124,9 @@ export async function createSessionAction(
   }
 
   const recurrenceRule =
-    data.recurrence === "NONE" ? null : buildRecurrenceRule(intervalWeeks, count);
+    data.recurrence === "NONE"
+      ? null
+      : buildRecurrenceRule(intervalWeeks, openEnded ? undefined : count);
 
   const common = {
     userId,
@@ -123,6 +134,7 @@ export async function createSessionAction(
     location: data.location,
     meetingUrl: data.meetingUrl || null,
     rate: rate ?? undefined,
+    treatmentType: data.treatmentType,
   };
 
   const createdIds = await db.$transaction(async (tx) => {
@@ -186,6 +198,7 @@ export async function updateSessionAction(
     meetingUrl: formData.get("meetingUrl") ?? "",
     rate: formData.get("rate") ?? "",
     allowOverlap: formData.get("allowOverlap"),
+    treatmentType: formData.get("treatmentType") ?? "INDIVIDUAL",
   });
 
   if (!parsed.success) {
@@ -227,6 +240,7 @@ export async function updateSessionAction(
       location: data.location,
       meetingUrl: data.meetingUrl || null,
       rate: data.rate ?? null,
+      treatmentType: data.treatmentType,
     },
   });
 

@@ -25,6 +25,7 @@ export default async function EditSessionPage({
       location: true,
       meetingUrl: true,
       rate: true,
+      treatmentType: true,
     },
   });
   if (!sess) notFound();
@@ -38,7 +39,7 @@ export default async function EditSessionPage({
       OR: [{ status: "ACTIVE" }, { id: sess.clientId }],
     },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-    select: { id: true, firstName: true, lastName: true, defaultRate: true },
+    select: { id: true, firstName: true, lastName: true, defaultRate: true, treatmentType: true },
   });
 
   const clientOptions = clients.map((c) => ({
@@ -46,6 +47,7 @@ export default async function EditSessionPage({
     firstName: c.firstName,
     lastName: c.lastName,
     defaultRate: c.defaultRate ? c.defaultRate.toString() : null,
+    treatmentType: c.treatmentType,
   }));
 
   const durationMinutes = Math.round(
@@ -77,6 +79,7 @@ export default async function EditSessionPage({
           location: sess.location,
           meetingUrl: sess.meetingUrl,
           rate: sess.rate ? sess.rate.toString() : null,
+          treatmentType: sess.treatmentType,
         }}
       />
     </div>

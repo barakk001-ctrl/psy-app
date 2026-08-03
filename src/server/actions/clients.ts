@@ -20,6 +20,7 @@ export type ClientFormState = {
 function parseClientForm(formData: FormData) {
   return clientSchema.safeParse({
     status: formData.get("status") ?? undefined,
+    treatmentType: formData.get("treatmentType") ?? "INDIVIDUAL",
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName"),
     idNumber: formData.get("idNumber") ?? "",
@@ -59,6 +60,7 @@ export async function createClientAction(
       address: data.address || null,
       defaultRate: data.defaultRate ?? null,
       generalNotes: data.generalNotes || null,
+      treatmentType: data.treatmentType,
     },
   });
 
@@ -110,6 +112,7 @@ export async function updateClientAction(
       address: data.address || null,
       defaultRate: data.defaultRate ?? null,
       generalNotes: data.generalNotes || null,
+      treatmentType: data.treatmentType,
       ...(data.status ? { status: data.status } : {}),
     },
   });

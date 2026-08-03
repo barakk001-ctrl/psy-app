@@ -37,6 +37,7 @@ export default async function EditClientPage({
         initial={{
           id: client.id,
           status: client.status,
+          treatmentType: client.treatmentType,
           firstName: client.firstName,
           lastName: client.lastName,
           idNumber: client.idNumber,

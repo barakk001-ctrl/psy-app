@@ -16,7 +16,7 @@ export default async function NewSessionPage({
   const clients = await db.client.findMany({
     where: { userId, status: "ACTIVE" },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-    select: { id: true, firstName: true, lastName: true, defaultRate: true },
+    select: { id: true, firstName: true, lastName: true, defaultRate: true, treatmentType: true },
   });
 
   // Serialize Decimal → string for client
@@ -25,6 +25,7 @@ export default async function NewSessionPage({
     firstName: c.firstName,
     lastName: c.lastName,
     defaultRate: c.defaultRate ? c.defaultRate.toString() : null,
+    treatmentType: c.treatmentType,
   }));
 
   return (

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildRecurrenceRule, seriesSlots } from "@/lib/recurrence";
+import {
+  buildRecurrenceRule,
+  isOpenEndedRule,
+  ruleInterval,
+  seriesSlots,
+} from "@/lib/recurrence";
 
 const hour = 60 * 60 * 1000;
 
@@ -65,5 +70,14 @@ describe("buildRecurrenceRule", () => {
   it("produces an RFC 5545 weekly rule", () => {
     expect(buildRecurrenceRule(1, 12)).toBe("FREQ=WEEKLY;INTERVAL=1;COUNT=12");
     expect(buildRecurrenceRule(2, 8)).toBe("FREQ=WEEKLY;INTERVAL=2;COUNT=8");
+  });
+
+  it("omits COUNT for open-ended (קבוע) series and detects them", () => {
+    expect(buildRecurrenceRule(1)).toBe("FREQ=WEEKLY;INTERVAL=1");
+    expect(isOpenEndedRule("FREQ=WEEKLY;INTERVAL=1")).toBe(true);
+    expect(isOpenEndedRule("FREQ=WEEKLY;INTERVAL=1;COUNT=12")).toBe(false);
+    expect(isOpenEndedRule(null)).toBe(false);
+    expect(ruleInterval("FREQ=WEEKLY;INTERVAL=2")).toBe(2);
+    expect(ruleInterval("FREQ=WEEKLY")).toBe(1);
   });
 });

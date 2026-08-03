@@ -19,6 +19,7 @@ type ClientOption = {
   firstName: string;
   lastName: string;
   defaultRate: string | null;
+  treatmentType?: "INDIVIDUAL" | "GROUP" | "PARENT_GUIDANCE";
 };
 
 export type SessionFormInitial = {
@@ -29,6 +30,7 @@ export type SessionFormInitial = {
   location: "OFFICE" | "ONLINE" | "HOME_VISIT" | "OTHER";
   meetingUrl: string | null;
   rate: string | null;
+  treatmentType?: "INDIVIDUAL" | "GROUP" | "PARENT_GUIDANCE";
 };
 
 export function SessionForm({
@@ -56,6 +58,10 @@ export function SessionForm({
     initial?.clientId ?? defaults?.clientId ?? "",
   );
   const [recurrence, setRecurrence] = useState<string>("NONE");
+  const [seriesMode, setSeriesMode] = useState<string>("COUNT");
+  const [treatmentType, setTreatmentType] = useState<string>(
+    initial?.treatmentType ?? "INDIVIDUAL",
+  );
 
   const selectedClient = clients.find((c) => c.id === clientId);
   const ratePlaceholder = selectedClient?.defaultRate ?? "";
@@ -81,7 +87,14 @@ export function SessionForm({
               name="clientId"
               required
               value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
+              onChange={(e) => {
+                setClientId(e.target.value);
+                // New sessions default to the client's treatment type
+                if (!isEdit) {
+                  const c = clients.find((x) => x.id === e.target.value);
+                  if (c?.treatmentType) setTreatmentType(c.treatmentType);
+                }
+              }}
             >
               <option value="" disabled>
                 בחר/י לקוח/ה
@@ -136,6 +149,20 @@ export function SessionForm({
                 <option value="120">120</option>
               </Select>
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="treatmentType">סוג טיפול</Label>
+            <Select
+              id="treatmentType"
+              name="treatmentType"
+              value={treatmentType}
+              onChange={(e) => setTreatmentType(e.target.value)}
+            >
+              <option value="INDIVIDUAL">טיפול פרטני</option>
+              <option value="GROUP">טיפול קבוצתי</option>
+              <option value="PARENT_GUIDANCE">הדרכת הורים</option>
+            </Select>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
@@ -201,22 +228,46 @@ export function SessionForm({
               </div>
               {recurrence !== "NONE" && (
                 <div>
-                  <Label htmlFor="occurrences">מספר פגישות בסדרה</Label>
-                  <Input
-                    id="occurrences"
-                    name="occurrences"
-                    type="number"
-                    min="2"
-                    max="52"
-                    defaultValue="12"
-                    invalid={!!fieldErr.occurrences}
-                  />
-                  {fieldErr.occurrences && (
-                    <p className="text-xs text-terracotta-600 mt-1">
-                      {fieldErr.occurrences[0]}
-                    </p>
-                  )}
+                  <Label htmlFor="seriesMode">משך הסדרה</Label>
+                  <Select
+                    id="seriesMode"
+                    value={seriesMode}
+                    onChange={(e) => setSeriesMode(e.target.value)}
+                  >
+                    <option value="COUNT">מספר פגישות מוגדר</option>
+                    <option value="OPEN">קבוע — ללא תאריך סיום</option>
+                  </Select>
                 </div>
+              )}
+            </div>
+          )}
+
+          {!isEdit && recurrence !== "NONE" && seriesMode === "OPEN" && (
+            <>
+              <input type="hidden" name="openEnded" value="on" />
+              <p className="text-xs text-ink-muted -mt-2">
+                הפגישות ייקבעו חצי שנה קדימה, והיומן יתארך אוטומטית כל עוד הסדרה
+                פעילה. אפשר לסיים בכל שלב עם ״מחיקת הסדרה מכאן והלאה״.
+              </p>
+            </>
+          )}
+
+          {!isEdit && recurrence !== "NONE" && seriesMode === "COUNT" && (
+            <div className="sm:max-w-[calc(50%-0.5rem)]">
+              <Label htmlFor="occurrences">מספר פגישות בסדרה</Label>
+              <Input
+                id="occurrences"
+                name="occurrences"
+                type="number"
+                min="2"
+                max="52"
+                defaultValue="12"
+                invalid={!!fieldErr.occurrences}
+              />
+              {fieldErr.occurrences && (
+                <p className="text-xs text-terracotta-600 mt-1">
+                  {fieldErr.occurrences[0]}
+                </p>
               )}
             </div>
           )}

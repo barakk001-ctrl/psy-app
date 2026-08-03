@@ -17,6 +17,7 @@ import {
 export type ClientFormInitial = {
   id: string;
   status?: "ACTIVE" | "INACTIVE" | "ARCHIVED";
+  treatmentType?: "INDIVIDUAL" | "GROUP" | "PARENT_GUIDANCE";
   firstName: string;
   lastName: string;
   idNumber: string | null;
@@ -99,6 +100,19 @@ export function ClientForm({
                 <p className="text-xs text-terracotta-600 mt-1">{fieldErr.lastName[0]}</p>
               )}
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="treatmentType">סוג טיפול</Label>
+            <Select
+              id="treatmentType"
+              name="treatmentType"
+              defaultValue={initial?.treatmentType ?? "INDIVIDUAL"}
+            >
+              <option value="INDIVIDUAL">טיפול פרטני</option>
+              <option value="GROUP">טיפול קבוצתי</option>
+              <option value="PARENT_GUIDANCE">הדרכת הורים</option>
+            </Select>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">

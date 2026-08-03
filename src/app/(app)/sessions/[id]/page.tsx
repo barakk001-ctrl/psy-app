@@ -128,6 +128,13 @@ export default async function SessionDetailPage({
               <MapPin className="w-3.5 h-3.5" />
               {LOCATION_LABELS[sess.location]}
             </span>
+            <span>
+              {{
+                INDIVIDUAL: "טיפול פרטני",
+                GROUP: "טיפול קבוצתי",
+                PARENT_GUIDANCE: "הדרכת הורים",
+              }[sess.treatmentType] ?? ""}
+            </span>
             {sess.rate && <span>{formatCurrency(sess.rate.toString())}</span>}
           </div>
         </div>
