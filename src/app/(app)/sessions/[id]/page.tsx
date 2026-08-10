@@ -21,6 +21,7 @@ import { SessionStatusActions } from "@/components/sessions/session-status-actio
 import { NoteEditor } from "@/components/sessions/note-editor";
 import { DeleteSeriesButton } from "@/components/sessions/delete-series-button";
 import { MorningNumberField } from "@/components/sessions/morning-number-field";
+import { DeleteSessionButton } from "@/components/sessions/delete-session-button";
 import { buildWhatsappReminderText, buildWhatsappUrl } from "@/lib/whatsapp";
 
 const LOCATION_LABELS = {
@@ -148,6 +149,7 @@ export default async function SessionDetailPage({
             </Button>
           </Link>
           <SessionStatusActions sessionId={sess.id} currentStatus={sess.status} />
+          <DeleteSessionButton sessionId={sess.id} />
         </div>
       </header>
 

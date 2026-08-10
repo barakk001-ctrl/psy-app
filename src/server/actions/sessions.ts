@@ -361,31 +361,24 @@ export async function deleteFutureSessionsAction(formData: FormData) {
   redirect("/calendar");
 }
 
+// Permanent removal — cancellation is a separate status action that keeps the
+// meeting in the client's record; deletion erases it (and its note) entirely.
 export async function deleteSessionAction(formData: FormData) {
   const userId = await requireUserId();
   const id = formData.get("id");
   if (typeof id !== "string") return;
 
-  // Hard delete only if scheduled and has no note. Otherwise keep history.
   const existing = await db.session.findFirst({
     where: { id, userId },
-    include: { note: { select: { id: true } } },
+    select: { id: true, clientId: true },
   });
   if (!existing) return;
 
-  // Cancel any pending reminders either way (FK cascade would also do it on delete,
-  // but we want them in CANCELLED state for audit if we keep the session row)
   await cancelSessionReminders(id);
-
-  if (existing.note || existing.status === "COMPLETED") {
-    await db.session.update({
-      where: { id, userId },
-      data: { status: "CANCELLED" },
-    });
-  } else {
-    await db.session.delete({ where: { id, userId } });
-  }
+  await db.session.delete({ where: { id, userId } });
 
   revalidatePath("/calendar");
+  revalidatePath("/dashboard");
+  revalidatePath(`/clients/${existing.clientId}`);
   redirect("/calendar");
 }

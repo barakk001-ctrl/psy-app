@@ -47,26 +47,33 @@ export default async function ClientDetailPage({
   const [completedCount, notedSessions] = await Promise.all([
     db.session.count({ where: { clientId: id, userId, status: "COMPLETED" } }),
     db.session.findMany({
-      where: { clientId: id, userId, note: { isNot: null } },
+      // The record includes documented meetings AND cancellations
+      where: {
+        clientId: id,
+        userId,
+        OR: [{ note: { isNot: null } }, { status: "CANCELLED" }],
+      },
       orderBy: { startsAt: "desc" },
       take: 20,
       include: { note: true },
     }),
   ]);
 
-  // The clinical record: decrypted summaries, newest first
+  // The clinical record: decrypted summaries + cancellations, newest first
   const noteFeed = notedSessions.map((s) => {
     let text = "";
-    try {
-      text = decryptNote({
-        contentCiphertext: s.note!.contentCiphertext,
-        contentIv: s.note!.contentIv,
-        contentTag: s.note!.contentTag,
-      });
-    } catch {
-      text = "(שגיאה בפענוח הסיכום)";
+    if (s.note) {
+      try {
+        text = decryptNote({
+          contentCiphertext: s.note.contentCiphertext,
+          contentIv: s.note.contentIv,
+          contentTag: s.note.contentTag,
+        });
+      } catch {
+        text = "(שגיאה בפענוח הסיכום)";
+      }
     }
-    return { id: s.id, startsAt: s.startsAt, status: s.status, text };
+    return { id: s.id, startsAt: s.startsAt, cancelled: s.status === "CANCELLED", text };
   });
 
   return (
@@ -196,8 +203,13 @@ export default async function ClientDetailPage({
                 {noteFeed.map((n) => (
                   <li key={n.id} className="px-5 py-4">
                     <div className="flex items-center justify-between gap-3 mb-1.5">
-                      <span className="text-sm font-medium text-ink">
+                      <span className="text-sm font-medium text-ink inline-flex items-center gap-2">
                         {formatDateTime(n.startsAt)}
+                        {n.cancelled && (
+                          <span className="rounded-full bg-cream-200 text-ink-muted text-[10px] px-2 py-0.5">
+                            בוטלה
+                          </span>
+                        )}
                       </span>
                       <Link
                         href={`/sessions/${n.id}`}
@@ -206,9 +218,13 @@ export default async function ClientDetailPage({
                         לפגישה ←
                       </Link>
                     </div>
-                    <p className="text-sm text-ink-soft whitespace-pre-wrap leading-relaxed">
-                      {n.text}
-                    </p>
+                    {n.text ? (
+                      <p className="text-sm text-ink-soft whitespace-pre-wrap leading-relaxed">
+                        {n.text}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-ink-subtle">הפגישה בוטלה.</p>
+                    )}
                   </li>
                 ))}
               </ul>
