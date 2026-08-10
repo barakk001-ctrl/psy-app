@@ -20,6 +20,7 @@ import { SessionStatusBadge } from "@/components/sessions/session-status-badge";
 import { SessionStatusActions } from "@/components/sessions/session-status-actions";
 import { NoteEditor } from "@/components/sessions/note-editor";
 import { DeleteSeriesButton } from "@/components/sessions/delete-series-button";
+import { MorningNumberField } from "@/components/sessions/morning-number-field";
 import { buildWhatsappReminderText, buildWhatsappUrl } from "@/lib/whatsapp";
 
 const LOCATION_LABELS = {
@@ -227,6 +228,13 @@ export default async function SessionDetailPage({
                 </a>
               </div>
             )}
+            <div id="billing" className="pt-3 border-t border-cream-200">
+              <MorningNumberField
+                sessionId={sess.id}
+                initialNumber={sess.morningDocNumber}
+                initialUrl={sess.morningDocUrl}
+              />
+            </div>
             {sess.invoiceItem?.invoice && (
               <div className="pt-3 border-t border-cream-200 space-y-1.5">
                 <span className="text-xs text-ink-muted block">חיוב</span>

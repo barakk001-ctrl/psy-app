@@ -77,6 +77,76 @@ export async function syncMorningDocumentsAction(
   return { synced };
 }
 
+export type AttachNumberState = {
+  error?: string;
+  saved?: boolean;
+  matchedUrl?: string | null;
+} | null;
+
+/**
+ * Attaches a Morning invoice/receipt number (typed by the practitioner) to a
+ * meeting. If the number matches a synced Morning document or an app-issued
+ * invoice, the document link is resolved automatically.
+ */
+export async function attachMorningNumberToSessionAction(
+  _: AttachNumberState,
+  formData: FormData,
+): Promise<AttachNumberState> {
+  const userId = await requireUserId();
+  const sessionId = String(formData.get("sessionId") ?? "");
+  const number = String(formData.get("number") ?? "").trim().slice(0, 30);
+  if (!sessionId) return { error: "מזהה פגישה חסר" };
+
+  const session = await db.session.findFirst({
+    where: { id: sessionId, userId },
+    select: { id: true, clientId: true },
+  });
+  if (!session) return { error: "פגישה לא נמצאה" };
+
+  // Empty input clears the link
+  if (!number) {
+    await db.session.update({
+      where: { id: sessionId },
+      data: { morningDocNumber: null, morningDocUrl: null },
+    });
+    revalidatePath(`/sessions/${sessionId}`);
+    revalidatePath(`/clients/${session.clientId}`);
+    return { saved: true, matchedUrl: null };
+  }
+
+  // Resolve a link: synced Morning documents first, then app-issued invoices
+  let url: string | null = null;
+  const doc = await db.morningDocument.findFirst({
+    where: { userId, number },
+    select: { url: true, id: true, clientId: true },
+  });
+  if (doc) {
+    url = doc.url;
+    // Typing the number on a client's meeting is also an assignment
+    if (!doc.clientId) {
+      await db.morningDocument.update({
+        where: { id: doc.id },
+        data: { clientId: session.clientId },
+      });
+    }
+  } else {
+    const invoice = await db.invoice.findFirst({
+      where: { userId, morningDocNumber: number },
+      select: { morningDocUrl: true },
+    });
+    url = invoice?.morningDocUrl ?? null;
+  }
+
+  await db.session.update({
+    where: { id: sessionId },
+    data: { morningDocNumber: number, morningDocUrl: url },
+  });
+
+  revalidatePath(`/sessions/${sessionId}`);
+  revalidatePath(`/clients/${session.clientId}`);
+  return { saved: true, matchedUrl: url };
+}
+
 export async function assignMorningDocumentAction(formData: FormData) {
   const userId = await requireUserId();
   const docId = String(formData.get("docId") ?? "");

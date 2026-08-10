@@ -216,7 +216,7 @@ export default async function DashboardPage() {
                           href={
                             s.invoiceItem
                               ? `/invoices/${s.invoiceItem.invoiceId}`
-                              : `/invoices/new?clientId=${s.clientId}`
+                              : `/sessions/${s.id}#billing`
                           }
                           title="אישור תשלום"
                           aria-label="אישור תשלום"

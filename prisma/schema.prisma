@@ -135,6 +135,12 @@ model Session {
   meetingUrl    String?
   treatmentType TreatmentType   @default(INDIVIDUAL)
 
+  // Morning invoice/receipt number typed by the practitioner (her billing
+  // happens in Morning; the app just links it). URL resolved when the number
+  // matches a synced Morning document.
+  morningDocNumber String?
+  morningDocUrl    String?
+
   // Recurrence (simple — one parent + generated children, or use rrule string)
   recurrenceRule String?      // RFC 5545 RRULE if recurring
   parentSessionId String?
