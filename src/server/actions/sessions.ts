@@ -361,6 +361,70 @@ export async function deleteFutureSessionsAction(formData: FormData) {
   redirect("/calendar");
 }
 
+export type SessionPaymentState = {
+  error?: string;
+  saved?: boolean;
+} | null;
+
+const PAYMENT_STATUSES = ["PAID", "UNPAID", "EXEMPT"] as const;
+const PAYMENT_METHODS = [
+  "CASH",
+  "BIT",
+  "CHECK",
+  "BANK_TRANSFER",
+  "CREDIT_CARD",
+  "PAYPAL",
+  "OTHER",
+] as const;
+
+/** Quick per-meeting payment record — the Morning-first workflow that skips
+ *  the app's invoice module entirely. */
+export async function saveSessionPaymentAction(
+  _: SessionPaymentState,
+  formData: FormData,
+): Promise<SessionPaymentState> {
+  const userId = await requireUserId();
+  const sessionId = String(formData.get("sessionId") ?? "");
+  const statusRaw = String(formData.get("paymentStatus") ?? "");
+  const methodRaw = String(formData.get("paymentMethod") ?? "");
+  const amountRaw = String(formData.get("paidAmount") ?? "").trim();
+  const note = String(formData.get("paymentNote") ?? "").trim().slice(0, 300);
+
+  if (!sessionId) return { error: "מזהה פגישה חסר" };
+
+  const session = await db.session.findFirst({
+    where: { id: sessionId, userId },
+    select: { id: true, clientId: true },
+  });
+  if (!session) return { error: "פגישה לא נמצאה" };
+
+  const status = (PAYMENT_STATUSES as readonly string[]).includes(statusRaw)
+    ? statusRaw
+    : null;
+  const method = (PAYMENT_METHODS as readonly string[]).includes(methodRaw)
+    ? (methodRaw as (typeof PAYMENT_METHODS)[number])
+    : null;
+  const amount = amountRaw ? parseFloat(amountRaw) : null;
+  if (amount !== null && (Number.isNaN(amount) || amount < 0)) {
+    return { error: "סכום לא תקין" };
+  }
+
+  await db.session.update({
+    where: { id: sessionId },
+    data: {
+      paymentStatus: status,
+      paymentMethod: status === "PAID" ? method : null,
+      paidAmount: status === "PAID" ? amount : null,
+      paymentNote: note || null,
+    },
+  });
+
+  revalidatePath(`/sessions/${sessionId}`);
+  revalidatePath(`/clients/${session.clientId}`);
+  revalidatePath("/dashboard");
+  return { saved: true };
+}
+
 // Permanent removal — cancellation is a separate status action that keeps the
 // meeting in the client's record; deletion erases it (and its note) entirely.
 export async function deleteSessionAction(formData: FormData) {

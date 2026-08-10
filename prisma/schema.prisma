@@ -142,11 +142,19 @@ model Session {
   meetingUrl    String?
   treatmentType String          @default("טיפול פרטני")
 
-  // Morning invoice/receipt number typed by the practitioner (her billing
-  // happens in Morning; the app just links it). URL resolved when the number
-  // matches a synced Morning document.
-  morningDocNumber String?
-  morningDocUrl    String?
+  // Morning document numbers typed by the practitioner (billing happens in
+  // Morning; the app links it). Tax invoice and receipt are separate because
+  // she sometimes issues the invoice first and the receipt later.
+  morningDocNumber     String?  // חשבונית מס
+  morningDocUrl        String?
+  morningReceiptNumber String?  // קבלה
+  morningReceiptUrl    String?
+
+  // Quick per-meeting payment record (Morning-first workflow, no app invoice)
+  paymentStatus  String?         // PAID | UNPAID | EXEMPT (ללא תשלום)
+  paymentMethod  PaymentMethod?
+  paidAmount     Decimal?        @db.Decimal(10, 2)
+  paymentNote    String?
 
   // Recurrence (simple — one parent + generated children, or use rrule string)
   recurrenceRule String?      // RFC 5545 RRULE if recurring

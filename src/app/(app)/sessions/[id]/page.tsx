@@ -20,7 +20,7 @@ import { SessionStatusBadge } from "@/components/sessions/session-status-badge";
 import { SessionStatusActions } from "@/components/sessions/session-status-actions";
 import { NoteEditor } from "@/components/sessions/note-editor";
 import { DeleteSeriesButton } from "@/components/sessions/delete-series-button";
-import { MorningNumberField } from "@/components/sessions/morning-number-field";
+import { SessionBillingCard } from "@/components/sessions/session-billing-card";
 import { DeleteSessionButton } from "@/components/sessions/delete-session-button";
 import { SessionFilesCard } from "@/components/sessions/session-files-card";
 import { buildWhatsappReminderText, buildWhatsappUrl } from "@/lib/whatsapp";
@@ -173,6 +173,23 @@ export default async function SessionDetailPage({
           />
         </div>
 
+        <div className="space-y-6">
+        <SessionBillingCard
+          sessionId={sess.id}
+          rate={sess.rate ? sess.rate.toString() : null}
+          payment={{
+            status: sess.paymentStatus,
+            method: sess.paymentMethod,
+            amount: sess.paidAmount ? sess.paidAmount.toString() : null,
+            note: sess.paymentNote,
+          }}
+          morning={{
+            invoiceNumber: sess.morningDocNumber,
+            invoiceUrl: sess.morningDocUrl,
+            receiptNumber: sess.morningReceiptNumber,
+            receiptUrl: sess.morningReceiptUrl,
+          }}
+        />
         <Card>
           <CardHeader>
             <CardTitle>פרטים</CardTitle>
@@ -240,13 +257,6 @@ export default async function SessionDetailPage({
                 </a>
               </div>
             )}
-            <div id="billing" className="pt-3 border-t border-cream-200">
-              <MorningNumberField
-                sessionId={sess.id}
-                initialNumber={sess.morningDocNumber}
-                initialUrl={sess.morningDocUrl}
-              />
-            </div>
             {sess.invoiceItem?.invoice && (
               <div className="pt-3 border-t border-cream-200 space-y-1.5">
                 <span className="text-xs text-ink-muted block">חיוב</span>
@@ -298,6 +308,7 @@ export default async function SessionDetailPage({
             </div>
           </CardContent>
         </Card>
+        </div>
 
         {sess.reminderJobs.length > 0 && (
           <Card>

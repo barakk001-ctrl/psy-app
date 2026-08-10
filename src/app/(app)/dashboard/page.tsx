@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  const [activeClients, upcomingSessions, monthPayments, outstanding, todos, monthExpected] = await Promise.all([
+  const [activeClients, upcomingSessions, monthPayments, outstanding, todos, monthExpected, monthSessionPaid] = await Promise.all([
     db.client.count({ where: { userId, status: "ACTIVE" } }),
     db.session.findMany({
       // endsAt ≥ now so a meeting that's happening right now stays in the list
@@ -62,9 +62,22 @@ export default async function DashboardPage() {
       },
       _sum: { rate: true },
     }),
+    // Quick per-meeting payments (Morning-first flow) — only for meetings
+    // without an app invoice, so nothing double-counts
+    db.session.aggregate({
+      where: {
+        userId,
+        startsAt: { gte: monthStart, lt: monthEnd },
+        paymentStatus: "PAID",
+        invoiceItem: { is: null },
+      },
+      _sum: { paidAmount: true },
+    }),
   ]);
 
-  const monthIncome = Number(monthPayments._sum.amount ?? 0);
+  const monthIncome =
+    Number(monthPayments._sum.amount ?? 0) +
+    Number(monthSessionPaid._sum.paidAmount ?? 0);
   const outstandingAmount =
     Number(outstanding._sum.total ?? 0) - Number(outstanding._sum.amountPaid ?? 0);
 

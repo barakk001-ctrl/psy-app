@@ -95,7 +95,12 @@ export async function attachMorningNumberToSessionAction(
   const userId = await requireUserId();
   const sessionId = String(formData.get("sessionId") ?? "");
   const number = String(formData.get("number") ?? "").trim().slice(0, 30);
+  // "invoice" = חשבונית מס, "receipt" = קבלה — separate documents in Morning
+  const kind = formData.get("kind") === "receipt" ? "receipt" : "invoice";
   if (!sessionId) return { error: "מזהה פגישה חסר" };
+
+  const numberField = kind === "receipt" ? "morningReceiptNumber" : "morningDocNumber";
+  const urlField = kind === "receipt" ? "morningReceiptUrl" : "morningDocUrl";
 
   const session = await db.session.findFirst({
     where: { id: sessionId, userId },
@@ -107,7 +112,7 @@ export async function attachMorningNumberToSessionAction(
   if (!number) {
     await db.session.update({
       where: { id: sessionId },
-      data: { morningDocNumber: null, morningDocUrl: null },
+      data: { [numberField]: null, [urlField]: null },
     });
     revalidatePath(`/sessions/${sessionId}`);
     revalidatePath(`/clients/${session.clientId}`);
@@ -139,7 +144,7 @@ export async function attachMorningNumberToSessionAction(
 
   await db.session.update({
     where: { id: sessionId },
-    data: { morningDocNumber: number, morningDocUrl: url },
+    data: { [numberField]: number, [urlField]: url },
   });
 
   revalidatePath(`/sessions/${sessionId}`);
