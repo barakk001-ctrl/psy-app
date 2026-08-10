@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Mail, Phone, MapPin, Calendar as CalIcon, Pencil } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { decryptNote } from "@/lib/crypto";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArchiveButton } from "@/components/clients/archive-button";
@@ -43,6 +44,31 @@ export default async function ClientDetailPage({
 
   if (!client) notFound();
 
+  const [completedCount, notedSessions] = await Promise.all([
+    db.session.count({ where: { clientId: id, userId, status: "COMPLETED" } }),
+    db.session.findMany({
+      where: { clientId: id, userId, note: { isNot: null } },
+      orderBy: { startsAt: "desc" },
+      take: 20,
+      include: { note: true },
+    }),
+  ]);
+
+  // The clinical record: decrypted summaries, newest first
+  const noteFeed = notedSessions.map((s) => {
+    let text = "";
+    try {
+      text = decryptNote({
+        contentCiphertext: s.note!.contentCiphertext,
+        contentIv: s.note!.contentIv,
+        contentTag: s.note!.contentTag,
+      });
+    } catch {
+      text = "(שגיאה בפענוח הסיכום)";
+    }
+    return { id: s.id, startsAt: s.startsAt, status: s.status, text };
+  });
+
   return (
     <div className="space-y-8 max-w-5xl">
       <Link
@@ -71,7 +97,8 @@ export default async function ClientDetailPage({
               )}
             </div>
             <p className="text-sm text-ink-muted mt-1">
-              {client._count.sessions} פגישות · {client._count.invoices} חשבוניות
+              <b className="text-ink">{completedCount} פגישות התקיימו</b> ·{" "}
+              {client._count.sessions} פגישות סה״כ · {client._count.invoices} חשבוניות
               {client.intakeDate && <> · נפתח תיק ב-{formatDate(client.intakeDate)}</>}
             </p>
           </div>
@@ -157,8 +184,60 @@ export default async function ClientDetailPage({
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>היסטוריית פגישות</CardTitle>
+            <CardTitle>סיכומי פגישות</CardTitle>
           </CardHeader>
+          <CardContent className="p-0">
+            {noteFeed.length === 0 ? (
+              <div className="p-10 text-center text-sm text-ink-muted">
+                עדיין אין סיכומים מתועדים — כתיבת סיכום נעשית מתוך עמוד הפגישה.
+              </div>
+            ) : (
+              <ul className="divide-y divide-cream-200">
+                {noteFeed.map((n) => (
+                  <li key={n.id} className="px-5 py-4">
+                    <div className="flex items-center justify-between gap-3 mb-1.5">
+                      <span className="text-sm font-medium text-ink">
+                        {formatDateTime(n.startsAt)}
+                      </span>
+                      <Link
+                        href={`/sessions/${n.id}`}
+                        className="text-xs text-sage-600 hover:text-sage-700 shrink-0"
+                      >
+                        לפגישה ←
+                      </Link>
+                    </div>
+                    <p className="text-sm text-ink-soft whitespace-pre-wrap leading-relaxed">
+                      {n.text}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {noteFeed.length === 20 && (
+              <p className="px-5 py-3 text-xs text-ink-subtle border-t border-cream-200">
+                מוצגים 20 הסיכומים האחרונים.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <details className="lg:col-span-3 group">
+          <summary className="cursor-pointer list-none">
+            <Card className="hover:border-sage-300 transition-colors">
+              <CardContent className="py-4 flex items-center justify-between">
+                <span className="font-display text-lg text-ink">
+                  היסטוריית פגישות ({client._count.sessions})
+                </span>
+                <span className="text-xs text-ink-muted group-open:hidden">
+                  הצגה ←
+                </span>
+                <span className="text-xs text-ink-muted hidden group-open:inline">
+                  הסתרה ↑
+                </span>
+              </CardContent>
+            </Card>
+          </summary>
+          <Card className="mt-3">
           <CardContent className="p-0">
             {client.sessions.length === 0 ? (
               <div className="p-10 text-center text-sm text-ink-muted">
@@ -212,7 +291,8 @@ export default async function ClientDetailPage({
               </ul>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        </details>
 
         {client.morningDocuments.length > 0 && (
           <Card className="lg:col-span-3">
