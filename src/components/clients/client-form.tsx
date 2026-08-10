@@ -17,7 +17,7 @@ import {
 export type ClientFormInitial = {
   id: string;
   status?: "ACTIVE" | "INACTIVE" | "ARCHIVED";
-  treatmentType?: "INDIVIDUAL" | "GROUP" | "PARENT_GUIDANCE" | "ASSESSMENT";
+  treatmentType?: string;
   firstName: string;
   lastName: string;
   idNumber: string | null;
@@ -33,11 +33,17 @@ export function ClientForm({
   initial,
   defaults,
   nextStart,
+  meetingTypes,
 }: {
   initial?: ClientFormInitial;
   defaults?: { firstName?: string; lastName?: string; phone?: string };
   nextStart?: string;
+  meetingTypes: string[];
 }) {
+  const typeOptions =
+    initial?.treatmentType && !meetingTypes.includes(initial.treatmentType)
+      ? [initial.treatmentType, ...meetingTypes]
+      : meetingTypes;
   const isEdit = !!initial;
   const action = isEdit ? updateClientAction : createClientAction;
 
@@ -107,12 +113,13 @@ export function ClientForm({
             <Select
               id="treatmentType"
               name="treatmentType"
-              defaultValue={initial?.treatmentType ?? "INDIVIDUAL"}
+              defaultValue={initial?.treatmentType ?? typeOptions[0] ?? "טיפול פרטני"}
             >
-              <option value="INDIVIDUAL">טיפול פרטני</option>
-              <option value="GROUP">טיפול קבוצתי</option>
-              <option value="PARENT_GUIDANCE">הדרכת הורים</option>
-              <option value="ASSESSMENT">אבחון</option>
+              {typeOptions.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </Select>
           </div>
 

@@ -4,7 +4,6 @@ import { z } from "zod";
 export const sessionLocations = ["OFFICE", "ONLINE", "HOME_VISIT", "OTHER"] as const;
 export const sessionStatuses = ["SCHEDULED", "COMPLETED", "CANCELLED", "NO_SHOW"] as const;
 export const recurrenceOptions = ["NONE", "WEEKLY", "BIWEEKLY"] as const;
-export const treatmentTypes = ["INDIVIDUAL", "GROUP", "PARENT_GUIDANCE", "ASSESSMENT"] as const;
 
 const checkbox = z.preprocess((v) => v === "on" || v === true, z.boolean());
 
@@ -31,7 +30,7 @@ export const createSessionSchema = z
         const n = typeof v === "number" ? v : parseFloat(v);
         return Number.isNaN(n) ? undefined : n;
       }),
-    treatmentType: z.enum(treatmentTypes).default("INDIVIDUAL"),
+    treatmentType: z.string().trim().min(1, "נדרש סוג מפגש").max(60).default("טיפול פרטני"),
     recurrence: z.enum(recurrenceOptions).default("NONE"),
     // קבוע — series with no end date, auto-extended by the cron
     openEnded: checkbox,
@@ -79,7 +78,7 @@ export const updateSessionSchema = z
         return Number.isNaN(n) ? undefined : n;
       }),
     allowOverlap: checkbox,
-    treatmentType: z.enum(treatmentTypes).default("INDIVIDUAL"),
+    treatmentType: z.string().trim().min(1, "נדרש סוג מפגש").max(60).default("טיפול פרטני"),
   })
   .refine(
     (d) => d.location !== "ONLINE" || (d.meetingUrl && d.meetingUrl.length > 0),

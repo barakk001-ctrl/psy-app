@@ -20,7 +20,7 @@ export type ClientFormState = {
 function parseClientForm(formData: FormData) {
   return clientSchema.safeParse({
     status: formData.get("status") ?? undefined,
-    treatmentType: formData.get("treatmentType") ?? "INDIVIDUAL",
+    treatmentType: formData.get("treatmentType") ?? "טיפול פרטני",
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName"),
     idNumber: formData.get("idNumber") ?? "",

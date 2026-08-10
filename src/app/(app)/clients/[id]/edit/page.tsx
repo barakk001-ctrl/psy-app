@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { ClientForm } from "@/components/clients/client-form";
 
 export default async function EditClientPage({
@@ -18,6 +19,7 @@ export default async function EditClientPage({
     where: { id, userId },
   });
   if (!client) notFound();
+  const meetingTypes = await getMeetingTypeNames(userId);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -34,6 +36,7 @@ export default async function EditClientPage({
         </h1>
       </header>
       <ClientForm
+        meetingTypes={meetingTypes}
         initial={{
           id: client.id,
           status: client.status,

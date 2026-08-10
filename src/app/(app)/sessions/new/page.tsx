@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { SessionForm } from "@/components/sessions/session-form";
 
 export default async function NewSessionPage({
@@ -18,6 +19,7 @@ export default async function NewSessionPage({
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     select: { id: true, firstName: true, lastName: true, defaultRate: true, treatmentType: true },
   });
+  const meetingTypes = await getMeetingTypeNames(userId);
 
   // Serialize Decimal → string for client
   const clientOptions = clients.map((c) => ({
@@ -41,6 +43,7 @@ export default async function NewSessionPage({
         <h1 className="font-display text-3xl text-ink">פגישה חדשה</h1>
       </header>
       <SessionForm
+        meetingTypes={meetingTypes}
         clients={clientOptions}
         defaults={{ startsAt: params.start, clientId: params.clientId }}
       />

@@ -19,7 +19,7 @@ type ClientOption = {
   firstName: string;
   lastName: string;
   defaultRate: string | null;
-  treatmentType?: "INDIVIDUAL" | "GROUP" | "PARENT_GUIDANCE" | "ASSESSMENT";
+  treatmentType?: string;
 };
 
 export type SessionFormInitial = {
@@ -30,17 +30,19 @@ export type SessionFormInitial = {
   location: "OFFICE" | "ONLINE" | "HOME_VISIT" | "OTHER";
   meetingUrl: string | null;
   rate: string | null;
-  treatmentType?: "INDIVIDUAL" | "GROUP" | "PARENT_GUIDANCE" | "ASSESSMENT";
+  treatmentType?: string;
 };
 
 export function SessionForm({
   clients,
   defaults,
   initial,
+  meetingTypes,
 }: {
   clients: ClientOption[];
   defaults?: { startsAt?: string; clientId?: string };
   initial?: SessionFormInitial;
+  meetingTypes: string[];
 }) {
   const isEdit = !!initial;
   const action = isEdit ? updateSessionAction : createSessionAction;
@@ -60,8 +62,11 @@ export function SessionForm({
   const [recurrence, setRecurrence] = useState<string>("NONE");
   const [seriesMode, setSeriesMode] = useState<string>("COUNT");
   const [treatmentType, setTreatmentType] = useState<string>(
-    initial?.treatmentType ?? "INDIVIDUAL",
+    initial?.treatmentType ?? meetingTypes[0] ?? "טיפול פרטני",
   );
+  const typeOptions = meetingTypes.includes(treatmentType)
+    ? meetingTypes
+    : [treatmentType, ...meetingTypes];
 
   const selectedClient = clients.find((c) => c.id === clientId);
   const ratePlaceholder = selectedClient?.defaultRate ?? "";
@@ -159,10 +164,11 @@ export function SessionForm({
               value={treatmentType}
               onChange={(e) => setTreatmentType(e.target.value)}
             >
-              <option value="INDIVIDUAL">טיפול פרטני</option>
-              <option value="GROUP">טיפול קבוצתי</option>
-              <option value="PARENT_GUIDANCE">הדרכת הורים</option>
-              <option value="ASSESSMENT">אבחון</option>
+              {typeOptions.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </Select>
           </div>
 

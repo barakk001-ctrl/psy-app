@@ -85,7 +85,7 @@ export async function createSessionAction(
     location: formData.get("location"),
     meetingUrl: formData.get("meetingUrl") ?? "",
     rate: formData.get("rate") ?? "",
-    treatmentType: formData.get("treatmentType") ?? "INDIVIDUAL",
+    treatmentType: formData.get("treatmentType") ?? "טיפול פרטני",
     recurrence: formData.get("recurrence") ?? "NONE",
     openEnded: formData.get("openEnded"),
     occurrences: formData.get("occurrences") ?? "",
@@ -198,7 +198,7 @@ export async function updateSessionAction(
     meetingUrl: formData.get("meetingUrl") ?? "",
     rate: formData.get("rate") ?? "",
     allowOverlap: formData.get("allowOverlap"),
-    treatmentType: formData.get("treatmentType") ?? "INDIVIDUAL",
+    treatmentType: formData.get("treatmentType") ?? "טיפול פרטני",
   });
 
   if (!parsed.success) {

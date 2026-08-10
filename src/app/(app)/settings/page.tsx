@@ -4,6 +4,7 @@ import { BusinessInfoForm } from "@/components/settings/business-info-form";
 import { MorningSettingsForm } from "@/components/settings/morning-settings-form";
 import { BiometricSettings } from "@/components/settings/biometric-settings";
 import { InboxSettings } from "@/components/settings/inbox-settings";
+import { MeetingTypesCard } from "@/components/settings/meeting-types-card";
 import { TwoFactorSettings } from "@/components/settings/two-factor-settings";
 
 export default async function SettingsPage() {
@@ -33,6 +34,12 @@ export default async function SettingsPage() {
 
   if (!user) return null;
 
+  const meetingTypes = await db.meetingType.findMany({
+    where: { userId },
+    orderBy: [{ position: "asc" }, { name: "asc" }],
+    select: { id: true, name: true },
+  });
+
   const morningConnected = !!(user.morningApiKeyId && user.morningApiSecret);
   const keyIdMasked = user.morningApiKeyId
     ? `…${user.morningApiKeyId.slice(-6)}`
@@ -58,6 +65,8 @@ export default async function SettingsPage() {
           vatLiable: user.vatLiable,
         }}
       />
+
+      <MeetingTypesCard types={meetingTypes} />
 
       <InboxSettings token={user.inboxToken} />
 

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import { auth } from "@/auth";
+import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { ClientForm } from "@/components/clients/client-form";
 
 export default async function NewClientPage({
@@ -13,6 +15,8 @@ export default async function NewClientPage({
   }>;
 }) {
   const params = await searchParams;
+  const session = await auth();
+  const meetingTypes = await getMeetingTypeNames(session!.user.id);
   return (
     <div className="max-w-3xl space-y-6">
       <Link
@@ -29,6 +33,7 @@ export default async function NewClientPage({
         </p>
       </header>
       <ClientForm
+        meetingTypes={meetingTypes}
         defaults={{
           firstName: params.firstName,
           lastName: params.lastName,

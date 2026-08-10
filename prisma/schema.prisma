@@ -63,6 +63,7 @@ model User {
   morningDocuments MorningDocument[]
   inboxMessages    InboxMessage[]
   todos            Todo[]
+  meetingTypes     MeetingType[]
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -89,7 +90,7 @@ model Client {
   status        ClientStatus @default(ACTIVE)
   defaultRate   Decimal?     @db.Decimal(10, 2)
   generalNotes  String?      @db.Text
-  treatmentType TreatmentType @default(INDIVIDUAL)   // non-clinical notes (contact prefs, billing notes)
+  treatmentType String       @default("טיפול פרטני") // label from the user-defined MeetingType list
 
   sessions      Session[]
   sessionNotes  SessionNote[]
@@ -103,11 +104,15 @@ model Client {
   @@index([userId, status])
 }
 
-enum TreatmentType {
-  INDIVIDUAL      // טיפול פרטני
-  GROUP           // טיפול קבוצתי
-  PARENT_GUIDANCE // הדרכת הורים
-  ASSESSMENT      // אבחון
+// User-defined meeting types (סוגי מפגשים) managed in Settings
+model MeetingType {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name     String
+  position Int    @default(0)
+
+  @@unique([userId, name])
 }
 
 enum ClientStatus {
@@ -133,7 +138,7 @@ model Session {
   rate          Decimal?      @db.Decimal(10, 2)  // snapshot at booking time
   location      SessionLocation @default(OFFICE)
   meetingUrl    String?
-  treatmentType TreatmentType   @default(INDIVIDUAL)
+  treatmentType String          @default("טיפול פרטני")
 
   // Morning invoice/receipt number typed by the practitioner (her billing
   // happens in Morning; the app just links it). URL resolved when the number

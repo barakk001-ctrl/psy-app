@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
 import { SessionForm } from "@/components/sessions/session-form";
 
@@ -41,6 +42,7 @@ export default async function EditSessionPage({
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     select: { id: true, firstName: true, lastName: true, defaultRate: true, treatmentType: true },
   });
+  const meetingTypes = await getMeetingTypeNames(userId);
 
   const clientOptions = clients.map((c) => ({
     id: c.id,
@@ -70,6 +72,7 @@ export default async function EditSessionPage({
         </p>
       </header>
       <SessionForm
+        meetingTypes={meetingTypes}
         clients={clientOptions}
         initial={{
           id: sess.id,
