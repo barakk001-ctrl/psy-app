@@ -22,6 +22,7 @@ import { NoteEditor } from "@/components/sessions/note-editor";
 import { DeleteSeriesButton } from "@/components/sessions/delete-series-button";
 import { MorningNumberField } from "@/components/sessions/morning-number-field";
 import { DeleteSessionButton } from "@/components/sessions/delete-session-button";
+import { SessionFilesCard } from "@/components/sessions/session-files-card";
 import { buildWhatsappReminderText, buildWhatsappUrl } from "@/lib/whatsapp";
 
 const LOCATION_LABELS = {
@@ -62,6 +63,10 @@ export default async function SessionDetailPage({
             },
           },
         },
+      },
+      files: {
+        orderBy: { createdAt: "desc" },
+        select: { id: true, fileName: true, size: true, createdAt: true },
       },
     },
   });
@@ -147,14 +152,26 @@ export default async function SessionDetailPage({
       </header>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>סיכום הפגישה</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <NoteEditor sessionId={sess.id} initialContent={initialNote} />
-          </CardContent>
-        </Card>
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>סיכום הפגישה</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <NoteEditor sessionId={sess.id} initialContent={initialNote} />
+            </CardContent>
+          </Card>
+
+          <SessionFilesCard
+            sessionId={sess.id}
+            files={sess.files.map((f) => ({
+              id: f.id,
+              fileName: f.fileName,
+              size: f.size,
+              createdAt: f.createdAt.toISOString(),
+            }))}
+          />
+        </div>
 
         <Card>
           <CardHeader>

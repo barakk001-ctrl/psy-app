@@ -64,6 +64,7 @@ model User {
   inboxMessages    InboxMessage[]
   todos            Todo[]
   meetingTypes     MeetingType[]
+  sessionFiles     SessionFile[]
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -94,6 +95,7 @@ model Client {
 
   sessions      Session[]
   sessionNotes  SessionNote[]
+  sessionFiles  SessionFile[]
   invoices      Invoice[]
   morningDocuments MorningDocument[]
 
@@ -154,6 +156,7 @@ model Session {
 
   note          SessionNote?
   invoiceItem   InvoiceItem?
+  files         SessionFile[]
 
   reminderJobs  ReminderJob[]
 
@@ -200,6 +203,30 @@ model SessionNote {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  @@index([clientId, createdAt])
+}
+
+// Documents attached to a meeting — encrypted at the app layer like notes.
+// Stored in Postgres (no persistent disk on the host); capped per file.
+model SessionFile {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId      String
+  session        Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  fileName       String
+  mimeType       String
+  size           Int
+  dataCiphertext Bytes
+  dataIv         String
+  dataTag        String
+
+  createdAt      DateTime @default(now())
+
+  @@index([sessionId])
   @@index([clientId, createdAt])
 }
 

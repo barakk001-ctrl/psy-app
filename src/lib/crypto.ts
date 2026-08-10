@@ -45,6 +45,36 @@ export function decryptNote(parts: EncryptedPayload): string {
   return plaintext.toString("utf8");
 }
 
+// Binary variant for file attachments — same key and algorithm.
+export function encryptBuffer(data: Buffer): {
+  ciphertext: Buffer;
+  iv: string;
+  tag: string;
+} {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv(ALGO, getKey(), iv);
+  const ciphertext = Buffer.concat([cipher.update(data), cipher.final()]);
+  return {
+    ciphertext,
+    iv: iv.toString("base64"),
+    tag: cipher.getAuthTag().toString("base64"),
+  };
+}
+
+export function decryptBuffer(parts: {
+  ciphertext: Buffer;
+  iv: string;
+  tag: string;
+}): Buffer {
+  const decipher = crypto.createDecipheriv(
+    ALGO,
+    getKey(),
+    Buffer.from(parts.iv, "base64"),
+  );
+  decipher.setAuthTag(Buffer.from(parts.tag, "base64"));
+  return Buffer.concat([decipher.update(parts.ciphertext), decipher.final()]);
+}
+
 // Single-column variant for short secrets (e.g. API credentials): packs
 // iv:tag:ciphertext into one string using the same key.
 export function encryptSecret(plaintext: string): string {

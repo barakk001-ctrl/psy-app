@@ -38,6 +38,17 @@ export default async function ClientDetailPage({
         orderBy: { docDate: "desc" },
         take: 20,
       },
+      sessionFiles: {
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          fileName: true,
+          size: true,
+          createdAt: true,
+          sessionId: true,
+        },
+      },
       _count: { select: { sessions: true, invoices: true } },
     },
   });
@@ -309,6 +320,47 @@ export default async function ClientDetailPage({
           </CardContent>
           </Card>
         </details>
+
+        {client.sessionFiles.length > 0 && (
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle>מסמכים</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ul className="divide-y divide-cream-200">
+                {client.sessionFiles.map((f) => (
+                  <li
+                    key={f.id}
+                    className="px-5 py-3 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <a
+                        href={`/api/files/${f.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-ink hover:text-sage-700 truncate block"
+                      >
+                        {f.fileName}
+                      </a>
+                      <div className="text-xs text-ink-subtle mt-0.5">
+                        {formatDate(f.createdAt)} ·{" "}
+                        {f.size < 1024 * 1024
+                          ? `${Math.round(f.size / 1024)}KB`
+                          : `${(f.size / (1024 * 1024)).toFixed(1)}MB`}
+                      </div>
+                    </div>
+                    <Link
+                      href={`/sessions/${f.sessionId}`}
+                      className="text-xs text-sage-600 hover:text-sage-700 shrink-0"
+                    >
+                      לפגישה ←
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         {client.morningDocuments.length > 0 && (
           <Card className="lg:col-span-3">
