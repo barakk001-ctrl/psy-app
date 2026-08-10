@@ -4,7 +4,7 @@ import { z } from "zod";
 export const sessionLocations = ["OFFICE", "ONLINE", "HOME_VISIT", "OTHER"] as const;
 export const sessionStatuses = ["SCHEDULED", "COMPLETED", "CANCELLED", "NO_SHOW"] as const;
 export const recurrenceOptions = ["NONE", "WEEKLY", "BIWEEKLY"] as const;
-export const treatmentTypes = ["INDIVIDUAL", "GROUP", "PARENT_GUIDANCE"] as const;
+export const treatmentTypes = ["INDIVIDUAL", "GROUP", "PARENT_GUIDANCE", "ASSESSMENT"] as const;
 
 const checkbox = z.preprocess((v) => v === "on" || v === true, z.boolean());
 

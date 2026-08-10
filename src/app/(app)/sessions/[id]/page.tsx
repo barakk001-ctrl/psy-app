@@ -133,6 +133,7 @@ export default async function SessionDetailPage({
                 INDIVIDUAL: "טיפול פרטני",
                 GROUP: "טיפול קבוצתי",
                 PARENT_GUIDANCE: "הדרכת הורים",
+                ASSESSMENT: "אבחון",
               }[sess.treatmentType] ?? ""}
             </span>
             {sess.rate && <span>{formatCurrency(sess.rate.toString())}</span>}

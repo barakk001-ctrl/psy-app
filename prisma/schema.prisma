@@ -107,6 +107,7 @@ enum TreatmentType {
   INDIVIDUAL      // טיפול פרטני
   GROUP           // טיפול קבוצתי
   PARENT_GUIDANCE // הדרכת הורים
+  ASSESSMENT      // אבחון
 }
 
 enum ClientStatus {

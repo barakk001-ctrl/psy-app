@@ -17,7 +17,7 @@ import {
 export type ClientFormInitial = {
   id: string;
   status?: "ACTIVE" | "INACTIVE" | "ARCHIVED";
-  treatmentType?: "INDIVIDUAL" | "GROUP" | "PARENT_GUIDANCE";
+  treatmentType?: "INDIVIDUAL" | "GROUP" | "PARENT_GUIDANCE" | "ASSESSMENT";
   firstName: string;
   lastName: string;
   idNumber: string | null;
@@ -112,6 +112,7 @@ export function ClientForm({
               <option value="INDIVIDUAL">טיפול פרטני</option>
               <option value="GROUP">טיפול קבוצתי</option>
               <option value="PARENT_GUIDANCE">הדרכת הורים</option>
+              <option value="ASSESSMENT">אבחון</option>
             </Select>
           </div>
 

@@ -19,7 +19,7 @@ type ClientOption = {
   firstName: string;
   lastName: string;
   defaultRate: string | null;
-  treatmentType?: "INDIVIDUAL" | "GROUP" | "PARENT_GUIDANCE";
+  treatmentType?: "INDIVIDUAL" | "GROUP" | "PARENT_GUIDANCE" | "ASSESSMENT";
 };
 
 export type SessionFormInitial = {
@@ -30,7 +30,7 @@ export type SessionFormInitial = {
   location: "OFFICE" | "ONLINE" | "HOME_VISIT" | "OTHER";
   meetingUrl: string | null;
   rate: string | null;
-  treatmentType?: "INDIVIDUAL" | "GROUP" | "PARENT_GUIDANCE";
+  treatmentType?: "INDIVIDUAL" | "GROUP" | "PARENT_GUIDANCE" | "ASSESSMENT";
 };
 
 export function SessionForm({
@@ -162,6 +162,7 @@ export function SessionForm({
               <option value="INDIVIDUAL">טיפול פרטני</option>
               <option value="GROUP">טיפול קבוצתי</option>
               <option value="PARENT_GUIDANCE">הדרכת הורים</option>
+              <option value="ASSESSMENT">אבחון</option>
             </Select>
           </div>
 

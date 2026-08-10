@@ -1,3 +1,5 @@
+import { TherapyIllustration } from "@/components/auth/therapy-illustration";
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen grid lg:grid-cols-[1fr_1.1fr]">
@@ -28,6 +30,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <span className="font-display text-2xl">מרפאה</span>
         </div>
         <div className="relative space-y-6 max-w-sm">
+          <TherapyIllustration className="w-full max-w-xs mx-auto drop-shadow-lg" />
           <p className="font-display text-3xl leading-snug">
             מערכת רגועה אחת לכל מה שהקליניקה שלך צריכה.
           </p>
@@ -42,8 +45,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </aside>
 
       {/* Form panel */}
-      <main className="flex items-center justify-center px-4 py-12 sm:px-8">
-        <div className="w-full max-w-md">{children}</div>
+      <main className="flex items-center justify-center px-4 py-10 sm:px-8">
+        <div className="w-full max-w-md">
+          {/* On phones the brand panel is hidden — show the scene above the form */}
+          <TherapyIllustration className="lg:hidden w-56 mx-auto mb-6" />
+          {children}
+        </div>
       </main>
     </div>
   );
