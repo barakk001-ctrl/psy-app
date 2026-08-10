@@ -30,7 +30,10 @@ export default async function DashboardPage() {
       where: { userId, endsAt: { gte: now }, status: "SCHEDULED" },
       orderBy: { startsAt: "asc" },
       take: 5,
-      include: { client: { select: { firstName: true, lastName: true } } },
+      include: {
+        client: { select: { firstName: true, lastName: true } },
+        invoiceItem: { select: { invoiceId: true } },
+      },
     }),
     db.payment.aggregate({
       where: {
@@ -200,12 +203,34 @@ export default async function DashboardPage() {
                           {formatDateTime(s.startsAt)}
                         </div>
                       </div>
-                      <Link
-                        href={`/sessions/${s.id}`}
-                        className="text-xs text-sage-600 hover:text-sage-700"
-                      >
-                        פרטים ←
-                      </Link>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Link
+                          href={`/sessions/${s.id}`}
+                          title="תיעוד פגישה"
+                          aria-label="תיעוד פגישה"
+                          className="w-8 h-8 grid place-items-center rounded-lg border border-cream-300 bg-white/70 text-ink-muted hover:text-sage-700 hover:border-sage-300 transition-colors"
+                        >
+                          <NotebookPen className="w-4 h-4" />
+                        </Link>
+                        <Link
+                          href={
+                            s.invoiceItem
+                              ? `/invoices/${s.invoiceItem.invoiceId}`
+                              : `/invoices/new?clientId=${s.clientId}`
+                          }
+                          title="אישור תשלום"
+                          aria-label="אישור תשלום"
+                          className="w-8 h-8 grid place-items-center rounded-lg border border-cream-300 bg-white/70 text-ink-muted hover:text-sage-700 hover:border-sage-300 transition-colors"
+                        >
+                          <Receipt className="w-4 h-4" />
+                        </Link>
+                        <Link
+                          href={`/sessions/${s.id}`}
+                          className="text-xs text-sage-600 hover:text-sage-700 ms-1 hidden sm:inline"
+                        >
+                          פרטים ←
+                        </Link>
+                      </div>
                     </li>
                   );
                 })}
