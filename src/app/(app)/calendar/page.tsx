@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { getMeetingTypeNames } from "@/lib/meeting-types";
+import { toZonedDateTimeLocal } from "@/lib/timezone";
 import { Button } from "@/components/ui/button";
 import { CalendarView } from "@/components/calendar/calendar-view";
 import type { EventInput } from "@fullcalendar/core";
@@ -18,24 +20,39 @@ export default async function CalendarPage() {
   const rangeEnd = new Date(now);
   rangeEnd.setDate(rangeEnd.getDate() + 180);
 
-  const sessions = await db.session.findMany({
-    where: {
-      userId,
-      startsAt: { gte: rangeStart, lte: rangeEnd },
-      status: { not: "CANCELLED" },
-    },
-    include: {
-      client: { select: { firstName: true, lastName: true } },
-    },
-    orderBy: { startsAt: "asc" },
-  });
+  const [sessions, clients, meetingTypes] = await Promise.all([
+    db.session.findMany({
+      where: {
+        userId,
+        startsAt: { gte: rangeStart, lte: rangeEnd },
+        status: { not: "CANCELLED" },
+      },
+      include: {
+        client: { select: { firstName: true, lastName: true } },
+      },
+      orderBy: { startsAt: "asc" },
+    }),
+    db.client.findMany({
+      where: { userId, status: "ACTIVE" },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      select: { id: true, firstName: true, lastName: true },
+    }),
+    getMeetingTypeNames(userId),
+  ]);
 
   const events: EventInput[] = sessions.map((s) => ({
     id: s.id,
     title: `${s.client.firstName} ${s.client.lastName}`,
     start: s.startsAt.toISOString(),
     end: s.endsAt.toISOString(),
-    extendedProps: { status: s.status, location: s.location },
+    extendedProps: {
+      status: s.status,
+      location: s.location,
+      clientId: s.clientId,
+      treatmentType: s.treatmentType,
+      startLocal: toZonedDateTimeLocal(s.startsAt),
+      endLocal: toZonedDateTimeLocal(s.endsAt),
+    },
   }));
 
   return (
@@ -54,7 +71,14 @@ export default async function CalendarPage() {
         </Link>
       </header>
 
-      <CalendarView events={events} />
+      <CalendarView
+        events={events}
+        clients={clients.map((c) => ({
+          id: c.id,
+          name: `${c.firstName} ${c.lastName}`,
+        }))}
+        meetingTypes={meetingTypes}
+      />
     </div>
   );
 }

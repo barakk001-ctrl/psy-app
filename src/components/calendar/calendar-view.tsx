@@ -9,9 +9,15 @@ import interactionPlugin from "@fullcalendar/interaction";
 import heLocale from "@fullcalendar/core/locales/he";
 import type { EventInput } from "@fullcalendar/core";
 import { rescheduleSessionAction } from "@/server/actions/sessions";
+import {
+  QuickEditDialog,
+  type QuickEditData,
+} from "@/components/calendar/quick-edit-dialog";
 
 type Props = {
   events: EventInput[];
+  clients: { id: string; name: string }[];
+  meetingTypes: string[];
 };
 
 // Color sessions by status — sage for scheduled, muted for past, terracotta for problems.
@@ -34,10 +40,11 @@ function useIsMobile() {
   return isMobile;
 }
 
-export function CalendarView({ events }: Props) {
+export function CalendarView({ events, clients, meetingTypes }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const isMobile = useIsMobile();
+  const [quickEdit, setQuickEdit] = useState<QuickEditData | null>(null);
 
   const styledEvents: EventInput[] = events.map((e) => ({
     ...e,
@@ -115,7 +122,28 @@ export function CalendarView({ events }: Props) {
         events={styledEvents}
         eventClick={(info) => {
           info.jsEvent.preventDefault();
-          router.push(`/sessions/${info.event.id}`);
+          const p = info.event.extendedProps as {
+            clientId?: string;
+            treatmentType?: string;
+            status?: string;
+            startLocal?: string;
+            endLocal?: string;
+          };
+          // Legacy events without the quick-edit payload fall back to the page
+          if (!p.startLocal || !p.endLocal || !p.clientId) {
+            router.push(`/sessions/${info.event.id}`);
+            return;
+          }
+          setQuickEdit({
+            id: info.event.id,
+            clientId: p.clientId,
+            clientName: info.event.title,
+            date: p.startLocal.slice(0, 10),
+            startTime: p.startLocal.slice(11, 16),
+            endTime: p.endLocal.slice(11, 16),
+            treatmentType: p.treatmentType ?? "",
+            cancelled: p.status === "CANCELLED",
+          });
         }}
         select={(info) => {
           // Format the local time for the datetime-local input
@@ -165,6 +193,15 @@ export function CalendarView({ events }: Props) {
           });
         }}
       />
+
+      {quickEdit && (
+        <QuickEditDialog
+          data={quickEdit}
+          clients={clients}
+          meetingTypes={meetingTypes}
+          onClose={() => setQuickEdit(null)}
+        />
+      )}
 
       <style jsx global>{`
         /* Fixed-height shell: the calendar grid scrolls inside it, the page doesn't */

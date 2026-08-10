@@ -361,6 +361,89 @@ export async function deleteFutureSessionsAction(formData: FormData) {
   redirect("/calendar");
 }
 
+export type QuickEditState = {
+  error?: string;
+  saved?: boolean;
+  /** conflict detected — allow resubmitting with allowOverlap */
+  conflict?: boolean;
+} | null;
+
+/** Compact calendar-popup edit: client, date, start/end times, type, cancel toggle. */
+export async function quickEditSessionAction(
+  _: QuickEditState,
+  formData: FormData,
+): Promise<QuickEditState> {
+  const userId = await requireUserId();
+  const id = String(formData.get("id") ?? "");
+  const clientId = String(formData.get("clientId") ?? "");
+  const date = String(formData.get("date") ?? "");
+  const startTime = String(formData.get("startTime") ?? "");
+  const endTime = String(formData.get("endTime") ?? "");
+  const treatmentType = String(formData.get("treatmentType") ?? "").trim().slice(0, 60);
+  const cancelled = formData.get("cancelled") === "on";
+  const allowOverlap = formData.get("allowOverlap") === "on";
+
+  if (!id || !clientId) return { error: "פרטים חסרים" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "תאריך לא תקין" };
+  if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+    return { error: "שעה לא תקינה" };
+  }
+  if (endTime <= startTime) return { error: "שעת הסיום חייבת להיות אחרי ההתחלה" };
+
+  const existing = await db.session.findFirst({
+    where: { id, userId },
+    select: { id: true, status: true, startsAt: true, clientId: true },
+  });
+  if (!existing) return { error: "פגישה לא נמצאה" };
+
+  const client = await db.client.findFirst({
+    where: { id: clientId, userId },
+    select: { id: true },
+  });
+  if (!client) return { error: "לקוח לא נמצא" };
+
+  const startsAt = fromZonedDateTimeLocal(`${date}T${startTime}`);
+  const endsAt = fromZonedDateTimeLocal(`${date}T${endTime}`);
+
+  if (!cancelled && !allowOverlap) {
+    const overlaps = await findOverlaps(userId, [{ startsAt, endsAt }], [id]);
+    if (overlaps.length > 0) {
+      const state = overlapError(overlaps);
+      return { error: state?.error, conflict: true };
+    }
+  }
+
+  const nextStatus = cancelled
+    ? "CANCELLED"
+    : existing.status === "CANCELLED"
+      ? "SCHEDULED"
+      : existing.status;
+
+  await db.session.update({
+    where: { id, userId },
+    data: {
+      clientId,
+      startsAt,
+      endsAt,
+      status: nextStatus,
+      ...(treatmentType ? { treatmentType } : {}),
+    },
+  });
+
+  if (nextStatus === "SCHEDULED") {
+    await rescheduleSessionReminders(id);
+  } else {
+    await cancelSessionReminders(id);
+  }
+
+  revalidatePath("/calendar");
+  revalidatePath("/dashboard");
+  revalidatePath(`/sessions/${id}`);
+  revalidatePath(`/clients/${clientId}`);
+  if (existing.clientId !== clientId) revalidatePath(`/clients/${existing.clientId}`);
+  return { saved: true };
+}
+
 export type SessionPaymentState = {
   error?: string;
   saved?: boolean;
