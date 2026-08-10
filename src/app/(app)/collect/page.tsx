@@ -20,7 +20,7 @@ export default async function CollectPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <header>
-        <h1 className="font-display text-3xl text-ink">אישור תשלום</h1>
+        <h1 className="font-display text-3xl text-ink">אישורי תשלום</h1>
         <p className="text-ink-muted mt-1 text-sm">
           חשבוניות עם יתרה פתוחה — בחרו חשבונית כדי לרשום תשלום שהתקבל ולהפיק
           קבלה.

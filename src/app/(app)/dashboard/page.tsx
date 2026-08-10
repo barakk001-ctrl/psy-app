@@ -129,7 +129,7 @@ export default async function DashboardPage() {
             <NotebookPen className="w-5 h-5" />
           </span>
           <span className="font-medium text-ink text-sm sm:text-base">
-            תיעוד פגישה
+            תיעוד פגישות
           </span>
         </Link>
         <Link
@@ -140,7 +140,7 @@ export default async function DashboardPage() {
             <Receipt className="w-5 h-5" />
           </span>
           <span className="font-medium text-ink text-sm sm:text-base">
-            אישור תשלום
+            אישורי תשלום
           </span>
         </Link>
       </section>
