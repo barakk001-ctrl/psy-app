@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { getMeetingTypeNames } from "@/lib/meeting-types";
+import { getMeetingTypeNames, getMeetingTypeColorMap } from "@/lib/meeting-types";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
 import { Button } from "@/components/ui/button";
 import { CalendarView } from "@/components/calendar/calendar-view";
@@ -20,7 +20,7 @@ export default async function CalendarPage() {
   const rangeEnd = new Date(now);
   rangeEnd.setDate(rangeEnd.getDate() + 180);
 
-  const [sessions, clients, meetingTypes] = await Promise.all([
+  const [sessions, clients, meetingTypes, typeColors] = await Promise.all([
     db.session.findMany({
       where: {
         userId,
@@ -38,6 +38,7 @@ export default async function CalendarPage() {
       select: { id: true, firstName: true, lastName: true },
     }),
     getMeetingTypeNames(userId),
+    getMeetingTypeColorMap(userId),
   ]);
 
   const events: EventInput[] = sessions.map((s) => ({
@@ -78,6 +79,7 @@ export default async function CalendarPage() {
           name: `${c.firstName} ${c.lastName}`,
         }))}
         meetingTypes={meetingTypes}
+        typeColors={typeColors}
       />
     </div>
   );

@@ -22,7 +22,7 @@ function parseClientForm(formData: FormData) {
     status: formData.get("status") ?? undefined,
     treatmentType: formData.get("treatmentType") ?? "טיפול פרטני",
     firstName: formData.get("firstName"),
-    lastName: formData.get("lastName"),
+    lastName: formData.get("lastName") ?? "",
     idNumber: formData.get("idNumber") ?? "",
     email: formData.get("email") ?? "",
     phone: formData.get("phone") ?? "",

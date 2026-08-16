@@ -94,11 +94,10 @@ export function ClientForm({
               )}
             </div>
             <div>
-              <Label htmlFor="lastName">שם משפחה *</Label>
+              <Label htmlFor="lastName">שם משפחה</Label>
               <Input
                 id="lastName"
                 name="lastName"
-                required
                 defaultValue={initial?.lastName ?? defaults?.lastName ?? ""}
                 invalid={!!fieldErr.lastName}
               />

@@ -95,12 +95,19 @@ export async function attachMorningNumberToSessionAction(
   const userId = await requireUserId();
   const sessionId = String(formData.get("sessionId") ?? "");
   const number = String(formData.get("number") ?? "").trim().slice(0, 30);
-  // "invoice" = חשבונית מס, "receipt" = קבלה — separate documents in Morning
-  const kind = formData.get("kind") === "receipt" ? "receipt" : "invoice";
+  // "invoice" = חשבונית מס, "receipt" = קבלה, "invoiceReceipt" = חשבונית
+  // מס-קבלה — a single combined document in Morning
+  const rawKind = formData.get("kind");
+  const kind =
+    rawKind === "receipt" || rawKind === "invoiceReceipt" ? rawKind : "invoice";
   if (!sessionId) return { error: "מזהה פגישה חסר" };
 
-  const numberField = kind === "receipt" ? "morningReceiptNumber" : "morningDocNumber";
-  const urlField = kind === "receipt" ? "morningReceiptUrl" : "morningDocUrl";
+  const FIELDS = {
+    invoice: ["morningDocNumber", "morningDocUrl"],
+    receipt: ["morningReceiptNumber", "morningReceiptUrl"],
+    invoiceReceipt: ["morningInvoiceReceiptNumber", "morningInvoiceReceiptUrl"],
+  } as const;
+  const [numberField, urlField] = FIELDS[kind];
 
   const session = await db.session.findFirst({
     where: { id: sessionId, userId },

@@ -305,6 +305,12 @@ export default async function ClientDetailPage({
                               <span dir="ltr">{s.morningDocNumber}</span>
                             </>
                           )}
+                          {!s.invoiceItem?.invoice && s.morningInvoiceReceiptNumber && (
+                            <>
+                              {" · "}חשבונית מס-קבלה{" "}
+                              <span dir="ltr">{s.morningInvoiceReceiptNumber}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                       {s.rate && (

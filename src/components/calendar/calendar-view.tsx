@@ -18,6 +18,8 @@ type Props = {
   events: EventInput[];
   clients: { id: string; name: string }[];
   meetingTypes: string[];
+  // Meeting-type label → color chosen in settings; scheduled events use it
+  typeColors?: Record<string, string>;
 };
 
 // Color sessions by status — sage for scheduled, muted for past, terracotta for problems.
@@ -40,18 +42,28 @@ function useIsMobile() {
   return isMobile;
 }
 
-export function CalendarView({ events, clients, meetingTypes }: Props) {
+export function CalendarView({ events, clients, meetingTypes, typeColors }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const isMobile = useIsMobile();
   const [quickEdit, setQuickEdit] = useState<QuickEditData | null>(null);
 
-  const styledEvents: EventInput[] = events.map((e) => ({
-    ...e,
-    backgroundColor: STATUS_BG[(e.extendedProps?.status as string) ?? "SCHEDULED"],
-    borderColor: STATUS_BG[(e.extendedProps?.status as string) ?? "SCHEDULED"],
-    textColor: "#FDFBF7",
-  }));
+  const styledEvents: EventInput[] = events.map((e) => {
+    const status = (e.extendedProps?.status as string) ?? "SCHEDULED";
+    // Scheduled events take the meeting type's color; other statuses keep
+    // their signal colors (completed/cancelled/no-show).
+    const typeColor =
+      status === "SCHEDULED"
+        ? typeColors?.[e.extendedProps?.treatmentType as string]
+        : undefined;
+    const bg = typeColor ?? STATUS_BG[status];
+    return {
+      ...e,
+      backgroundColor: bg,
+      borderColor: bg,
+      textColor: "#FDFBF7",
+    };
+  });
 
   return (
     <div className="rounded-2xl bg-white/85 backdrop-blur-sm border border-cream-200/80 shadow-soft p-2 sm:p-4 calendar-shell">

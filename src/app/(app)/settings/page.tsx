@@ -37,7 +37,7 @@ export default async function SettingsPage() {
   const meetingTypes = await db.meetingType.findMany({
     where: { userId },
     orderBy: [{ position: "asc" }, { name: "asc" }],
-    select: { id: true, name: true },
+    select: { id: true, name: true, color: true },
   });
 
   const morningConnected = !!(user.morningApiKeyId && user.morningApiSecret);

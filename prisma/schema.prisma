@@ -113,6 +113,7 @@ model MeetingType {
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   name     String
   position Int    @default(0)
+  color    String?  // hex color shown on calendar events of this type
 
   @@unique([userId, name])
 }
@@ -149,6 +150,8 @@ model Session {
   morningDocUrl        String?
   morningReceiptNumber String?  // קבלה
   morningReceiptUrl    String?
+  morningInvoiceReceiptNumber String?  // חשבונית מס-קבלה (מסמך משולב)
+  morningInvoiceReceiptUrl    String?
 
   // Quick per-meeting payment record (Morning-first workflow, no app invoice)
   paymentStatus  String?         // PAID | UNPAID | EXEMPT (ללא תשלום)

@@ -3,7 +3,8 @@ import { z } from "zod";
 
 export const clientSchema = z.object({
   firstName: z.string().min(1, "נדרש שם פרטי").max(80),
-  lastName: z.string().min(1, "נדרש שם משפחה").max(80),
+  // Optional — some "clients" are institutions with a single name
+  lastName: z.string().trim().max(80).default(""),
   idNumber: z
     .string()
     .trim()

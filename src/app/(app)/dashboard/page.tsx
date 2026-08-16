@@ -6,6 +6,7 @@ import { TodoCard } from "@/components/dashboard/todo-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, formatCurrency } from "@/lib/format";
+import { fromZonedDateTimeLocal, toZonedDateTimeLocal } from "@/lib/timezone";
 import {
   Calendar,
   UserPlus,
@@ -23,13 +24,27 @@ export default async function DashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  const [activeClients, upcomingSessions, monthPayments, outstanding, todos, monthExpected, monthSessionPaid] = await Promise.all([
+  // Today's bounds by the clinic's wall clock (server runs in UTC)
+  const todayLocal = toZonedDateTimeLocal(now).slice(0, 10);
+  const [ty, tm, td] = todayLocal.split("-").map(Number);
+  const tomorrowLocal = new Date(Date.UTC(ty, tm - 1, td + 1))
+    .toISOString()
+    .slice(0, 10);
+  const dayStart = fromZonedDateTimeLocal(`${todayLocal}T00:00`);
+  const dayEnd = fromZonedDateTimeLocal(`${tomorrowLocal}T00:00`);
+
+  const [activeClients, todaySessions, monthPayments, outstanding, todos, monthExpected, monthSessionPaid] = await Promise.all([
     db.client.count({ where: { userId, status: "ACTIVE" } }),
     db.session.findMany({
-      // endsAt ≥ now so a meeting that's happening right now stays in the list
-      where: { userId, endsAt: { gte: now }, status: "SCHEDULED" },
+      // All of today's meetings — the ones that already happened included,
+      // so payments and notes can be caught up from here
+      where: {
+        userId,
+        startsAt: { gte: dayStart, lt: dayEnd },
+        status: { not: "CANCELLED" },
+      },
       orderBy: { startsAt: "asc" },
-      take: 5,
+      take: 20,
       include: {
         client: { select: { firstName: true, lastName: true } },
         invoiceItem: { select: { invoiceId: true } },
@@ -84,7 +99,8 @@ export default async function DashboardPage() {
   const nowMs = now.getTime();
   const isInProgress = (s: { startsAt: Date; endsAt: Date }) =>
     s.startsAt.getTime() <= nowMs && s.endsAt.getTime() >= nowMs;
-  const nextSessionId = upcomingSessions.find((s) => !isInProgress(s))?.id;
+  const isOver = (s: { endsAt: Date }) => s.endsAt.getTime() < nowMs;
+  const nextSessionId = todaySessions.find((s) => s.startsAt.getTime() > nowMs)?.id;
 
   return (
     <div className="space-y-8">
@@ -133,7 +149,7 @@ export default async function DashboardPage() {
           value={formatCurrency(outstandingAmount)}
           hint="חשבוניות שטרם שולמו במלואן"
         />
-        <StatCard label="פגישות קרובות" value={upcomingSessions.length} hint="ב-5 הפגישות הבאות" />
+        <StatCard label="פגישות היום" value={todaySessions.length} hint="ביומן היום" />
       </section>
 
       <section className="grid grid-cols-2 gap-4">
@@ -165,28 +181,28 @@ export default async function DashboardPage() {
         <Card className="lg:col-span-2">
           <CardHeader className="flex items-start justify-between">
             <div>
-              <CardTitle>הפגישות הקרובות</CardTitle>
-              <CardDescription>5 הפגישות הבאות ביומן</CardDescription>
+              <CardTitle>הפגישות של היום</CardTitle>
+              <CardDescription>כל הפגישות ביומן היום</CardDescription>
             </div>
             <Link href="/calendar" className="text-xs text-sage-600 hover:text-sage-700">
               ליומן המלא ←
             </Link>
           </CardHeader>
           <CardContent className="p-0">
-            {upcomingSessions.length === 0 ? (
+            {todaySessions.length === 0 ? (
               <div className="p-12 text-center">
                 <Calendar className="w-10 h-10 mx-auto text-ink-subtle mb-3" strokeWidth={1.5} />
-                <p className="text-ink-muted">אין פגישות מתוכננות</p>
+                <p className="text-ink-muted">אין פגישות ביומן היום</p>
                 <Link
                   href="/calendar"
                   className="text-sm text-sage-600 hover:text-sage-700 mt-2 inline-block"
                 >
-                  קביעת פגישה ראשונה
+                  קביעת פגישה
                 </Link>
               </div>
             ) : (
               <ul className="divide-y divide-cream-200">
-                {upcomingSessions.map((s) => {
+                {todaySessions.map((s) => {
                   const inProgress = isInProgress(s);
                   return (
                     <li
@@ -209,6 +225,11 @@ export default async function DashboardPage() {
                           {!inProgress && s.id === nextSessionId && (
                             <span className="rounded-full border border-cream-300 bg-cream-100 px-2 py-0.5 text-[11px] text-ink-muted">
                               הפגישה הבאה
+                            </span>
+                          )}
+                          {isOver(s) && (
+                            <span className="rounded-full border border-cream-300 bg-cream-100 px-2 py-0.5 text-[11px] text-ink-muted">
+                              הסתיימה
                             </span>
                           )}
                         </div>

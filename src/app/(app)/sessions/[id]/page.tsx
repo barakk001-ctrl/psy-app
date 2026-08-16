@@ -173,7 +173,7 @@ export default async function SessionDetailPage({
           />
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6" id="billing">
         <SessionBillingCard
           sessionId={sess.id}
           rate={sess.rate ? sess.rate.toString() : null}
@@ -188,6 +188,8 @@ export default async function SessionDetailPage({
             invoiceUrl: sess.morningDocUrl,
             receiptNumber: sess.morningReceiptNumber,
             receiptUrl: sess.morningReceiptUrl,
+            invoiceReceiptNumber: sess.morningInvoiceReceiptNumber,
+            invoiceReceiptUrl: sess.morningInvoiceReceiptUrl,
           }}
         />
         <Card>

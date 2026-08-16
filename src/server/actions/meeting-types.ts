@@ -31,6 +31,19 @@ export async function addMeetingTypeAction(formData: FormData) {
   revalidatePath("/settings");
 }
 
+export async function setMeetingTypeColorAction(formData: FormData) {
+  const userId = await requireUserId();
+  const id = String(formData.get("id") ?? "");
+  const raw = String(formData.get("color") ?? "");
+  // Empty clears back to the default calendar color
+  const color = /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : null;
+  if (!id) return;
+
+  await db.meetingType.updateMany({ where: { id, userId }, data: { color } });
+  revalidatePath("/settings");
+  revalidatePath("/calendar");
+}
+
 export async function deleteMeetingTypeAction(formData: FormData) {
   const userId = await requireUserId();
   const id = String(formData.get("id") ?? "");

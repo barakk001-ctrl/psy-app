@@ -24,7 +24,7 @@ function MorningNumberRow({
   initialUrl,
 }: {
   sessionId: string;
-  kind: "invoice" | "receipt";
+  kind: "invoice" | "receipt" | "invoiceReceipt";
   label: string;
   initialNumber: string | null;
   initialUrl: string | null;
@@ -97,6 +97,8 @@ export function SessionBillingCard({
     invoiceUrl: string | null;
     receiptNumber: string | null;
     receiptUrl: string | null;
+    invoiceReceiptNumber: string | null;
+    invoiceReceiptUrl: string | null;
   };
 }) {
   const [state, formAction, pending] = useActionState<SessionPaymentState, FormData>(
@@ -205,9 +207,16 @@ export function SessionBillingCard({
             initialNumber={morning.receiptNumber}
             initialUrl={morning.receiptUrl}
           />
+          <MorningNumberRow
+            sessionId={sessionId}
+            kind="invoiceReceipt"
+            label="מספר חשבונית מס-קבלה (morning)"
+            initialNumber={morning.invoiceReceiptNumber}
+            initialUrl={morning.invoiceReceiptUrl}
+          />
           <p className="text-xs text-ink-subtle">
-            מפיקים ב-morning ורושמים כאן רק את המספרים — אפשר חשבונית מס קודם
-            וקבלה אחר כך.
+            מפיקים ב-morning ורושמים כאן רק את המספרים — חשבונית מס וקבלה
+            בנפרד, או חשבונית מס-קבלה מאוחדת.
           </p>
         </div>
       </CardContent>

@@ -16,3 +16,14 @@ export async function getMeetingTypeNames(userId: string): Promise<string[]> {
   });
   return types.length > 0 ? types.map((t) => t.name) : DEFAULT_MEETING_TYPES;
 }
+
+/** Meeting-type label → calendar color, for types that have one assigned. */
+export async function getMeetingTypeColorMap(
+  userId: string,
+): Promise<Record<string, string>> {
+  const types = await db.meetingType.findMany({
+    where: { userId, color: { not: null } },
+    select: { name: true, color: true },
+  });
+  return Object.fromEntries(types.map((t) => [t.name, t.color!]));
+}
