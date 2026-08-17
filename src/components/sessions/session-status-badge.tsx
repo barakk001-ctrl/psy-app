@@ -4,7 +4,7 @@ const STATUS_LABELS = {
   SCHEDULED: "מתוכננת",
   COMPLETED: "התקיימה",
   CANCELLED: "בוטלה",
-  NO_SHOW: "לא הופיע/ה",
+  NO_SHOW: "לא התקיימה",
 } as const;
 
 const STATUS_STYLES = {

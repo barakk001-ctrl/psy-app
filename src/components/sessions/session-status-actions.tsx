@@ -24,7 +24,7 @@ export function SessionStatusActions({
           <input type="hidden" name="id" value={sessionId} />
           <input type="hidden" name="status" value="NO_SHOW" />
           <Button type="submit" size="sm" variant="ghost">
-            לא הופיע/ה
+            סמן כלא התקיימה
           </Button>
         </form>
       )}

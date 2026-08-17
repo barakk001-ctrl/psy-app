@@ -284,7 +284,7 @@ export default async function ClientDetailPage({
                           {s.status === "COMPLETED" && "התקיימה"}
                           {s.status === "SCHEDULED" && "מתוכננת"}
                           {s.status === "CANCELLED" && "בוטלה"}
-                          {s.status === "NO_SHOW" && "לא הופיע/ה"}
+                          {s.status === "NO_SHOW" && "לא התקיימה"}
                           {s.invoiceItem?.invoice && (
                             <>
                               {" · "}חשבונית #
