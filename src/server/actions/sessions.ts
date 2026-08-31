@@ -15,7 +15,7 @@ import {
   seriesSlots,
   type Slot,
 } from "@/lib/recurrence";
-import { fromZonedDateTimeLocal } from "@/lib/timezone";
+import { fromZonedDateTimeLocal, toZonedDateTimeLocal } from "@/lib/timezone";
 import { encryptNote } from "@/lib/crypto";
 import {
   createSessionSchema,
@@ -382,6 +382,7 @@ export async function quickEditSessionAction(
   const treatmentType = String(formData.get("treatmentType") ?? "").trim().slice(0, 60);
   const cancelled = formData.get("cancelled") === "on";
   const allowOverlap = formData.get("allowOverlap") === "on";
+  const applyScope = formData.get("applyScope") === "future" ? "future" : "single";
 
   if (!id || !clientId) return { error: "פרטים חסרים" };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "תאריך לא תקין" };
@@ -392,7 +393,14 @@ export async function quickEditSessionAction(
 
   const existing = await db.session.findFirst({
     where: { id, userId },
-    select: { id: true, status: true, startsAt: true, clientId: true },
+    select: {
+      id: true,
+      status: true,
+      startsAt: true,
+      clientId: true,
+      parentSessionId: true,
+      recurrenceRule: true,
+    },
   });
   if (!existing) return { error: "פגישה לא נמצאה" };
 
@@ -405,11 +413,53 @@ export async function quickEditSessionAction(
   const startsAt = fromZonedDateTimeLocal(`${date}T${startTime}`);
   const endsAt = fromZonedDateTimeLocal(`${date}T${endTime}`);
 
-  if (!cancelled && !allowOverlap) {
-    const overlaps = await findOverlaps(userId, [{ startsAt, endsAt }], [id]);
-    if (overlaps.length > 0) {
-      const state = overlapError(overlaps);
-      return { error: state?.error, conflict: true };
+  // "Apply to all future": shift every later SCHEDULED session in the series
+  // to the new start/end times — and by the same number of days, if the date
+  // moved (e.g. the standing Tuesday 9:00 slot becomes Wednesday 9:30).
+  const inSeries = !!(existing.parentSessionId || existing.recurrenceRule);
+  let futureUpdates: { id: string; startsAt: Date; endsAt: Date }[] = [];
+  if (applyScope === "future" && inSeries) {
+    const rootId = existing.parentSessionId ?? existing.id;
+    const oldDate = toZonedDateTimeLocal(existing.startsAt).slice(0, 10);
+    const deltaDays = Math.round(
+      (Date.parse(`${date}T00:00Z`) - Date.parse(`${oldDate}T00:00Z`)) / 86400000,
+    );
+    const laterInSeries = await db.session.findMany({
+      where: {
+        userId,
+        status: "SCHEDULED",
+        startsAt: { gt: existing.startsAt },
+        OR: [{ id: rootId }, { parentSessionId: rootId }],
+        NOT: { id },
+      },
+      select: { id: true, startsAt: true },
+      orderBy: { startsAt: "asc" },
+    });
+    futureUpdates = laterInSeries.map((s) => {
+      const ownDate = toZonedDateTimeLocal(s.startsAt).slice(0, 10);
+      const shifted = new Date(Date.parse(`${ownDate}T00:00Z`) + deltaDays * 86400000)
+        .toISOString()
+        .slice(0, 10);
+      return {
+        id: s.id,
+        startsAt: fromZonedDateTimeLocal(`${shifted}T${startTime}`),
+        endsAt: fromZonedDateTimeLocal(`${shifted}T${endTime}`),
+      };
+    });
+  }
+
+  if (!allowOverlap) {
+    const slots = [
+      ...(cancelled ? [] : [{ startsAt, endsAt }]),
+      ...futureUpdates.map((u) => ({ startsAt: u.startsAt, endsAt: u.endsAt })),
+    ];
+    const excludeIds = [id, ...futureUpdates.map((u) => u.id)];
+    if (slots.length > 0) {
+      const overlaps = await findOverlaps(userId, slots, excludeIds);
+      if (overlaps.length > 0) {
+        const state = overlapError(overlaps);
+        return { error: state?.error, conflict: true };
+      }
     }
   }
 
@@ -419,21 +469,32 @@ export async function quickEditSessionAction(
       ? "SCHEDULED"
       : existing.status;
 
-  await db.session.update({
-    where: { id, userId },
-    data: {
-      clientId,
-      startsAt,
-      endsAt,
-      status: nextStatus,
-      ...(treatmentType ? { treatmentType } : {}),
-    },
-  });
+  await db.$transaction([
+    db.session.update({
+      where: { id, userId },
+      data: {
+        clientId,
+        startsAt,
+        endsAt,
+        status: nextStatus,
+        ...(treatmentType ? { treatmentType } : {}),
+      },
+    }),
+    ...futureUpdates.map((u) =>
+      db.session.update({
+        where: { id: u.id, userId },
+        data: { startsAt: u.startsAt, endsAt: u.endsAt },
+      }),
+    ),
+  ]);
 
   if (nextStatus === "SCHEDULED") {
     await rescheduleSessionReminders(id);
   } else {
     await cancelSessionReminders(id);
+  }
+  for (const u of futureUpdates) {
+    await rescheduleSessionReminders(u.id);
   }
 
   revalidatePath("/calendar");

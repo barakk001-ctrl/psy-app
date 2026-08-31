@@ -53,6 +53,7 @@ export default async function CalendarPage() {
       treatmentType: s.treatmentType,
       startLocal: toZonedDateTimeLocal(s.startsAt),
       endLocal: toZonedDateTimeLocal(s.endsAt),
+      inSeries: !!(s.parentSessionId || s.recurrenceRule),
     },
   }));
 

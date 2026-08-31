@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { ClinicHero } from "@/components/dashboard/clinic-hero";
 import { TodoCard } from "@/components/dashboard/todo-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,8 +105,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+      <header className="relative overflow-hidden rounded-3xl border border-cream-200/80 bg-gradient-to-l from-sage-50 via-cream-100 to-cream-50 shadow-soft">
+        {/* Clinic-room illustration sits at the far (physical-left) edge in RTL */}
+        <ClinicHero className="pointer-events-none select-none absolute inset-y-2 left-4 hidden h-[calc(100%-1rem)] w-auto sm:block" />
+        <div className="relative px-6 py-7 sm:px-8 sm:max-w-[60%]">
           <p className="text-sm text-ink-muted">
             {new Intl.DateTimeFormat("he-IL", {
               weekday: "long",
@@ -117,18 +120,19 @@ export default async function DashboardPage() {
           <h1 className="font-display text-4xl text-ink mt-1">
             שלום, {session!.user.name?.split(" ")[0]}
           </h1>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/clients/new">
-            <Button variant="secondary" size="sm">
-              <UserPlus className="w-4 h-4" /> לקוח חדש
-            </Button>
-          </Link>
-          <Link href="/calendar">
-            <Button size="sm">
-              <Calendar className="w-4 h-4" /> פגישה חדשה
-            </Button>
-          </Link>
+          <p className="text-sm text-ink-muted mt-1.5">ברוכה הבאה למרפאה 🌿</p>
+          <div className="flex flex-wrap gap-2 mt-5">
+            <Link href="/clients/new">
+              <Button variant="secondary" size="sm">
+                <UserPlus className="w-4 h-4" /> לקוח חדש
+              </Button>
+            </Link>
+            <Link href="/calendar">
+              <Button size="sm">
+                <Calendar className="w-4 h-4" /> פגישה חדשה
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 

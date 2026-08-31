@@ -140,6 +140,7 @@ export function CalendarView({ events, clients, meetingTypes, typeColors }: Prop
             status?: string;
             startLocal?: string;
             endLocal?: string;
+            inSeries?: boolean;
           };
           // Legacy events without the quick-edit payload fall back to the page
           if (!p.startLocal || !p.endLocal || !p.clientId) {
@@ -155,6 +156,7 @@ export function CalendarView({ events, clients, meetingTypes, typeColors }: Prop
             endTime: p.endLocal.slice(11, 16),
             treatmentType: p.treatmentType ?? "",
             cancelled: p.status === "CANCELLED",
+            inSeries: p.inSeries ?? false,
           });
         }}
         select={(info) => {

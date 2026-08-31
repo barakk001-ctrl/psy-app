@@ -23,6 +23,8 @@ export type QuickEditData = {
   endTime: string; // HH:MM
   treatmentType: string;
   cancelled: boolean;
+  /** part of a recurring series — offers "apply to all future" on time changes */
+  inSeries: boolean;
 };
 
 export function QuickEditDialog({
@@ -123,6 +125,37 @@ export function QuickEditDialog({
               />
             </div>
           </div>
+
+          {data.inSeries && (
+            <div className="rounded-xl border border-cream-300 bg-white/60 px-4 py-3 space-y-2">
+              <p className="text-sm font-medium text-ink-soft">
+                על אילו פגישות להחיל את שינוי המועד?
+              </p>
+              <label className="flex items-center gap-2 text-sm text-ink-soft cursor-pointer">
+                <input
+                  type="radio"
+                  name="applyScope"
+                  value="single"
+                  defaultChecked
+                  className="h-4 w-4 accent-sage-600"
+                />
+                רק הפגישה הזו
+              </label>
+              <label className="flex items-center gap-2 text-sm text-ink-soft cursor-pointer">
+                <input
+                  type="radio"
+                  name="applyScope"
+                  value="future"
+                  className="h-4 w-4 accent-sage-600"
+                />
+                הפגישה הזו וכל הפגישות הבאות בסדרה
+              </label>
+              <p className="text-xs text-ink-subtle">
+                למשל: פגישה קבועה שעוברת מ-9:00 ל-9:30 — כל הפגישות הבאות יעברו
+                לשעה החדשה (וגם ליום אחר בשבוע, אם שיניתם תאריך).
+              </p>
+            </div>
+          )}
 
           <div>
             <Label htmlFor="qeType">סוג המפגש</Label>
