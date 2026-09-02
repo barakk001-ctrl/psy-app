@@ -49,6 +49,7 @@ export default async function DashboardPage() {
       include: {
         client: { select: { firstName: true, lastName: true } },
         invoiceItem: { select: { invoiceId: true } },
+        note: { select: { id: true } },
       },
     }),
     db.payment.aggregate({
@@ -107,7 +108,7 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       <header className="relative overflow-hidden rounded-3xl border border-cream-200/80 bg-gradient-to-l from-sage-50 via-cream-100 to-cream-50 shadow-soft">
         {/* Clinic-room illustration sits at the far (physical-left) edge in RTL */}
-        <ClinicHero className="pointer-events-none select-none absolute inset-y-2 left-4 hidden h-[calc(100%-1rem)] w-auto sm:block" />
+        <ClinicHero className="pointer-events-none select-none absolute inset-y-2 left-4 h-[calc(100%-1rem)] w-auto opacity-30 sm:opacity-100" />
         <div className="relative px-6 py-7 sm:px-8 sm:max-w-[60%]">
           <p className="text-sm text-ink-muted">
             {new Intl.DateTimeFormat("he-IL", {
@@ -208,6 +209,9 @@ export default async function DashboardPage() {
               <ul className="divide-y divide-cream-200">
                 {todaySessions.map((s) => {
                   const inProgress = isInProgress(s);
+                  const started = s.startsAt.getTime() <= nowMs;
+                  const documented = !!s.note;
+                  const paymentDone = !!s.paymentStatus || !!s.invoiceItem;
                   return (
                     <li
                       key={s.id}
@@ -242,13 +246,20 @@ export default async function DashboardPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Bold status: green = done, terracotta = missing (past meetings only) */}
                         <Link
                           href={`/sessions/${s.id}`}
-                          title="תיעוד פגישה"
-                          aria-label="תיעוד פגישה"
-                          className="w-8 h-8 grid place-items-center rounded-lg border border-cream-300 bg-white/70 text-ink-muted hover:text-sage-700 hover:border-sage-300 transition-colors"
+                          title={documented ? "הפגישה תועדה" : "חסר תיעוד"}
+                          aria-label={documented ? "הפגישה תועדה" : "חסר תיעוד"}
+                          className={`w-8 h-8 grid place-items-center rounded-lg border transition-colors ${
+                            !started
+                              ? "border-cream-300 bg-white/70 text-ink-muted hover:text-sage-700 hover:border-sage-300"
+                              : documented
+                                ? "border-sage-600 bg-sage-600 text-cream-50 shadow-glow"
+                                : "border-terracotta-500/50 bg-terracotta-500/10 text-terracotta-600 font-bold"
+                          }`}
                         >
-                          <NotebookPen className="w-4 h-4" />
+                          <NotebookPen className="w-4 h-4" strokeWidth={started && !documented ? 2.5 : 2} />
                         </Link>
                         <Link
                           href={
@@ -256,11 +267,17 @@ export default async function DashboardPage() {
                               ? `/invoices/${s.invoiceItem.invoiceId}`
                               : `/sessions/${s.id}#billing`
                           }
-                          title="אישור תשלום"
-                          aria-label="אישור תשלום"
-                          className="w-8 h-8 grid place-items-center rounded-lg border border-cream-300 bg-white/70 text-ink-muted hover:text-sage-700 hover:border-sage-300 transition-colors"
+                          title={paymentDone ? "התשלום עודכן" : "חסר עדכון תשלום"}
+                          aria-label={paymentDone ? "התשלום עודכן" : "חסר עדכון תשלום"}
+                          className={`w-8 h-8 grid place-items-center rounded-lg border transition-colors ${
+                            !started
+                              ? "border-cream-300 bg-white/70 text-ink-muted hover:text-sage-700 hover:border-sage-300"
+                              : paymentDone
+                                ? "border-sage-600 bg-sage-600 text-cream-50 shadow-glow"
+                                : "border-terracotta-500/50 bg-terracotta-500/10 text-terracotta-600 font-bold"
+                          }`}
                         >
-                          <Receipt className="w-4 h-4" />
+                          <Receipt className="w-4 h-4" strokeWidth={started && !paymentDone ? 2.5 : 2} />
                         </Link>
                         <Link
                           href={`/sessions/${s.id}`}

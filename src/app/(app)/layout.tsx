@@ -4,6 +4,7 @@ import { DesktopSidebar } from "@/components/nav/desktop-sidebar";
 import { MobileTopBar } from "@/components/nav/mobile-top-bar";
 import { MobileTabBar } from "@/components/nav/mobile-tab-bar";
 import { BiometricLockOverlay } from "@/components/security/biometric-lock-overlay";
+import { ClinicBanner } from "@/components/layout/clinic-banner";
 
 export default async function AppLayout({
   children,
@@ -22,6 +23,7 @@ export default async function AppLayout({
         <main className="flex-1">
           {/* pb-28 on mobile so content isn't hidden behind the floating tab bar */}
           <div className="container-page py-6 lg:py-8 pb-28 lg:pb-8 animate-page">
+            <ClinicBanner />
             {children}
           </div>
         </main>

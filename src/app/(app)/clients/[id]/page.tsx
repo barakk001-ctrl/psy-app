@@ -7,6 +7,7 @@ import { decryptNote } from "@/lib/crypto";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArchiveButton } from "@/components/clients/archive-button";
+import { SessionFlags } from "@/components/sessions/session-flags";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 
 export default async function ClientDetailPage({
@@ -32,6 +33,7 @@ export default async function ClientDetailPage({
               },
             },
           },
+          note: { select: { id: true } },
         },
       },
       morningDocuments: {
@@ -279,7 +281,16 @@ export default async function ClientDetailPage({
                       className="px-5 py-3 flex items-center justify-between hover:bg-cream-100/60 transition-colors"
                     >
                       <div>
-                        <div className="text-sm text-ink">{formatDateTime(s.startsAt)}</div>
+                        <div className="text-sm text-ink flex items-center gap-2">
+                          {formatDateTime(s.startsAt)}
+                          {s.startsAt.getTime() <= Date.now() &&
+                            s.status !== "CANCELLED" && (
+                              <SessionFlags
+                                documented={!!s.note}
+                                paymentDone={!!s.paymentStatus || !!s.invoiceItem}
+                              />
+                            )}
+                        </div>
                         <div className="text-xs text-ink-muted mt-0.5">
                           {s.status === "COMPLETED" && "התקיימה"}
                           {s.status === "SCHEDULED" && "מתוכננת"}
