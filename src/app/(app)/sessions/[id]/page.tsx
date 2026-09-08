@@ -13,6 +13,7 @@ import {
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { decryptNote } from "@/lib/crypto";
+import { logAudit } from "@/lib/audit";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime, formatTime, formatCurrency } from "@/lib/format";
@@ -96,6 +97,7 @@ export default async function SessionDetailPage({
         contentIv: sess.note.contentIv,
         contentTag: sess.note.contentTag,
       });
+      await logAudit(userId, "NOTE_VIEW", { sessionId: sess.id, clientId: sess.clientId });
     } catch (err) {
       console.error("Failed to decrypt note", err);
       initialNote = "";

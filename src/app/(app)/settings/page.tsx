@@ -5,6 +5,7 @@ import { MorningSettingsForm } from "@/components/settings/morning-settings-form
 import { BiometricSettings } from "@/components/settings/biometric-settings";
 import { InboxSettings } from "@/components/settings/inbox-settings";
 import { MeetingTypesCard } from "@/components/settings/meeting-types-card";
+import { AuditLogCard } from "@/components/settings/audit-log-card";
 import { TwoFactorSettings } from "@/components/settings/two-factor-settings";
 
 export default async function SettingsPage() {
@@ -39,6 +40,30 @@ export default async function SettingsPage() {
     orderBy: [{ position: "asc" }, { name: "asc" }],
     select: { id: true, name: true, color: true },
   });
+
+  const auditRows = await db.auditLog.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+  });
+  const auditClientIds = [...new Set(auditRows.map((r) => r.clientId).filter(Boolean))] as string[];
+  const auditClients = auditClientIds.length
+    ? await db.client.findMany({
+        where: { id: { in: auditClientIds }, userId },
+        select: { id: true, firstName: true, lastName: true },
+      })
+    : [];
+  const clientNames = Object.fromEntries(
+    auditClients.map((c) => [c.id, `${c.firstName} ${c.lastName}`.trim()]),
+  );
+  const auditEntries = auditRows.map((r) => ({
+    id: r.id,
+    action: r.action,
+    createdAt: r.createdAt,
+    sessionId: r.sessionId,
+    clientId: r.clientId,
+    clientName: r.clientId ? (clientNames[r.clientId] ?? "(לקוח שנמחק)") : null,
+  }));
 
   const morningConnected = !!(user.morningApiKeyId && user.morningApiSecret);
   const keyIdMasked = user.morningApiKeyId
@@ -78,6 +103,8 @@ export default async function SettingsPage() {
       />
 
       <BiometricSettings userEmail={user.email} userName={user.name} />
+
+      <AuditLogCard entries={auditEntries} />
 
       <MorningSettingsForm
         connected={morningConnected}

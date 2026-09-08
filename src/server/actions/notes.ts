@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { decryptNote, encryptNote } from "@/lib/crypto";
+import { logAudit } from "@/lib/audit";
 import { noteSchema } from "@/server/validators/session";
 
 async function requireUserId(): Promise<string> {
@@ -42,7 +43,10 @@ export async function saveNoteAction(
 
   // Empty content → delete any existing note
   if (parsed.data.content.trim() === "") {
-    await db.sessionNote.deleteMany({ where: { sessionId: session.id } });
+    const deleted = await db.sessionNote.deleteMany({ where: { sessionId: session.id } });
+    if (deleted.count > 0) {
+      await logAudit(userId, "NOTE_DELETE", { sessionId: session.id, clientId: session.clientId });
+    }
     revalidatePath(`/sessions/${session.id}`);
     return { saved: true };
   }
@@ -58,6 +62,7 @@ export async function saveNoteAction(
     },
     update: encrypted,
   });
+  await logAudit(userId, "NOTE_SAVE", { sessionId: session.id, clientId: session.clientId });
 
   revalidatePath(`/sessions/${session.id}`);
   return { saved: true };
@@ -102,6 +107,7 @@ export async function appendNoteToSessionAction(
     create: { sessionId: session.id, clientId: session.clientId, ...encrypted },
     update: encrypted,
   });
+  await logAudit(userId, "NOTE_APPEND", { sessionId: session.id, clientId: session.clientId });
 
   revalidatePath(`/sessions/${session.id}`);
   return { ok: true };

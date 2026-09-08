@@ -4,6 +4,7 @@ import { ChevronLeft, Mail, Phone, MapPin, Calendar as CalIcon, Pencil } from "l
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { decryptNote } from "@/lib/crypto";
+import { logAudit } from "@/lib/audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArchiveButton } from "@/components/clients/archive-button";
@@ -88,6 +89,10 @@ export default async function ClientDetailPage({
     }
     return { id: s.id, startsAt: s.startsAt, cancelled: s.status === "CANCELLED", text };
   });
+  // One entry per record view, not per note — the feed is a single act of access
+  if (noteFeed.some((n) => n.text)) {
+    await logAudit(userId, "RECORD_VIEW", { clientId: id });
+  }
 
   return (
     <div className="space-y-8 max-w-5xl">

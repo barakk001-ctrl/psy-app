@@ -118,6 +118,20 @@ model MeetingType {
   @@unique([userId, name])
 }
 
+// Access log for clinical content (viewing/saving/deleting note records).
+// Deliberately no FK relations: audit entries must survive deletion of the
+// things they describe.
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // NOTE_VIEW | RECORD_VIEW | NOTE_SAVE | NOTE_DELETE | NOTE_APPEND
+  sessionId String?
+  clientId  String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
 enum ClientStatus {
   ACTIVE
   INACTIVE
