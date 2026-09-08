@@ -1,6 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 
-const PUBLIC_PATHS = ["/login", "/register", "/forgot-password", "/reset-password"];
+const PUBLIC_PATHS = ["/login", "/register", "/forgot-password", "/reset-password", "/agreement"];
 
 export default {
   providers: [], // real providers added in auth.ts (Node runtime only)
@@ -12,6 +12,10 @@ export default {
       const isLoggedIn = !!auth?.user;
       const path = request.nextUrl.pathname;
       const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
+
+      // The agreement text is readable by everyone — guests during
+      // registration and signed-in users during re-acceptance.
+      if (path === "/agreement") return true;
 
       if (isPublic) {
         if (isLoggedIn) {

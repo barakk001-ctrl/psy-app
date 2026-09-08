@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { encryptSecret } from "@/lib/crypto";
+import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { getMorningCredentials, testMorningConnection } from "@/lib/morning";
 import { businessInfoSchema } from "@/server/validators/settings";
 
@@ -19,6 +20,16 @@ export type SettingsFormState = {
   fieldErrors?: Record<string, string[]>;
   saved?: boolean;
 } | null;
+
+/** Records click-acceptance of the current data-holding agreement version. */
+export async function acceptAgreementAction() {
+  const userId = await requireUserId();
+  await db.user.update({
+    where: { id: userId },
+    data: { agreementVersion: AGREEMENT_VERSION, agreementAcceptedAt: new Date() },
+  });
+  revalidatePath("/dashboard");
+}
 
 export async function updateBusinessInfoAction(
   _: SettingsFormState,

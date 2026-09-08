@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { db } from "@/lib/db";
+import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { rateLimit } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email";
 import { buildResetEmail } from "@/lib/reset-email";
@@ -119,6 +120,14 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
     };
   }
 
+  // The data-holding agreement is a precondition for holding any clinical data
+  if (formData.get("agreement") !== "on") {
+    return {
+      error: "יש לאשר את הסכם החזקת המידע כדי להירשם",
+      fieldErrors: { agreement: ["נדרש אישור ההסכם"] },
+    };
+  }
+
   const email = parsed.data.email.toLowerCase();
 
   const ip = await clientIp();
@@ -142,6 +151,8 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
       email,
       name: parsed.data.name,
       hashedPassword,
+      agreementVersion: AGREEMENT_VERSION,
+      agreementAcceptedAt: new Date(),
     },
   });
 

@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ClinicHero } from "@/components/dashboard/clinic-hero";
+import { AgreementBanner } from "@/components/dashboard/agreement-banner";
+import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { TodoCard } from "@/components/dashboard/todo-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,7 +36,7 @@ export default async function DashboardPage() {
   const dayStart = fromZonedDateTimeLocal(`${todayLocal}T00:00`);
   const dayEnd = fromZonedDateTimeLocal(`${tomorrowLocal}T00:00`);
 
-  const [activeClients, todaySessions, monthPayments, outstanding, todos, monthExpected, monthSessionPaid] = await Promise.all([
+  const [activeClients, todaySessions, monthPayments, outstanding, todos, monthExpected, monthSessionPaid, me] = await Promise.all([
     db.client.count({ where: { userId, status: "ACTIVE" } }),
     db.session.findMany({
       // All of today's meetings — the ones that already happened included,
@@ -90,7 +92,12 @@ export default async function DashboardPage() {
       },
       _sum: { paidAmount: true },
     }),
+    db.user.findUnique({
+      where: { id: userId },
+      select: { agreementVersion: true },
+    }),
   ]);
+  const needsAgreement = me?.agreementVersion !== AGREEMENT_VERSION;
 
   const monthIncome =
     Number(monthPayments._sum.amount ?? 0) +
@@ -106,6 +113,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {needsAgreement && <AgreementBanner />}
       <header className="relative overflow-hidden rounded-3xl border border-cream-200/80 bg-gradient-to-l from-sage-50 via-cream-100 to-cream-50 shadow-soft">
         {/* Clinic-room illustration sits at the far (physical-left) edge in RTL */}
         <ClinicHero className="pointer-events-none select-none absolute inset-y-2 left-4 h-[calc(100%-1rem)] w-auto opacity-30 sm:opacity-100" />

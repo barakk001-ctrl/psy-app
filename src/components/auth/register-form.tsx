@@ -75,6 +75,31 @@ export function RegisterForm() {
           )}
         </div>
 
+        <label className="flex items-start gap-2.5 rounded-xl border border-cream-300 bg-white/60 px-3.5 py-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="agreement"
+            required
+            className="mt-0.5 h-4 w-4 rounded border-cream-300 accent-sage-600"
+          />
+          <span className="text-sm text-ink-soft leading-relaxed">
+            קראתי ואני מסכימ/ה ל
+            <Link
+              href="/agreement"
+              target="_blank"
+              className="text-sage-600 hover:text-sage-700 font-medium"
+            >
+              הסכם החזקת המידע
+            </Link>{" "}
+            של המערכת
+          </span>
+        </label>
+        {state?.fieldErrors?.agreement && (
+          <p className="text-xs text-terracotta-600 -mt-2">
+            {state.fieldErrors.agreement[0]}
+          </p>
+        )}
+
         {state?.error && (
           <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
             {state.error}
