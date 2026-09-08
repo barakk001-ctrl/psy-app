@@ -41,20 +41,28 @@ export function MorningDocsPanel({
 
   return (
     <Card>
-      <CardHeader className="flex items-start justify-between gap-3">
-        <div>
-          <CardTitle>מסמכים כלליים מ-morning</CardTitle>
-          <p className="text-xs text-ink-muted mt-1">
-            חשבוניות וקבלות שהופקו ישירות ב-morning, מחוץ ללו״ז הקבוע — ממתינות
-            לשיוך ללקוח/ה.
-          </p>
+      <CardHeader className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="whitespace-nowrap">
+            מסמכים מ-<span dir="ltr">morning</span>
+          </CardTitle>
+          <form action={syncAction} className="shrink-0">
+            <Button
+              type="submit"
+              variant="secondary"
+              size="sm"
+              disabled={syncing}
+              className="whitespace-nowrap"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "מושך…" : "משיכה"}
+            </Button>
+          </form>
         </div>
-        <form action={syncAction}>
-          <Button type="submit" variant="secondary" size="sm" disabled={syncing}>
-            <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "מושך…" : "משיכה מ-morning"}
-          </Button>
-        </form>
+        <p className="text-xs text-ink-muted">
+          חשבוניות וקבלות שהופקו ישירות ב-morning, מחוץ ללו״ז הקבוע — ממתינות
+          לשיוך ללקוח/ה.
+        </p>
       </CardHeader>
       <CardContent className="p-0">
         {state?.error && (

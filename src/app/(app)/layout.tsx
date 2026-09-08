@@ -30,7 +30,7 @@ export default async function AppLayout({
         <main className="flex-1">
           {/* pb-28 on mobile so content isn't hidden behind the floating tab bar */}
           <div className="container-page py-6 lg:py-8 pb-28 lg:pb-8 animate-page">
-            <ClinicBanner />
+            <ClinicBanner userName={session.user.name} />
             {showBanner && (
               <SubscriptionBanner
                 status={sub.status as "trial" | "expired"}
