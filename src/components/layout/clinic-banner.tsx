@@ -9,7 +9,9 @@ import { ClinicHero } from "@/components/dashboard/clinic-hero";
  */
 export function ClinicBanner() {
   const pathname = usePathname();
-  if (pathname === "/dashboard") return null;
+  // Dashboard has the full hero; the calendar needs every vertical pixel so
+  // the whole month fits on screen without scrolling.
+  if (pathname === "/dashboard" || pathname === "/calendar") return null;
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-cream-200/80 bg-gradient-to-l from-sage-50 via-cream-100 to-cream-50 shadow-soft mb-5 h-20 sm:h-24">

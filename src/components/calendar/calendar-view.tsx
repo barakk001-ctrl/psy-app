@@ -218,14 +218,16 @@ export function CalendarView({ events, clients, meetingTypes, typeColors }: Prop
       )}
 
       <style jsx global>{`
-        /* Fixed-height shell: the calendar grid scrolls inside it, the page doesn't */
+        /* Fixed-height shell: the calendar grid scrolls inside it, the page
+           doesn't — sized so the full month view fits the viewport (no page
+           banner on /calendar, compact header). */
         .calendar-shell {
-          height: calc(100dvh - 16rem);
+          height: calc(100dvh - 12rem);
           min-height: 480px;
         }
         @media (max-width: 767px) {
           .calendar-shell {
-            height: calc(100dvh - 21rem);
+            height: calc(100dvh - 16.5rem);
             min-height: 420px;
           }
         }

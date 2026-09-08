@@ -58,16 +58,17 @@ export default async function CalendarPage() {
   }));
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl text-ink">יומן</h1>
-          <p className="text-ink-muted mt-1 text-sm">
+    <div className="space-y-3 sm:space-y-4">
+      {/* Compact header — the month grid below must fit the viewport whole */}
+      <header className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl sm:text-3xl text-ink">יומן</h1>
+          <p className="text-ink-muted text-xs sm:text-sm hidden sm:block">
             לחץ/י על משבצת ריקה לקביעת פגישה. גרור/י כדי לשנות זמן.
           </p>
         </div>
         <Link href="/sessions/new">
-          <Button>
+          <Button size="sm">
             <Plus className="w-4 h-4" /> פגישה חדשה
           </Button>
         </Link>
