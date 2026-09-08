@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { BusinessInfoForm } from "@/components/settings/business-info-form";
+import { PersonalDetailsForm } from "@/components/settings/personal-details-form";
 import { MorningSettingsForm } from "@/components/settings/morning-settings-form";
 import { BiometricSettings } from "@/components/settings/biometric-settings";
 import { InboxSettings } from "@/components/settings/inbox-settings";
@@ -83,13 +84,15 @@ export default async function SettingsPage() {
         </p>
       </header>
 
+      <PersonalDetailsForm
+        initial={{ name: user.name, email: user.email, phone: user.phone }}
+      />
+
       <BusinessInfoForm
         initial={{
-          name: user.name,
           businessName: user.businessName,
           businessId: user.businessId,
           address: user.address,
-          phone: user.phone,
           defaultRate: user.defaultRate ? user.defaultRate.toString() : null,
           vatLiable: user.vatLiable,
         }}

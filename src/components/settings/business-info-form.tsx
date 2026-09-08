@@ -14,11 +14,9 @@ import {
 
 type Props = {
   initial: {
-    name: string;
     businessName: string | null;
     businessId: string | null;
     address: string | null;
-    phone: string | null;
     defaultRate: string | null;
     vatLiable: boolean;
   };
@@ -29,40 +27,8 @@ export function BusinessInfoForm({ initial }: Props) {
     updateBusinessInfoAction,
     null,
   );
-  const fieldErr = state?.fieldErrors ?? {};
-
   return (
     <form action={formAction} className="space-y-6" noValidate>
-      <Card>
-        <CardContent className="space-y-5">
-          <h2 className="font-display text-xl text-ink">פרטי קשר</h2>
-
-          <div>
-            <Label htmlFor="name">שם מלא *</Label>
-            <Input
-              id="name"
-              name="name"
-              required
-              defaultValue={initial.name}
-              invalid={!!fieldErr.name}
-            />
-            {fieldErr.name && (
-              <p className="text-xs text-terracotta-600 mt-1">{fieldErr.name[0]}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="phone">טלפון</Label>
-            <Input
-              id="phone"
-              name="phone"
-              type="tel"
-              defaultValue={initial.phone ?? ""}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardContent className="space-y-5">
           <h2 className="font-display text-xl text-ink">פרטי העסק</h2>

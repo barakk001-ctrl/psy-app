@@ -94,7 +94,7 @@ export default async function DashboardPage() {
     }),
     db.user.findUnique({
       where: { id: userId },
-      select: { agreementVersion: true },
+      select: { agreementVersion: true, name: true },
     }),
   ]);
   const needsAgreement = me?.agreementVersion !== AGREEMENT_VERSION;
@@ -127,7 +127,7 @@ export default async function DashboardPage() {
             }).format(now)}
           </p>
           <h1 className="font-display text-4xl text-ink mt-1">
-            שלום, {session!.user.name?.split(" ")[0]}
+            שלום, {(me?.name ?? session!.user.name)?.split(" ")[0]}
           </h1>
           <p className="text-sm text-ink-muted mt-1.5">ברוכה הבאה למרפאה האישית שלך 🌿</p>
           <div className="flex flex-wrap gap-2 mt-5">

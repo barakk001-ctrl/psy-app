@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { encryptSecret } from "@/lib/crypto";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { getMorningCredentials, testMorningConnection } from "@/lib/morning";
-import { businessInfoSchema } from "@/server/validators/settings";
+import { businessInfoSchema, personalDetailsSchema } from "@/server/validators/settings";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -66,12 +66,10 @@ export async function updateBusinessInfoAction(
   const userId = await requireUserId();
 
   const parsed = businessInfoSchema.safeParse({
-    name: formData.get("name"),
     businessName: formData.get("businessName") ?? "",
     businessId: formData.get("businessId") ?? "",
     vatLiable: formData.get("vatLiable") ?? "false",
     address: formData.get("address") ?? "",
-    phone: formData.get("phone") ?? "",
     defaultRate: formData.get("defaultRate") ?? "",
   });
 
@@ -86,17 +84,77 @@ export async function updateBusinessInfoAction(
   await db.user.update({
     where: { id: userId },
     data: {
-      name: data.name,
       businessName: data.businessName || null,
       businessId: data.businessId || null,
       vatLiable: data.vatLiable,
       address: data.address || null,
-      phone: data.phone || null,
       defaultRate: data.defaultRate ?? null,
     },
   });
 
   revalidatePath("/settings");
+  return { saved: true };
+}
+
+/** Personal details: name, login email and phone. Email changes are limited
+ *  to the registration allowlist — otherwise a user could rotate to an
+ *  address the operator never approved. */
+export async function updatePersonalDetailsAction(
+  _: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  const userId = await requireUserId();
+
+  const parsed = personalDetailsSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    phone: formData.get("phone") ?? "",
+  });
+  if (!parsed.success) {
+    return {
+      error: "אנא תקן את השגיאות בטופס",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+  const email = parsed.data.email.toLowerCase();
+
+  const me = await db.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  if (!me) return { error: "משתמש לא נמצא" };
+
+  if (email !== me.email) {
+    const allowed = process.env.ALLOWED_EMAILS;
+    const inAllowlist = allowed
+      ? allowed.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean).includes(email)
+      : process.env.NODE_ENV !== "production";
+    if (!inAllowlist) {
+      return {
+        error: "כתובת האימייל החדשה אינה מאושרת במערכת — פנו למנהל המערכת",
+        fieldErrors: { email: ["כתובת לא מאושרת"] },
+      };
+    }
+    const taken = await db.user.findUnique({ where: { email }, select: { id: true } });
+    if (taken) {
+      return {
+        error: "כתובת האימייל כבר בשימוש",
+        fieldErrors: { email: ["כתובת תפוסה"] },
+      };
+    }
+  }
+
+  await db.user.update({
+    where: { id: userId },
+    data: {
+      name: parsed.data.name,
+      email,
+      phone: parsed.data.phone || null,
+    },
+  });
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
   return { saved: true };
 }
 
