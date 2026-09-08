@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ClinicHero } from "@/components/dashboard/clinic-hero";
 import { AgreementBanner } from "@/components/dashboard/agreement-banner";
+import { ExplainerVideo } from "@/components/auth/explainer-video";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { TodoCard } from "@/components/dashboard/todo-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -142,6 +143,10 @@ export default async function DashboardPage() {
               </Button>
             </Link>
           </div>
+          <ExplainerVideo
+            label="סרטון היכרות עם המערכת"
+            className="mt-3 flex items-center gap-1.5 text-xs text-sage-600 hover:text-sage-700 font-medium"
+          />
         </div>
       </header>
 

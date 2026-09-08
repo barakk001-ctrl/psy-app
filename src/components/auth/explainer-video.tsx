@@ -4,18 +4,20 @@ import { useState } from "react";
 import { PlayCircle, X } from "lucide-react";
 
 /** "How it works" — opens the narrated explainer video in a lightbox. */
-export function ExplainerVideo() {
+export function ExplainerVideo({
+  label = "איך זה עובד? צפו בסרטון (דקה וחצי)",
+  className = "mx-auto flex items-center gap-2 text-sm text-sage-600 hover:text-sage-700 font-medium",
+}: {
+  label?: string;
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mx-auto flex items-center gap-2 text-sm text-sage-600 hover:text-sage-700 font-medium"
-      >
+      <button type="button" onClick={() => setOpen(true)} className={className}>
         <PlayCircle className="w-5 h-5" />
-        איך זה עובד? צפו בסרטון (דקה וחצי)
+        {label}
       </button>
 
       {open && (
