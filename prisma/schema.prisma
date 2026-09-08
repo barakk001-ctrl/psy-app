@@ -47,6 +47,15 @@ model User {
   calendarToken    String? @unique
   calendarNameMode String  @default("FIRST")
 
+  // Subscription: 30-day trial from registration, then a paid plan extended
+  // manually by the operator (payments happen outside the app for now).
+  // Expired accounts drop to read-only — data is never locked away.
+  trialEndsAt        DateTime?
+  subscriptionPlan   String?   // MONTHLY | YEARLY
+  subscriptionEndsAt DateTime?
+  subscriptionExempt Boolean   @default(false)
+  isAdmin            Boolean   @default(false)
+
   // Token for the inbound message API (/api/inbox) — iOS Shortcuts etc.
   inboxToken       String?   @unique
 

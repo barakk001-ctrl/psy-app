@@ -8,6 +8,12 @@ import { InboxSettings } from "@/components/settings/inbox-settings";
 import { MeetingTypesCard } from "@/components/settings/meeting-types-card";
 import { AuditLogCard } from "@/components/settings/audit-log-card";
 import { CalendarFeedCard } from "@/components/settings/calendar-feed-card";
+import { SubscriptionCard } from "@/components/settings/subscription-card";
+import {
+  AdminSubscriptionsCard,
+  type AdminUserRow,
+} from "@/components/settings/admin-subscriptions-card";
+import { SUBSCRIPTION_FIELD_SELECT, getSubscriptionState } from "@/lib/subscription";
 import { headers } from "next/headers";
 import { TwoFactorSettings } from "@/components/settings/two-factor-settings";
 
@@ -35,6 +41,7 @@ export default async function SettingsPage() {
       morningDocType: true,
       calendarToken: true,
       calendarNameMode: true,
+      ...SUBSCRIPTION_FIELD_SELECT,
     },
   });
 
@@ -69,6 +76,14 @@ export default async function SettingsPage() {
     clientId: r.clientId,
     clientName: r.clientId ? (clientNames[r.clientId] ?? "(לקוח שנמחק)") : null,
   }));
+
+  const subState = getSubscriptionState(user);
+  const adminUsers: AdminUserRow[] = user.isAdmin
+    ? await db.user.findMany({
+        orderBy: { createdAt: "asc" },
+        select: { id: true, name: true, email: true, ...SUBSCRIPTION_FIELD_SELECT },
+      })
+    : [];
 
   const morningConnected = !!(user.morningApiKeyId && user.morningApiSecret);
   const keyIdMasked = user.morningApiKeyId
@@ -121,6 +136,10 @@ export default async function SettingsPage() {
       />
 
       <BiometricSettings userEmail={user.email} userName={user.name} />
+
+      <SubscriptionCard state={subState} />
+
+      {user.isAdmin && <AdminSubscriptionsCard users={adminUsers} meId={userId} />}
 
       <AuditLogCard entries={auditEntries} />
 

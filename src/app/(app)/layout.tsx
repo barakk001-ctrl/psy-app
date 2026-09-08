@@ -5,6 +5,8 @@ import { MobileTopBar } from "@/components/nav/mobile-top-bar";
 import { MobileTabBar } from "@/components/nav/mobile-tab-bar";
 import { BiometricLockOverlay } from "@/components/security/biometric-lock-overlay";
 import { ClinicBanner } from "@/components/layout/clinic-banner";
+import { SubscriptionBanner } from "@/components/layout/subscription-banner";
+import { subscriptionStateFor } from "@/lib/subscription-server";
 
 export default async function AppLayout({
   children,
@@ -13,6 +15,11 @@ export default async function AppLayout({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+
+  const sub = await subscriptionStateFor(session.user.id);
+  const showBanner =
+    sub.status === "expired" ||
+    (sub.status === "trial" && (sub.daysLeft ?? 99) <= 7);
 
   return (
     <div className="min-h-screen flex">
@@ -24,6 +31,12 @@ export default async function AppLayout({
           {/* pb-28 on mobile so content isn't hidden behind the floating tab bar */}
           <div className="container-page py-6 lg:py-8 pb-28 lg:pb-8 animate-page">
             <ClinicBanner />
+            {showBanner && (
+              <SubscriptionBanner
+                status={sub.status as "trial" | "expired"}
+                daysLeft={sub.daysLeft}
+              />
+            )}
             {children}
           </div>
         </main>

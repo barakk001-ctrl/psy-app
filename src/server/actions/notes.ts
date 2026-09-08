@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { subscriptionReadOnly } from "@/lib/subscription-server";
+import { READ_ONLY_ERROR } from "@/lib/subscription";
+
 import { decryptNote, encryptNote } from "@/lib/crypto";
 import { logAudit } from "@/lib/audit";
 import { noteSchema } from "@/server/validators/session";
@@ -23,6 +26,7 @@ export async function saveNoteAction(
   formData: FormData,
 ): Promise<NoteFormState> {
   const userId = await requireUserId();
+  if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
   const parsed = noteSchema.safeParse({
     sessionId: formData.get("sessionId"),

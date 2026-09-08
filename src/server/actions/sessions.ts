@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { subscriptionReadOnly } from "@/lib/subscription-server";
+import { READ_ONLY_ERROR } from "@/lib/subscription";
+
 import {
   cancelSessionReminders,
   rescheduleSessionReminders,
@@ -77,6 +80,7 @@ export async function createSessionAction(
   formData: FormData,
 ): Promise<SessionFormState> {
   const userId = await requireUserId();
+  if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
   const parsed = createSessionSchema.safeParse({
     clientId: formData.get("clientId") ?? "",
@@ -374,6 +378,7 @@ export async function quickEditSessionAction(
   formData: FormData,
 ): Promise<QuickEditState> {
   const userId = await requireUserId();
+  if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = String(formData.get("id") ?? "");
   const clientId = String(formData.get("clientId") ?? "");
   const date = String(formData.get("date") ?? "");

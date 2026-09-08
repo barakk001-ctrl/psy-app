@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { subscriptionReadOnly } from "@/lib/subscription-server";
+import { READ_ONLY_ERROR } from "@/lib/subscription";
+
 import { clientSchema } from "@/server/validators/client";
 
 async function requireUserId(): Promise<string> {
@@ -38,6 +41,7 @@ export async function createClientAction(
   formData: FormData,
 ): Promise<ClientFormState> {
   const userId = await requireUserId();
+  if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const parsed = parseClientForm(formData);
 
   if (!parsed.success) {

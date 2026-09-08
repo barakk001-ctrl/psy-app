@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { db } from "@/lib/db";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
+import { TRIAL_DAYS } from "@/lib/subscription";
 import { rateLimit } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email";
 import { buildResetEmail } from "@/lib/reset-email";
@@ -153,6 +154,7 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
       hashedPassword,
       agreementVersion: AGREEMENT_VERSION,
       agreementAcceptedAt: new Date(),
+      trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
     },
   });
 
