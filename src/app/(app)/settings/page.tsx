@@ -14,10 +14,16 @@ import {
   type AdminUserRow,
 } from "@/components/settings/admin-subscriptions-card";
 import { SUBSCRIPTION_FIELD_SELECT, getSubscriptionState } from "@/lib/subscription";
+import { billingConfigured } from "@/lib/billing";
 import { headers } from "next/headers";
 import { TwoFactorSettings } from "@/components/settings/two-factor-settings";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ paid?: string; payerr?: string }>;
+}) {
+  const sp = await searchParams;
   const session = await auth();
   const userId = session!.user.id;
 
@@ -137,7 +143,11 @@ export default async function SettingsPage() {
 
       <BiometricSettings userEmail={user.email} userName={user.name} />
 
-      <SubscriptionCard state={subState} />
+      <SubscriptionCard
+        state={subState}
+        cardPayments={billingConfigured()}
+        notice={sp.payerr ?? (sp.paid === "1" ? "paid" : sp.paid === "0" ? "cancelled" : null)}
+      />
 
       {user.isAdmin && <AdminSubscriptionsCard users={adminUsers} meId={userId} />}
 

@@ -137,6 +137,22 @@ model MeetingType {
   @@unique([userId, name])
 }
 
+// One row per received payment callback — idempotency (unique transactionId)
+// and bookkeeping. status: VERIFIED (extended) | UNVERIFIED (needs manual look).
+model BillingEvent {
+  id            String   @id @default(cuid())
+  provider      String   @default("grow")
+  transactionId String   @unique
+  userId        String?
+  plan          String?
+  amount        Float?
+  status        String   @default("VERIFIED")
+  raw           String?  // original callback payload (JSON string)
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
 // Access log for clinical content (viewing/saving/deleting note records).
 // Deliberately no FK relations: audit entries must survive deletion of the
 // things they describe.
