@@ -5,7 +5,7 @@ import { PlayCircle, X } from "lucide-react";
 
 /** "How it works" — opens the narrated explainer video in a lightbox. */
 export function ExplainerVideo({
-  label = "איך זה עובד? צפו בסרטון (דקה וחצי)",
+  label = "איך זה עובד? צפו בהדגמה קצרה",
   className = "mx-auto flex items-center gap-2 text-sm text-sage-600 hover:text-sage-700 font-medium",
 }: {
   label?: string;
