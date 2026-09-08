@@ -129,7 +129,7 @@ export default async function DashboardPage() {
           <h1 className="font-display text-4xl text-ink mt-1">
             שלום, {session!.user.name?.split(" ")[0]}
           </h1>
-          <p className="text-sm text-ink-muted mt-1.5">ברוכה הבאה למרפאה 🌿</p>
+          <p className="text-sm text-ink-muted mt-1.5">ברוכה הבאה למרפאה האישית שלך 🌿</p>
           <div className="flex flex-wrap gap-2 mt-5">
             <Link href="/clients/new">
               <Button variant="secondary" size="sm">

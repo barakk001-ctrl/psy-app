@@ -2,7 +2,7 @@ export function buildResetEmail(params: {
   name: string;
   resetUrl: string;
 }): { subject: string; html: string; text: string } {
-  const subject = "איפוס סיסמה — מרפאה";
+  const subject = "איפוס סיסמה — מרפאה אישית";
 
   const text = [
     `שלום ${params.name},`,
@@ -23,7 +23,7 @@ export function buildResetEmail(params: {
         שלום ${params.name},
       </p>
       <p style="margin:0 0 20px;font-size:15px;color:#3A332C;line-height:1.6;">
-        התקבלה בקשה לאיפוס הסיסמה לחשבון שלך במרפאה. לחצו על הכפתור לקביעת סיסמה חדשה:
+        התקבלה בקשה לאיפוס הסיסמה לחשבון שלך במערכת מרפאה אישית. לחצו על הכפתור לקביעת סיסמה חדשה:
       </p>
       <p style="text-align:center;margin:0 0 20px;">
         <a href="${params.resetUrl}"

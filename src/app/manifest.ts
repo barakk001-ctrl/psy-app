@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "מרפאה — ניהול קליניקה",
-    short_name: "מרפאה",
+    name: "מרפאה אישית — מערכת לניהול קליניקה",
+    short_name: "מרפאה אישית",
     description: "מערכת לניהול קליניקה: לקוחות, פגישות, חשבוניות ותשלומים",
     lang: "he",
     dir: "rtl",

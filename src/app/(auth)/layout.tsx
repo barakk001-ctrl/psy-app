@@ -27,7 +27,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </svg>
         </div>
         <div>
-          <span className="font-display text-2xl">מרפאה</span>
+          <span className="font-display text-2xl">מרפאה אישית</span>
         </div>
         <div className="relative space-y-6 max-w-sm">
           <TherapyIllustration className="w-full max-w-xs mx-auto drop-shadow-lg" />

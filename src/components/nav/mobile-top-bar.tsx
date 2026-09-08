@@ -36,7 +36,7 @@ export function MobileTopBar({ userName }: { userName?: string | null }) {
           <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-sage-500 to-sage-700 flex items-center justify-center text-cream-50 font-display text-xs shadow-glow">
             מ
           </div>
-          <span className="font-display text-lg text-ink">מרפאה</span>
+          <span className="font-display text-lg text-ink">מרפאה אישית</span>
         </Link>
         <button
           type="button"

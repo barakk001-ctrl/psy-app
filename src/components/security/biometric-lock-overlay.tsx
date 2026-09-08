@@ -55,7 +55,7 @@ export function BiometricLockOverlay() {
             מ
           </div>
           <div>
-            <h1 className="font-display text-2xl text-ink">מרפאה נעולה</h1>
+            <h1 className="font-display text-2xl text-ink">המערכת נעולה</h1>
             <p className="text-sm text-ink-muted mt-1">
               יש לאמת את הזהות כדי להמשיך
             </p>

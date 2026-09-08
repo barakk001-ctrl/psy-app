@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Calendar, FileText, BarChart3, Settings } from "lucide-react";
+import { Home, Users, Calendar, FileText, BarChart3, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
@@ -10,7 +10,7 @@ export type NavItem = {
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "סקירה", icon: LayoutDashboard, primaryMobile: true },
+  { href: "/dashboard", label: "בית", icon: Home, primaryMobile: true },
   { href: "/calendar", label: "יומן", icon: Calendar, primaryMobile: true },
   { href: "/clients", label: "לקוחות", icon: Users, primaryMobile: true },
   { href: "/invoices", label: "חשבוניות", icon: FileText, primaryMobile: true },

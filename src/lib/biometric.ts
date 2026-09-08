@@ -78,7 +78,7 @@ export async function registerBioLock(user: {
     const credential = (await navigator.credentials.create({
       publicKey: {
         challenge: randomBytes(32),
-        rp: { name: "מרפאה", id: window.location.hostname },
+        rp: { name: "מרפאה אישית", id: window.location.hostname },
         user: {
           id: randomBytes(16),
           name: user.email,

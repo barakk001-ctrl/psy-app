@@ -4,7 +4,7 @@
 import crypto from "node:crypto";
 import * as OTPAuth from "otpauth";
 
-const ISSUER = "מרפאה";
+const ISSUER = "מרפאה אישית";
 
 export function generateTotpSecret(): string {
   return new OTPAuth.Secret({ size: 20 }).base32;

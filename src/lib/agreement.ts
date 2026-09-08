@@ -9,7 +9,7 @@ export type AgreementSection = { title: string; items: string[] };
 
 export const AGREEMENT_TITLE = "הסכם החזקה ועיבוד של מידע";
 export const AGREEMENT_SUBTITLE =
-  "השימוש במערכת ניהול הקליניקה \"מרפאה\" כפוף להסכם זה בין המטפל/ת (בעל/ת המאגר) לבין מפעיל/ת המערכת (המחזיק/ה).";
+  "השימוש במערכת ניהול הקליניקה \"מרפאה אישית\" כפוף להסכם זה בין המטפל/ת (בעל/ת המאגר) לבין מפעיל/ת המערכת (המחזיק/ה).";
 export const AGREEMENT_DRAFT_NOTE =
   "נוסח טיוטה (גרסה draft-2026-09) — כפוף לבדיקת עורך/ת דין.";
 

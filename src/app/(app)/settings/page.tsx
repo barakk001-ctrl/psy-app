@@ -6,6 +6,8 @@ import { BiometricSettings } from "@/components/settings/biometric-settings";
 import { InboxSettings } from "@/components/settings/inbox-settings";
 import { MeetingTypesCard } from "@/components/settings/meeting-types-card";
 import { AuditLogCard } from "@/components/settings/audit-log-card";
+import { CalendarFeedCard } from "@/components/settings/calendar-feed-card";
+import { headers } from "next/headers";
 import { TwoFactorSettings } from "@/components/settings/two-factor-settings";
 
 export default async function SettingsPage() {
@@ -30,6 +32,8 @@ export default async function SettingsPage() {
       morningApiSecret: true,
       morningSandbox: true,
       morningDocType: true,
+      calendarToken: true,
+      calendarNameMode: true,
     },
   });
 
@@ -92,6 +96,17 @@ export default async function SettingsPage() {
       />
 
       <MeetingTypesCard types={meetingTypes} />
+
+      <CalendarFeedCard
+        token={user.calendarToken}
+        mode={user.calendarNameMode}
+        origin={await (async () => {
+          const h = await headers();
+          const proto = h.get("x-forwarded-proto") ?? "https";
+          const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
+          return `${proto}://${host}`;
+        })()}
+      />
 
       <InboxSettings token={user.inboxToken} />
 

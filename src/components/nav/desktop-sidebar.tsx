@@ -16,7 +16,7 @@ export function DesktopSidebar({ userName }: { userName?: string | null }) {
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sage-500 to-sage-700 flex items-center justify-center text-cream-50 font-display text-sm shadow-glow">
             מ
           </div>
-          <span className="font-display text-xl text-ink">מרפאה</span>
+          <span className="font-display text-xl text-ink">מרפאה אישית</span>
         </Link>
       </div>
 

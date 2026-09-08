@@ -12,7 +12,7 @@ export default function NotFound() {
         href="/dashboard"
         className="inline-flex h-10 items-center rounded bg-sage-600 px-4 text-sm font-medium text-cream-50 transition-colors hover:bg-sage-700"
       >
-        חזרה לסקירה
+        חזרה לדף הבית
       </Link>
     </div>
   );

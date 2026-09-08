@@ -42,6 +42,11 @@ model User {
   agreementVersion    String?
   agreementAcceptedAt DateTime?
 
+  // Private ICS calendar feed (Google Calendar subscribe-by-URL).
+  // calendarNameMode: FIRST | FULL | NONE — how client names appear in events.
+  calendarToken    String? @unique
+  calendarNameMode String  @default("FIRST")
+
   // Token for the inbound message API (/api/inbox) — iOS Shortcuts etc.
   inboxToken       String?   @unique
 

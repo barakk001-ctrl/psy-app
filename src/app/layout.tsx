@@ -18,11 +18,11 @@ const fontSans = Assistant({
 });
 
 export const metadata: Metadata = {
-  title: "מרפאה — ניהול קליניקה",
+  title: "מרפאה אישית — מערכת לניהול קליניקה",
   description: "מערכת לניהול קליניקה: לקוחות, פגישות, חשבוניות ותשלומים",
   appleWebApp: {
     capable: true,
-    title: "מרפאה",
+    title: "מרפאה אישית",
     statusBarStyle: "default",
   },
   icons: {

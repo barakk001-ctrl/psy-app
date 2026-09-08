@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "PowerShell(npm install *)",
-      "PowerShell(& npm.cmd install)"
+      "PowerShell(& npm.cmd install)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }

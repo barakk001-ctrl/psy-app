@@ -21,6 +21,34 @@ export type SettingsFormState = {
   saved?: boolean;
 } | null;
 
+/** Enables (or rotates) the private ICS calendar-feed token. */
+export async function calendarFeedEnableAction() {
+  const userId = await requireUserId();
+  const { randomBytes } = await import("node:crypto");
+  await db.user.update({
+    where: { id: userId },
+    data: { calendarToken: randomBytes(24).toString("base64url") },
+  });
+  revalidatePath("/settings");
+}
+
+/** Disables the calendar feed — the old URL stops working immediately. */
+export async function calendarFeedDisableAction() {
+  const userId = await requireUserId();
+  await db.user.update({ where: { id: userId }, data: { calendarToken: null } });
+  revalidatePath("/settings");
+}
+
+const CALENDAR_NAME_MODES = ["FIRST", "FULL", "NONE"] as const;
+
+export async function calendarFeedModeAction(formData: FormData) {
+  const userId = await requireUserId();
+  const mode = String(formData.get("mode") ?? "");
+  if (!(CALENDAR_NAME_MODES as readonly string[]).includes(mode)) return;
+  await db.user.update({ where: { id: userId }, data: { calendarNameMode: mode } });
+  revalidatePath("/settings");
+}
+
 /** Records click-acceptance of the current data-holding agreement version. */
 export async function acceptAgreementAction() {
   const userId = await requireUserId();
