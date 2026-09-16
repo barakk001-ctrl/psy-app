@@ -20,6 +20,10 @@ export default async function NewSessionPage({
     select: { id: true, firstName: true, lastName: true, defaultRate: true, treatmentType: true },
   });
   const meetingTypes = await getMeetingTypeNames(userId);
+  const me = await db.user.findUnique({
+    where: { id: userId },
+    select: { defaultSessionMinutes: true },
+  });
 
   // Serialize Decimal → string for client
   const clientOptions = clients.map((c) => ({
@@ -46,6 +50,7 @@ export default async function NewSessionPage({
         meetingTypes={meetingTypes}
         clients={clientOptions}
         defaults={{ startsAt: params.start, clientId: params.clientId }}
+        defaultMinutes={me?.defaultSessionMinutes}
       />
     </div>
   );

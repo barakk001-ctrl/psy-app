@@ -31,6 +31,9 @@ model User {
   defaultRate     Decimal?  @db.Decimal(10, 2)
   currency        String    @default("ILS")
   timezone        String    @default("Asia/Jerusalem")
+  // How long a meeting runs unless the form says otherwise. 50 is the common
+  // "therapeutic hour", but practices differ — 45 and 30 are both normal.
+  defaultSessionMinutes Int  @default(50)
   // עוסק מורשה = true (prices include VAT, show breakdown); עוסק פטור = false
   vatLiable       Boolean   @default(false)
 

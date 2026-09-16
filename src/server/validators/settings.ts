@@ -25,3 +25,16 @@ export const businessInfoSchema = z.object({
 });
 
 export type BusinessInfoInput = z.infer<typeof businessInfoSchema>;
+
+/** How long a meeting runs by default. Bounded rather than free: a stray digit
+ *  in a settings box would otherwise quietly schedule 500-minute sessions and
+ *  overlap-checking would start rejecting everything. */
+export const sessionDefaultsSchema = z.object({
+  defaultSessionMinutes: z
+    .union([z.string(), z.number()])
+    .transform((v) => (typeof v === "number" ? v : parseInt(v, 10)))
+    .refine((n) => Number.isFinite(n), "משך לא תקין")
+    .refine((n) => n >= 5 && n <= 480, "המשך חייב להיות בין 5 ל-480 דקות"),
+});
+
+export type SessionDefaultsInput = z.infer<typeof sessionDefaultsSchema>;

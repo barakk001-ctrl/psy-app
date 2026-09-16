@@ -7,7 +7,11 @@ import { db } from "@/lib/db";
 import { encryptSecret } from "@/lib/crypto";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { getMorningCredentials, testMorningConnection } from "@/lib/morning";
-import { businessInfoSchema, personalDetailsSchema } from "@/server/validators/settings";
+import {
+  businessInfoSchema,
+  personalDetailsSchema,
+  sessionDefaultsSchema,
+} from "@/server/validators/settings";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -99,6 +103,35 @@ export async function updateBusinessInfoAction(
 /** Personal details: name, login email and phone. Email changes are limited
  *  to the registration allowlist — otherwise a user could rotate to an
  *  address the operator never approved. */
+/** The default meeting length used when a new session form opens. Existing
+ *  sessions keep whatever length they were saved with — this only changes what
+ *  the next form is pre-filled with. */
+export async function updateSessionDefaultsAction(
+  _: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  const userId = await requireUserId();
+
+  const parsed = sessionDefaultsSchema.safeParse({
+    defaultSessionMinutes: formData.get("defaultSessionMinutes") ?? "",
+  });
+  if (!parsed.success) {
+    return {
+      error: "אנא תקן את השגיאות בטופס",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  await db.user.update({
+    where: { id: userId },
+    data: { defaultSessionMinutes: parsed.data.defaultSessionMinutes },
+  });
+
+  revalidatePath("/settings");
+  revalidatePath("/sessions/new");
+  return { saved: true };
+}
+
 export async function updatePersonalDetailsAction(
   _: SettingsFormState,
   formData: FormData,

@@ -9,6 +9,11 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  DEFAULT_SESSION_MINUTES,
+  DURATION_CHOICES,
+  withDuration,
+} from "@/lib/session-duration";
+import {
   createSessionAction,
   updateSessionAction,
   type SessionFormState,
@@ -38,11 +43,14 @@ export function SessionForm({
   defaults,
   initial,
   meetingTypes,
+  defaultMinutes = DEFAULT_SESSION_MINUTES,
 }: {
   clients: ClientOption[];
   defaults?: { startsAt?: string; clientId?: string };
   initial?: SessionFormInitial;
   meetingTypes: string[];
+  /** The practitioner's own default meeting length, from settings. */
+  defaultMinutes?: number;
 }) {
   const isEdit = !!initial;
   const action = isEdit ? updateSessionAction : createSessionAction;
@@ -73,9 +81,13 @@ export function SessionForm({
 
   // Match the start time to the initial value (edit) or the URL param (create from calendar click)
   const startsAtDefault = initial?.startsAt ?? defaults?.startsAt;
-  const durationDefault = initial?.durationMinutes
-    ? String(initial.durationMinutes)
-    : "50";
+  // An existing meeting keeps the length it was saved with; a new one opens on
+  // the practitioner's own default rather than a number baked into the form.
+  const durationDefault = String(initial?.durationMinutes ?? defaultMinutes);
+  const durationOptions = withDuration(
+    DURATION_CHOICES,
+    initial?.durationMinutes ?? defaultMinutes,
+  );
   const rateDefault = initial?.rate ?? "";
   const meetingUrlDefault = initial?.meetingUrl ?? "";
 
@@ -145,13 +157,11 @@ export function SessionForm({
                 name="durationMinutes"
                 defaultValue={durationDefault}
               >
-                <option value="30">30</option>
-                <option value="45">45</option>
-                <option value="50">50</option>
-                <option value="60">60</option>
-                <option value="75">75</option>
-                <option value="90">90</option>
-                <option value="120">120</option>
+                {durationOptions.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
               </Select>
             </div>
           </div>

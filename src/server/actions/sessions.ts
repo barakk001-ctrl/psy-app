@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { subscriptionReadOnly } from "@/lib/subscription-server";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
+import { DEFAULT_SESSION_MINUTES } from "@/lib/session-duration";
 
 import {
   cancelSessionReminders,
@@ -25,6 +26,17 @@ import {
   sessionStatusSchema,
   updateSessionSchema,
 } from "@/server/validators/session";
+
+/** The practitioner's default meeting length, falling back to the app default.
+ *  Read per call rather than cached: it is one indexed lookup, and a stale value
+ *  would quietly schedule a meeting at the wrong length. */
+async function defaultSessionMinutes(userId: string): Promise<number> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { defaultSessionMinutes: true },
+  });
+  return user?.defaultSessionMinutes ?? DEFAULT_SESSION_MINUTES;
+}
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -82,10 +94,14 @@ export async function createSessionAction(
   const userId = await requireUserId();
   if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
+  // The form always sends a duration; this covers paths that do not, and it
+  // should follow the practitioner's setting rather than a number frozen here.
+  const fallbackMinutes = await defaultSessionMinutes(userId);
+
   const parsed = createSessionSchema.safeParse({
     clientId: formData.get("clientId") ?? "",
     startsAt: formData.get("startsAt") ?? "",
-    durationMinutes: formData.get("durationMinutes") ?? "50",
+    durationMinutes: formData.get("durationMinutes") || String(fallbackMinutes),
     location: formData.get("location"),
     meetingUrl: formData.get("meetingUrl") ?? "",
     rate: formData.get("rate") ?? "",
@@ -193,11 +209,13 @@ export async function updateSessionAction(
 ): Promise<SessionFormState> {
   const userId = await requireUserId();
 
+  const fallbackMinutes = await defaultSessionMinutes(userId);
+
   const parsed = updateSessionSchema.safeParse({
     id: formData.get("id") ?? "",
     clientId: formData.get("clientId") ?? "",
     startsAt: formData.get("startsAt") ?? "",
-    durationMinutes: formData.get("durationMinutes") ?? "50",
+    durationMinutes: formData.get("durationMinutes") || String(fallbackMinutes),
     location: formData.get("location"),
     meetingUrl: formData.get("meetingUrl") ?? "",
     rate: formData.get("rate") ?? "",

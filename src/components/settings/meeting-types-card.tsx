@@ -1,25 +1,38 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, X, Tags, Check } from "lucide-react";
+import { Plus, X, Tags, Check, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { MEETING_TYPE_COLORS } from "@/lib/meeting-type-colors";
+import { DURATION_CHOICES, withDuration } from "@/lib/session-duration";
 import {
   addMeetingTypeAction,
   deleteMeetingTypeAction,
   setMeetingTypeColorAction,
 } from "@/server/actions/meeting-types";
+import {
+  updateSessionDefaultsAction,
+  type SettingsFormState,
+} from "@/server/actions/settings";
 
 const DEFAULT_COLOR = MEETING_TYPE_COLORS[0];
 
 export function MeetingTypesCard({
   types,
+  defaultMinutes,
 }: {
   types: { id: string; name: string; color: string | null }[];
+  defaultMinutes: number;
 }) {
   const router = useRouter();
+  const [durationState, durationAction, durationPending] = useActionState<
+    SettingsFormState,
+    FormData
+  >(updateSessionDefaultsAction, null);
   const formRef = useRef<HTMLFormElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -46,6 +59,47 @@ export function MeetingTypesCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <form
+          action={durationAction}
+          className="rounded-xl border border-cream-200 bg-cream-50/60 p-3 space-y-2"
+          noValidate
+        >
+          <div className="flex items-center gap-2 text-sm text-ink">
+            <Clock className="w-4 h-4 text-sage-600 shrink-0" />
+            <label htmlFor="defaultSessionMinutes">משך פגישה כברירת מחדל</label>
+          </div>
+          <p className="text-xs text-ink-muted leading-relaxed">
+            כשקובעים פגישה, שעת הסיום תתמלא אוטומטית לפי המשך הזה. תמיד אפשר לשנות
+            בפגישה עצמה, ופגישות שכבר נקבעו לא מושפעות.
+          </p>
+          <div className="flex items-center gap-2">
+            <Select
+              id="defaultSessionMinutes"
+              name="defaultSessionMinutes"
+              defaultValue={String(defaultMinutes)}
+              className="h-10 w-32"
+            >
+              {withDuration(DURATION_CHOICES, defaultMinutes).map((m) => (
+                <option key={m} value={m}>
+                  {m} דקות
+                </option>
+              ))}
+            </Select>
+            <Button type="submit" disabled={durationPending}>
+              {durationPending ? "שומר…" : "שמירה"}
+            </Button>
+            {durationState?.saved && (
+              <span className="inline-flex items-center gap-1 text-xs text-sage-600">
+                <Check className="w-3.5 h-3.5" />
+                נשמר
+              </span>
+            )}
+          </div>
+          {durationState?.error && (
+            <p className="text-xs text-terracotta-600">{durationState.error}</p>
+          )}
+        </form>
+
         <p className="text-sm text-ink-muted leading-relaxed">
           הסוגים שמוגדרים כאן יופיעו לבחירה בפתיחת לקוח חדש ובקביעת פגישה ביומן.
           לחיצה על העיגול הצבעוני בוחרת צבע לפגישות מהסוג הזה ביומן.

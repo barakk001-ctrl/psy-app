@@ -38,6 +38,7 @@ export default async function SettingsPage({
       phone: true,
       defaultRate: true,
       vatLiable: true,
+      defaultSessionMinutes: true,
       inboxToken: true,
       totpEnabled: true,
       totpBackupCodes: true,
@@ -119,7 +120,7 @@ export default async function SettingsPage({
         }}
       />
 
-      <MeetingTypesCard types={meetingTypes} />
+      <MeetingTypesCard types={meetingTypes} defaultMinutes={user.defaultSessionMinutes} />
 
       <CalendarFeedCard
         token={user.calendarToken}
