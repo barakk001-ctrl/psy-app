@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { typesToCreate } from "@/lib/meeting-types";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -16,17 +17,25 @@ export async function addMeetingTypeAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim().slice(0, 60);
   if (!name) return;
 
-  const max = await db.meetingType.aggregate({
+  const existing = await db.meetingType.findMany({
     where: { userId },
-    _max: { position: true },
+    orderBy: [{ position: "asc" }, { name: "asc" }],
+    select: { name: true, position: true },
   });
 
-  try {
-    await db.meetingType.create({
-      data: { userId, name, position: (max._max.position ?? -1) + 1 },
-    });
-  } catch {
-    // Duplicate name — already in the list, nothing to do
+  // On the very first add the defaults are written out too, or they would vanish
+  // from every form the moment this user owned a single type of their own.
+  const names = typesToCreate(existing.map((t) => t.name), name);
+  let position = existing.reduce((m, t) => Math.max(m, t.position), -1);
+
+  for (const n of names) {
+    position += 1;
+    try {
+      await db.meetingType.create({ data: { userId, name: n, position } });
+    } catch {
+      // Duplicate name — already in the list, nothing to do
+      position -= 1;
+    }
   }
   revalidatePath("/settings");
 }
