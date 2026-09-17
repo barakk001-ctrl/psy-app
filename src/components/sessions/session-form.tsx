@@ -213,12 +213,12 @@ export function SessionForm({
 
           {location === "ONLINE" && (
             <div>
-              <Label htmlFor="meetingUrl">קישור לפגישה *</Label>
+              <Label htmlFor="meetingUrl">קישור לפגישה</Label>
               <Input
                 id="meetingUrl"
                 name="meetingUrl"
                 type="url"
-                placeholder="https://…"
+                placeholder="https://… (אפשר להוסיף אחר כך)"
                 defaultValue={meetingUrlDefault}
                 invalid={!!fieldErr.meetingUrl}
               />

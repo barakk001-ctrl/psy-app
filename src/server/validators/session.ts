@@ -21,6 +21,9 @@ export const createSessionSchema = z
       .transform((v) => (typeof v === "number" ? v : parseInt(v, 10)))
       .pipe(z.number().int().min(15).max(240)),
     location: z.enum(sessionLocations).default("OFFICE"),
+    // Optional even for an online meeting: the link often does not exist yet when
+    // the slot is booked, and blocking the booking on it is worse than a meeting
+    // with no link. A link that IS given still has to be a valid URL.
     meetingUrl: z.string().url("קישור לא תקין").optional().or(z.literal("")),
     rate: z
       .union([z.string(), z.number()])
@@ -46,13 +49,6 @@ export const createSessionSchema = z
     allowOverlap: checkbox,
     note: z.string().max(20000).optional().or(z.literal("")),
   })
-  .refine(
-    (d) => d.location !== "ONLINE" || (d.meetingUrl && d.meetingUrl.length > 0),
-    {
-      message: "פגישה מקוונת דורשת קישור",
-      path: ["meetingUrl"],
-    },
-  )
   .refine((d) => d.recurrence === "NONE" || d.openEnded || d.occurrences !== undefined, {
     message: "נדרש מספר פגישות בסדרה",
     path: ["occurrences"],
@@ -80,13 +76,6 @@ export const updateSessionSchema = z
     allowOverlap: checkbox,
     treatmentType: z.string().trim().min(1, "נדרש סוג מפגש").max(60).default("טיפול פרטני"),
   })
-  .refine(
-    (d) => d.location !== "ONLINE" || (d.meetingUrl && d.meetingUrl.length > 0),
-    {
-      message: "פגישה מקוונת דורשת קישור",
-      path: ["meetingUrl"],
-    },
-  );
 
 export const sessionStatusSchema = z.object({
   id: z.string(),

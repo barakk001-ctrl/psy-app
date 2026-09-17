@@ -44,11 +44,21 @@ describe("createSessionSchema", () => {
     ).toBe(true);
   });
 
-  it("requires a meeting link for online sessions", () => {
+  it("books an online session with no link yet", () => {
+    // The link usually does not exist when the slot is booked, so requiring it
+    // blocked the booking itself.
     expect(
       createSessionSchema.safeParse({ ...base, location: "ONLINE", recurrence: "NONE" })
         .success,
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      createSessionSchema.safeParse({
+        ...base,
+        location: "ONLINE",
+        meetingUrl: "",
+        recurrence: "NONE",
+      }).success,
+    ).toBe(true);
     expect(
       createSessionSchema.safeParse({
         ...base,
@@ -57,6 +67,18 @@ describe("createSessionSchema", () => {
         recurrence: "NONE",
       }).success,
     ).toBe(true);
+  });
+
+  it("still rejects a link that is not a URL", () => {
+    // Optional is not the same as unchecked: a typo should not be saved as a link.
+    expect(
+      createSessionSchema.safeParse({
+        ...base,
+        location: "ONLINE",
+        meetingUrl: "zoom.example/1",
+        recurrence: "NONE",
+      }).success,
+    ).toBe(false);
   });
 
   it("reports Hebrew messages for missing/null fields", () => {
