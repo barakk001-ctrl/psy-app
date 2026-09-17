@@ -76,6 +76,6 @@ Money is Prisma `Decimal` — no float math. Format money/dates only via `src/li
 
 ## Deployment & data
 
-Railway project **Clinic**: push to `main` auto-deploys service **psy-app**; start command runs `prisma migrate deploy`. The database is service **Postgres-EU** (Amsterdam, `europe-west4`) — chosen deliberately for privacy-law data locality; **do not** move data to non-EU regions. psy-app's `DATABASE_URL` references `${{Postgres-EU.DATABASE_URL}}`. An old `Postgres` service (US) may still exist as a frozen pre-migration copy — do not write to it. Nightly `pg_dump` backups run from the owner's machine (scheduled task `PsyAppDbBackup` → `E:\psy-app-backups`).
+Railway project **Clinic**: push to `main` auto-deploys service **psy-app**; start command runs `prisma migrate deploy`. The database is service **Postgres-EU** (Amsterdam, `europe-west4`) — chosen deliberately for privacy-law data locality; **do not** move data to non-EU regions. psy-app's `DATABASE_URL` references `${{Postgres-EU.DATABASE_URL}}`. The old US `Postgres` service was deleted on 2026-09-17 after psy-app was confirmed to reference `Postgres-EU` only; its final pre-migration dump is at `E:\psy-app-backups\psy-OLD-pre-migration-*.dump`. Nightly `pg_dump` backups run from the owner's machine (scheduled task `PsyAppDbBackup` → `E:\psy-app-backups`).
 
 The production PWA is installed on the practitioner's iPhone — after every deploy she must fully close and reopen the app, or she'll report stale-client bugs ("stuck saving").
