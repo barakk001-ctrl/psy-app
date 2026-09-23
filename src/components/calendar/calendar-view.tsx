@@ -9,6 +9,8 @@ import interactionPlugin from "@fullcalendar/interaction";
 import heLocale from "@fullcalendar/core/locales/he";
 import type { EventInput } from "@fullcalendar/core";
 import { rescheduleSessionAction } from "@/server/actions/sessions";
+import { setShowHolidaysAction } from "@/server/actions/settings";
+import type { HolidayMap } from "@/lib/holidays";
 import {
   QuickEditDialog,
   type QuickEditData,
@@ -20,7 +22,14 @@ type Props = {
   meetingTypes: string[];
   // Meeting-type label → color chosen in settings; scheduled events use it
   typeColors?: Record<string, string>;
+  /** yyyy-MM-dd → Israeli holidays that day (Hebcal) */
+  holidays?: HolidayMap;
+  showHolidays?: boolean;
+  defaultMinutes?: number;
 };
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const dayKey = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
 // Color sessions by status — sage for scheduled, muted for past, terracotta for problems.
 const STATUS_BG: Record<string, string> = {
@@ -42,11 +51,33 @@ function useIsMobile() {
   return isMobile;
 }
 
-export function CalendarView({ events, clients, meetingTypes, typeColors }: Props) {
+export function CalendarView({
+  events,
+  clients,
+  meetingTypes,
+  typeColors,
+  holidays = {},
+  showHolidays: showHolidaysInitial = false,
+  defaultMinutes,
+}: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const isMobile = useIsMobile();
   const [quickEdit, setQuickEdit] = useState<QuickEditData | null>(null);
+  // Optimistic: the box flips at once and the choice is saved to the account
+  const [showHolidays, setShowHolidays] = useState(showHolidaysInitial);
+  const holidayOn = (d: Date) => (showHolidays ? holidays[dayKey(d)] : undefined);
+  const toggleHolidays = () => {
+    const on = !showHolidays;
+    setShowHolidays(on);
+    startTransition(async () => {
+      try {
+        await setShowHolidaysAction(on);
+      } catch {
+        setShowHolidays(!on);
+      }
+    });
+  };
 
   const styledEvents: EventInput[] = events.map((e) => {
     const status = (e.extendedProps?.status as string) ?? "SCHEDULED";
@@ -67,6 +98,7 @@ export function CalendarView({ events, clients, meetingTypes, typeColors }: Prop
 
   return (
     <div className="rounded-2xl bg-white/85 backdrop-blur-sm border border-cream-200/80 shadow-soft p-2 sm:p-4 calendar-shell">
+      <div className="calendar-grid">
       <FullCalendar
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
@@ -82,14 +114,23 @@ export function CalendarView({ events, clients, meetingTypes, typeColors }: Prop
             ? {
                 start: "prev,next",
                 center: "title",
-                end: "today",
+                end: "holidays today",
               }
             : {
                 start: "prev,next today",
                 center: "title",
-                end: "dayGridMonth,timeGridWeek,timeGridDay",
+                end: "holidays dayGridMonth,timeGridWeek,timeGridDay",
               }
         }
+        // The holidays switch lives in the toolbar rather than on a row of its
+        // own: every pixel of height is a meeting more per day in month view.
+        customButtons={{
+          holidays: {
+            text: (showHolidays ? "☑" : "☐") + " מועדי ישראל",
+            hint: "הצגת מועדי ישראל ביומן",
+            click: toggleHolidays,
+          },
+        }}
         // On mobile, let users switch views via separate buttons we render below
         footerToolbar={
           isMobile
@@ -122,7 +163,37 @@ export function CalendarView({ events, clients, meetingTypes, typeColors }: Prop
           }
           return true;
         }}
-        dayMaxEvents={3}
+        // Show only the weeks the month has (5 more often than 6) and let each
+        // day hold what fits, with "+N נוספים" for the rest. A fixed 3 per day
+        // made rows taller than the screen and the month scrolled inside itself.
+        fixedWeekCount={false}
+        dayMaxEvents
+        // Holidays: a small line beside the day number (month) or under the
+        // weekday (week/day), like any calendar app. Not events, so they can't
+        // be dragged, clicked into the edit dialog, or counted as meetings.
+        dayCellContent={(arg) => {
+          if (arg.view.type !== "dayGridMonth") return undefined;
+          const hs = holidayOn(arg.date);
+          return (
+            <span className="fc-day-top-inner">
+              {hs && (
+                <span className="fc-holiday" title={hs.join(" · ")}>
+                  {hs.join(" · ")}
+                </span>
+              )}
+              <span>{arg.dayNumberText}</span>
+            </span>
+          );
+        }}
+        dayHeaderContent={(arg) => {
+          const hs = arg.view.type === "dayGridMonth" ? undefined : holidayOn(arg.date);
+          return (
+            <span className="fc-head-inner">
+              <span>{arg.text}</span>
+              {hs && <span className="fc-holiday">{hs.join(" · ")}</span>}
+            </span>
+          );
+        }}
         nowIndicator
         editable
         selectable
@@ -213,17 +284,67 @@ export function CalendarView({ events, clients, meetingTypes, typeColors }: Prop
           data={quickEdit}
           clients={clients}
           meetingTypes={meetingTypes}
+          defaultMinutes={defaultMinutes}
           onClose={() => setQuickEdit(null)}
         />
       )}
+      </div>
 
       <style jsx global>{`
         /* Fixed-height shell: the calendar grid scrolls inside it, the page
            doesn't — sized so the full month view fits the viewport (no page
            banner on /calendar, compact header). */
         .calendar-shell {
-          height: calc(100dvh - 12rem);
-          min-height: 480px;
+          /* page padding + the compact header above, and nothing more */
+          height: calc(100dvh - 9.5rem);
+          min-height: 460px;
+          display: flex;
+          flex-direction: column;
+        }
+        .calendar-shell .calendar-grid {
+          flex: 1;
+          min-height: 0;
+        }
+        .calendar-shell .fc-daygrid-day-number {
+          width: 100%;
+          padding: 1px 4px;
+        }
+        /* Compact month rows so more meetings fit a day before "+N נוספים" */
+        .calendar-shell .fc-daygrid-day-events {
+          margin-bottom: 0;
+        }
+        .calendar-shell .fc-daygrid-event-harness + .fc-daygrid-event-harness {
+          margin-top: 1px;
+        }
+        .calendar-shell .fc-daygrid-block-event {
+          padding-block: 0;
+        }
+        .calendar-shell .fc-daygrid-more-link {
+          font-size: 0.66rem;
+          line-height: 1.2;
+          color: #6b5f52;
+        }
+        .calendar-shell .fc-day-top-inner {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          gap: 0.35rem;
+          width: 100%;
+        }
+        .calendar-shell .fc-head-inner {
+          display: inline-flex;
+          flex-direction: column;
+          align-items: center;
+          line-height: 1.25;
+        }
+        .calendar-shell .fc-holiday {
+          color: #b5654a;
+          font-size: 0.66rem;
+          font-weight: 600;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          min-width: 0;
         }
         @media (max-width: 767px) {
           .calendar-shell {
@@ -285,7 +406,7 @@ export function CalendarView({ events, clients, meetingTypes, typeColors }: Prop
           text-overflow: ellipsis;
           white-space: nowrap;
           font-size: 0.68rem;
-          line-height: 1.35;
+          line-height: 1.3;
           direction: rtl;
         }
         .calendar-shell .fc-month-pill-time {
@@ -322,6 +443,22 @@ export function CalendarView({ events, clients, meetingTypes, typeColors }: Prop
           }
           .calendar-shell .fc-month-pill {
             font-size: 0.6rem;
+          }
+          /* Day cells are ~50px wide: the holiday gets its own line under the
+             date, two lines at most, instead of being cut to two letters */
+          .calendar-shell .fc-day-top-inner {
+            flex-direction: column-reverse;
+            align-items: flex-end;
+            gap: 0;
+          }
+          .calendar-shell .fc-day-top-inner .fc-holiday {
+            align-self: stretch;
+            font-size: 0.52rem;
+            line-height: 1.15;
+            white-space: normal;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
           }
           .calendar-shell .fc .fc-timegrid-slot-label-cushion {
             font-size: 0.65rem;

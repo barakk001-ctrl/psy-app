@@ -25,3 +25,18 @@ export function withDuration(
 }
 
 export const DEFAULT_SESSION_MINUTES = 50;
+
+/** "HH:MM" plus some minutes, as "HH:MM" on the same day.
+ *
+ *  Moving a meeting's start carries its end along by the practitioner's default
+ *  length, so a 15:00 → 16:00 move lands on 16:50 instead of leaving the end at
+ *  15:50, before the start. A meeting cannot run past midnight, so the end stops
+ *  at 23:59 rather than wrapping round to the early morning.
+ */
+export function addMinutesToTime(time: string, minutes: number): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(time);
+  if (!m) return time;
+  const total = Math.min(Number(m[1]) * 60 + Number(m[2]) + minutes, 23 * 60 + 59);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+}

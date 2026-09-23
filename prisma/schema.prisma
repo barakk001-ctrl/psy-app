@@ -25,7 +25,11 @@ model User {
   businessId      String?   // ת.ז / ע.מ / ח.פ
   address         String?
   phone           String?
+  // Logo or photo shown in the app header (a small data: URL resized in the
+  // browser, so no file storage is needed)
   logoUrl         String?
+  // Name shown under "מרפאה אישית" in the header, so the app reads as theirs
+  brandName       String?
 
   // Defaults
   defaultRate     Decimal?  @db.Decimal(10, 2)
@@ -34,6 +38,8 @@ model User {
   // How long a meeting runs unless the form says otherwise. 50 is the common
   // "therapeutic hour", but practices differ — 45 and 30 are both normal.
   defaultSessionMinutes Int  @default(50)
+  // Calendar: show Israeli holidays in the day cells (the checkbox above the calendar)
+  showHolidays    Boolean   @default(false)
   // עוסק מורשה = true (prices include VAT, show breakdown); עוסק פטור = false
   vatLiable       Boolean   @default(false)
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_SESSION_MINUTES,
   DURATION_CHOICES,
+  addMinutesToTime,
   withDuration,
 } from "../session-duration";
 
@@ -33,5 +34,22 @@ describe("withDuration", () => {
 
   it("keeps the app default among the offered choices", () => {
     expect(DURATION_CHOICES).toContain(DEFAULT_SESSION_MINUTES);
+  });
+});
+
+describe("addMinutesToTime", () => {
+  it("moves the end with the start by the default length", () => {
+    expect(addMinutesToTime("15:00", 50)).toBe("15:50");
+    expect(addMinutesToTime("09:40", 45)).toBe("10:25");
+    expect(addMinutesToTime("8:20", 30)).toBe("08:50");
+  });
+
+  it("never wraps past midnight", () => {
+    expect(addMinutesToTime("23:30", 50)).toBe("23:59");
+  });
+
+  it("leaves a half-typed time alone", () => {
+    expect(addMinutesToTime("", 50)).toBe("");
+    expect(addMinutesToTime("15:", 50)).toBe("15:");
   });
 });

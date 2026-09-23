@@ -47,6 +47,8 @@ async function requireUserId(): Promise<string> {
 export type SessionFormState = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
+  /** refused for an overlap — the form's live warning already says so */
+  conflict?: boolean;
 } | null;
 
 // Sessions overlapping any of the given slots (SCHEDULED only)
@@ -70,22 +72,52 @@ async function findOverlaps(userId: string, slots: Slot[], excludeIds?: string[]
   });
 }
 
-function overlapError(
-  overlaps: Awaited<ReturnType<typeof findOverlaps>>,
-): SessionFormState {
+function overlapList(overlaps: Awaited<ReturnType<typeof findOverlaps>>): string {
   const fmt = new Intl.DateTimeFormat("he-IL", {
     dateStyle: "short",
     timeStyle: "short",
     timeZone: "Asia/Jerusalem",
   });
-  const list = overlaps
+  return overlaps
     .map((o) => `${o.client.firstName} ${o.client.lastName} — ${fmt.format(o.startsAt)}`)
     .join(", ");
+}
+
+function overlapError(
+  overlaps: Awaited<ReturnType<typeof findOverlaps>>,
+): SessionFormState {
+  const list = overlapList(overlaps);
   return {
     error: `הזמן חופף לפגישה קיימת: ${list}. ניתן לסמן "אפשר חפיפה" כדי לשמור בכל זאת.`,
+    conflict: true,
   };
 }
 
+const LOCAL_DT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+
+/** Live check while a meeting's time is being chosen, so an overlap shows up
+ *  before "שמירה" rather than as a refused save. Read-only; the save still runs
+ *  its own check (including every slot of a new series), this only warns early.
+ *  Times are clinic wall-clock "yyyy-MM-ddTHH:mm". */
+export async function checkOverlapAction(input: {
+  startLocal: string;
+  endLocal: string;
+  excludeId?: string;
+}): Promise<{ overlap: string | null }> {
+  const userId = await requireUserId();
+  if (!LOCAL_DT.test(input.startLocal) || !LOCAL_DT.test(input.endLocal)) {
+    return { overlap: null };
+  }
+  const startsAt = fromZonedDateTimeLocal(input.startLocal);
+  const endsAt = fromZonedDateTimeLocal(input.endLocal);
+  if (!(endsAt > startsAt)) return { overlap: null };
+  const overlaps = await findOverlaps(
+    userId,
+    [{ startsAt, endsAt }],
+    input.excludeId ? [input.excludeId] : undefined,
+  );
+  return { overlap: overlaps.length ? overlapList(overlaps) : null };
+}
 
 export async function createSessionAction(
   _: SessionFormState,

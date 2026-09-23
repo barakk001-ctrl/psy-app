@@ -55,6 +55,12 @@ Layered on top: **TOTP 2FA with backup codes** (`two-factor.ts`, settings card),
 
 `createSessionAction` supports weekly/biweekly series: parent (RRULE in `recurrenceRule`) + children (`parentSessionId`). The calendar popup (`quick-edit-dialog.tsx` → `quickEditSessionAction`) offers **series-wide time changes**: "this meeting only" or "this and all future in the series" (a date move also shifts the weekday; overlaps are checked across all shifted slots). All create/update/reschedule paths run `findOverlaps` with an `allowOverlap` override. Statuses: SCHEDULED/COMPLETED/CANCELLED/NO_SHOW (UI label: "לא התקיימה"). Meeting types are user-defined (`MeetingType`, settings card) with optional **per-type calendar colors**.
 
+- **Forms that can be refused submit by hand, not through `action=`.** React 19 resets every uncontrolled field after a form action runs, so a save refused for an overlap used to wipe the time, rate and note. `session-form.tsx`, `quick-edit-dialog.tsx` and `branding-card.tsx` use `onSubmit` → `preventDefault()` → `startTransition(() => formAction(new FormData(form)))`. Copy that for any form whose save can come back with an error.
+- **Overlaps are warned live**: `checkOverlapAction` (read-only, same `findOverlaps` query) is called through `useOverlapWarning` 400 ms after the time stops changing, so the red note and the "אפשר חפיפה" box appear before saving. The save still runs its own check (and checks every slot of a new series, which the live check does not).
+- **Moving a meeting's start re-applies the default length** (`defaultSessionMinutes`): the quick-edit end time becomes start + default (`addMinutesToTime`, capped at 23:59), and the edit form's duration resets to the default. Both stay editable.
+- **Calendar month view must fit the screen without scrolling**: `fixedWeekCount={false}`, `dayMaxEvents` (fit what the cell holds, then "+N נוספים"), compact pill CSS, and the shell height `calc(100dvh - 9.5rem)`. Controls go in the FullCalendar toolbar (`customButtons`), never on a row of their own.
+- **Israeli holidays** (`src/lib/holidays.ts`): fetched server-side from Hebcal (dates only, CC BY 4.0), cached in memory for a day, an empty map on failure. Shown via `dayCellContent`/`dayHeaderContent` (not as events, so they can't be dragged or opened) when `User.showHolidays` is on — the "☑ מועדי ישראל" toolbar button, saved per account.
+
 ### Billing: two parallel workflows
 
 1. **Morning-first (the practitioner's actual workflow)**: billing happens in Morning (Green Invoice); the app records per-session payment status/method/amount (`paymentStatus` etc. on Session) and the practitioner types Morning document numbers onto the session — separate fields for חשבונית מס, קבלה, and the combined חשבונית מס-קבלה (`morningDocNumber`/`morningReceiptNumber`/`morningInvoiceReceiptNumber` + URL fields, auto-linked to synced Morning docs).
@@ -64,7 +70,7 @@ Morning integration (`src/lib/morning.ts`): per-user API keys (secret encrypted 
 
 ### Dashboards & follow-up surfaces
 
-Dashboard shows **today's meetings** (clinic wall clock) with bold done/missing indicators for documentation and payment (`SessionFlags` component on other pages). `/document` lists recent meetings missing notes; `/collect` lists meetings with no payment update + open invoices. The clinic-room SVG illustration (`clinic-hero.tsx`) appears as the dashboard hero and as a letterhead banner on every other page (`clinic-banner.tsx`).
+Dashboard shows **today's meetings** (clinic wall clock) with bold done/missing indicators for documentation and payment (`SessionFlags` component on other pages). `/document` lists recent meetings missing notes; `/collect` lists meetings with no payment update + open invoices. **Branding**: Settings → מיתוג sets `User.brandName` (shown under "מרפאה אישית") and `User.logoUrl` (replaces the "מ" tile) — a data: URL the browser crops/shrinks to 256px, validated server-side by `isValidLogoDataUrl`; the (app) layout reads both and passes them to `BrandMark` in the sidebar and mobile top bar. The clinic-room SVG illustration (`clinic-hero.tsx`) appears as the dashboard hero and as a letterhead banner on every other page (`clinic-banner.tsx`).
 
 ### Message import & inbox
 

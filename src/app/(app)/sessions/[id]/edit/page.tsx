@@ -42,7 +42,10 @@ export default async function EditSessionPage({
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     select: { id: true, firstName: true, lastName: true, defaultRate: true, treatmentType: true },
   });
-  const meetingTypes = await getMeetingTypeNames(userId);
+  const [meetingTypes, me] = await Promise.all([
+    getMeetingTypeNames(userId),
+    db.user.findUnique({ where: { id: userId }, select: { defaultSessionMinutes: true } }),
+  ]);
 
   const clientOptions = clients.map((c) => ({
     id: c.id,
@@ -74,6 +77,7 @@ export default async function EditSessionPage({
       <SessionForm
         meetingTypes={meetingTypes}
         clients={clientOptions}
+        defaultMinutes={me?.defaultSessionMinutes}
         initial={{
           id: sess.id,
           clientId: sess.clientId,

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { BusinessInfoForm } from "@/components/settings/business-info-form";
+import { BrandingCard } from "@/components/settings/branding-card";
 import { PersonalDetailsForm } from "@/components/settings/personal-details-form";
 import { MorningSettingsForm } from "@/components/settings/morning-settings-form";
 import { BiometricSettings } from "@/components/settings/biometric-settings";
@@ -33,6 +34,8 @@ export default async function SettingsPage({
       name: true,
       email: true,
       businessName: true,
+      brandName: true,
+      logoUrl: true,
       businessId: true,
       address: true,
       phone: true,
@@ -119,6 +122,8 @@ export default async function SettingsPage({
           vatLiable: user.vatLiable,
         }}
       />
+
+      <BrandingCard initial={{ brandName: user.brandName, logoUrl: user.logoUrl }} />
 
       <MeetingTypesCard types={meetingTypes} defaultMinutes={user.defaultSessionMinutes} />
 

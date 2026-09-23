@@ -129,7 +129,7 @@ export function SessionBillingCard({
               <option value="">— לא סומן —</option>
               <option value="PAID">שולם</option>
               <option value="UNPAID">טרם שולם</option>
-              <option value="EXEMPT">ללא תשלום (למשל פגישה שבוטלה)</option>
+              <option value="EXEMPT">ללא תשלום</option>
             </Select>
           </div>
 

@@ -7,6 +7,7 @@ import { BiometricLockOverlay } from "@/components/security/biometric-lock-overl
 import { ClinicBanner } from "@/components/layout/clinic-banner";
 import { SubscriptionBanner } from "@/components/layout/subscription-banner";
 import { subscriptionStateFor } from "@/lib/subscription-server";
+import { db } from "@/lib/db";
 
 export default async function AppLayout({
   children,
@@ -16,7 +17,13 @@ export default async function AppLayout({
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const sub = await subscriptionStateFor(session.user.id);
+  const [sub, branding] = await Promise.all([
+    subscriptionStateFor(session.user.id),
+    db.user.findUnique({
+      where: { id: session.user.id },
+      select: { brandName: true, logoUrl: true },
+    }),
+  ]);
   const showBanner =
     sub.status === "expired" ||
     (sub.status === "trial" && (sub.daysLeft ?? 99) <= 7);
@@ -24,9 +31,9 @@ export default async function AppLayout({
   return (
     <div className="min-h-screen flex">
       <BiometricLockOverlay />
-      <DesktopSidebar userName={session.user.name} />
+      <DesktopSidebar userName={session.user.name} branding={branding ?? undefined} />
       <div className="flex-1 min-w-0 flex flex-col">
-        <MobileTopBar userName={session.user.name} />
+        <MobileTopBar userName={session.user.name} branding={branding ?? undefined} />
         <main className="flex-1">
           {/* pb-28 on mobile so content isn't hidden behind the floating tab bar */}
           <div className="container-page py-6 lg:py-8 pb-28 lg:pb-8 animate-page">

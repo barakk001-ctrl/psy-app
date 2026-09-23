@@ -8,6 +8,7 @@ import { encryptSecret } from "@/lib/crypto";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { getMorningCredentials, testMorningConnection } from "@/lib/morning";
 import {
+  brandingSchema,
   businessInfoSchema,
   personalDetailsSchema,
   sessionDefaultsSchema,
@@ -130,6 +131,44 @@ export async function updateSessionDefaultsAction(
   revalidatePath("/settings");
   revalidatePath("/sessions/new");
   return { saved: true };
+}
+
+/** Name and logo shown in the app header. The header sits in the (app)
+ *  layout, so the whole layout is revalidated. */
+export async function updateBrandingAction(
+  _: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  const userId = await requireUserId();
+
+  const parsed = brandingSchema.safeParse({
+    brandName: formData.get("brandName") ?? "",
+    logo: formData.get("logo") ?? "",
+  });
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    return { error: fieldErrors.logo?.[0] ?? "אנא תקן את השגיאות בטופס", fieldErrors };
+  }
+
+  const { brandName, logo } = parsed.data;
+  await db.user.update({
+    where: { id: userId },
+    data: {
+      brandName: brandName || null,
+      ...(logo === "REMOVE" ? { logoUrl: null } : logo ? { logoUrl: logo } : {}),
+    },
+  });
+
+  revalidatePath("/", "layout");
+  return { saved: true };
+}
+
+/** The "מועדי ישראל" checkbox above the calendar. Kept on the account rather
+ *  than the device, so the laptop and the phone agree. */
+export async function setShowHolidaysAction(show: boolean): Promise<void> {
+  const userId = await requireUserId();
+  await db.user.update({ where: { id: userId }, data: { showHolidays: !!show } });
+  revalidatePath("/calendar");
 }
 
 export async function updatePersonalDetailsAction(

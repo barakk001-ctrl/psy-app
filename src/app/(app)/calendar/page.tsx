@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getMeetingTypeNames, getMeetingTypeColorMap } from "@/lib/meeting-types";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
+import { fetchHolidays } from "@/lib/holidays";
 import { Button } from "@/components/ui/button";
 import { CalendarView } from "@/components/calendar/calendar-view";
 import type { EventInput } from "@fullcalendar/core";
@@ -20,7 +21,7 @@ export default async function CalendarPage() {
   const rangeEnd = new Date(now);
   rangeEnd.setDate(rangeEnd.getDate() + 180);
 
-  const [sessions, clients, meetingTypes, typeColors] = await Promise.all([
+  const [sessions, clients, meetingTypes, typeColors, me, holidays] = await Promise.all([
     db.session.findMany({
       where: {
         userId,
@@ -39,6 +40,13 @@ export default async function CalendarPage() {
     }),
     getMeetingTypeNames(userId),
     getMeetingTypeColorMap(userId),
+    db.user.findUnique({
+      where: { id: userId },
+      select: { showHolidays: true, defaultSessionMinutes: true },
+    }),
+    // Fetched whether or not they are shown, so ticking the box needs no reload.
+    // Cached in memory for a day; an empty map if Hebcal is unreachable.
+    fetchHolidays(rangeStart, rangeEnd),
   ]);
 
   const events: EventInput[] = sessions.map((s) => ({
@@ -82,6 +90,9 @@ export default async function CalendarPage() {
         }))}
         meetingTypes={meetingTypes}
         typeColors={typeColors}
+        holidays={holidays}
+        showHolidays={me?.showHolidays ?? false}
+        defaultMinutes={me?.defaultSessionMinutes}
       />
     </div>
   );

@@ -5,19 +5,21 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { signOutAction } from "@/server/actions/auth";
 import { NAV_ITEMS } from "./nav-items";
+import { BrandMark, type Branding } from "@/components/layout/brand-mark";
 
-export function DesktopSidebar({ userName }: { userName?: string | null }) {
+export function DesktopSidebar({
+  userName,
+  branding,
+}: {
+  userName?: string | null;
+  branding?: Branding;
+}) {
   const pathname = usePathname();
 
   return (
     <aside className="hidden lg:flex w-64 shrink-0 border-l border-cream-200/60 glass flex-col h-screen sticky top-0">
       <div className="p-6 border-b border-cream-200/60">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sage-500 to-sage-700 flex items-center justify-center text-cream-50 font-display text-sm shadow-glow">
-            מ
-          </div>
-          <span className="font-display text-xl text-ink">מרפאה אישית</span>
-        </Link>
+        <BrandMark branding={branding} />
       </div>
 
       <nav className="flex-1 p-3 overflow-y-auto">

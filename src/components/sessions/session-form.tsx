@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
   updateSessionAction,
   type SessionFormState,
 } from "@/server/actions/sessions";
+import { addMinutesLocal, useOverlapWarning } from "./use-overlap-warning";
 
 type ClientOption = {
   id: string;
@@ -81,18 +82,39 @@ export function SessionForm({
 
   // Match the start time to the initial value (edit) or the URL param (create from calendar click)
   const startsAtDefault = initial?.startsAt ?? defaults?.startsAt;
-  // An existing meeting keeps the length it was saved with; a new one opens on
-  // the practitioner's own default rather than a number baked into the form.
-  const durationDefault = String(initial?.durationMinutes ?? defaultMinutes);
+  // An existing meeting opens on the length it was saved with; a new one on the
+  // practitioner's own default rather than a number baked into the form.
+  const [duration, setDuration] = useState<string>(
+    String(initial?.durationMinutes ?? defaultMinutes),
+  );
   const durationOptions = withDuration(
-    DURATION_CHOICES,
-    initial?.durationMinutes ?? defaultMinutes,
+    withDuration(DURATION_CHOICES, initial?.durationMinutes ?? defaultMinutes),
+    defaultMinutes,
   );
   const rateDefault = initial?.rate ?? "";
+  // Checked live, so a clash shows up while the time is being chosen
+  const [startsAt, setStartsAt] = useState<string>(startsAtDefault ?? "");
+  const overlap = useOverlapWarning(
+    startsAt,
+    startsAt ? addMinutesLocal(startsAt, Number(duration)) : undefined,
+    initial?.id,
+  );
   const meetingUrlDefault = initial?.meetingUrl ?? "";
 
   return (
-    <form action={formAction} className="space-y-6" noValidate>
+    <form
+      // Submitted by hand rather than through the form's `action`: React resets
+      // every uncontrolled field after an action runs, so a refused save (an
+      // overlap, say) used to wipe the time, rate and note she had just typed
+      // before she could tick "אפשר חפיפה" and save again.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        startTransition(() => formAction(fd));
+      }}
+      className="space-y-6"
+      noValidate
+    >
       {isEdit && <input type="hidden" name="id" value={initial!.id} />}
 
       <Card>
@@ -145,6 +167,12 @@ export function SessionForm({
                 required
                 defaultValue={startsAtDefault}
                 invalid={!!fieldErr.startsAt}
+                // Moving an existing meeting puts it back on the default length;
+                // the duration stays editable right beside it.
+                onChange={(e) => {
+                  setStartsAt(e.target.value);
+                  if (isEdit) setDuration(String(defaultMinutes));
+                }}
               />
               {fieldErr.startsAt && (
                 <p className="text-xs text-terracotta-600 mt-1">{fieldErr.startsAt[0]}</p>
@@ -155,7 +183,8 @@ export function SessionForm({
               <Select
                 id="durationMinutes"
                 name="durationMinutes"
-                defaultValue={durationDefault}
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
               >
                 {durationOptions.map((m) => (
                   <option key={m} value={m}>
@@ -299,6 +328,13 @@ export function SessionForm({
             </div>
           )}
 
+          {overlap && (
+            <div className="rounded-xl border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
+              שימו לב: הזמן חופף לפגישה קיימת — {overlap}. אפשר לבחור שעה אחרת, או
+              לסמן ״אפשר חפיפה״ ולשמור.
+            </div>
+          )}
+
           <label className="flex items-center gap-2 text-sm text-ink-soft">
             <input
               type="checkbox"
@@ -310,7 +346,8 @@ export function SessionForm({
         </CardContent>
       </Card>
 
-      {state?.error && !state.fieldErrors && (
+      {/* an overlap is already shown live above the checkbox; don't say it twice */}
+      {state?.error && !state.fieldErrors && !(state.conflict && overlap) && (
         <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
           {state.error}
         </div>

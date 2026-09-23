@@ -7,8 +7,15 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOutAction } from "@/server/actions/auth";
 import { NAV_ITEMS } from "./nav-items";
+import { BrandMark, type Branding } from "@/components/layout/brand-mark";
 
-export function MobileTopBar({ userName }: { userName?: string | null }) {
+export function MobileTopBar({
+  userName,
+  branding,
+}: {
+  userName?: string | null;
+  branding?: Branding;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -32,12 +39,7 @@ export function MobileTopBar({ userName }: { userName?: string | null }) {
   return (
     <>
       <header className="lg:hidden sticky top-0 z-30 glass border-b border-cream-200/60 px-4 h-14 flex items-center justify-between">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-sage-500 to-sage-700 flex items-center justify-center text-cream-50 font-display text-xs shadow-glow">
-            מ
-          </div>
-          <span className="font-display text-lg text-ink">מרפאה אישית</span>
-        </Link>
+        <BrandMark branding={branding} size="sm" />
         <button
           type="button"
           onClick={() => setOpen(true)}

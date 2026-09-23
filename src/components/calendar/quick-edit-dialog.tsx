@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ExternalLink, X } from "lucide-react";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { DEFAULT_SESSION_MINUTES, addMinutesToTime } from "@/lib/session-duration";
+import { useOverlapWarning } from "@/components/sessions/use-overlap-warning";
 import {
   deleteSessionAction,
   quickEditSessionAction,
@@ -31,11 +33,14 @@ export function QuickEditDialog({
   data,
   clients,
   meetingTypes,
+  defaultMinutes = DEFAULT_SESSION_MINUTES,
   onClose,
 }: {
   data: QuickEditData;
   clients: { id: string; name: string }[];
   meetingTypes: string[];
+  /** The practitioner's default meeting length, from settings. */
+  defaultMinutes?: number;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -44,6 +49,16 @@ export function QuickEditDialog({
     null,
   );
   const [cancelled, setCancelled] = useState(data.cancelled);
+  const [endTime, setEndTime] = useState(data.endTime);
+  const [date, setDate] = useState(data.date);
+  const [startTime, setStartTime] = useState(data.startTime);
+  // Checked live, so a clash shows up before "שמירה"; a cancelled meeting can't clash
+  const overlap = useOverlapWarning(
+    date && startTime ? `${date}T${startTime}` : undefined,
+    date && endTime ? `${date}T${endTime}` : undefined,
+    data.id,
+    !cancelled,
+  );
 
   useEffect(() => {
     if (state?.saved) {
@@ -82,7 +97,16 @@ export function QuickEditDialog({
           </button>
         </div>
 
-        <form action={formAction} className="space-y-4">
+        <form
+          // By hand, not `action`: React clears uncontrolled fields after an
+          // action, so a refused save lost the new date and time.
+          onSubmit={(e) => {
+            e.preventDefault();
+            const fd = new FormData(e.currentTarget);
+            startTransition(() => formAction(fd));
+          }}
+          className="space-y-4"
+        >
           <input type="hidden" name="id" value={data.id} />
 
           <div>
@@ -102,7 +126,14 @@ export function QuickEditDialog({
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label htmlFor="qeDate">תאריך</Label>
-              <Input id="qeDate" name="date" type="date" defaultValue={data.date} required />
+              <Input
+                id="qeDate"
+                name="date"
+                type="date"
+                defaultValue={data.date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
             </div>
             <div>
               <Label htmlFor="qeStart">התחלה</Label>
@@ -112,6 +143,11 @@ export function QuickEditDialog({
                 type="time"
                 defaultValue={data.startTime}
                 required
+                // the end follows the start by the default length; still editable
+                onChange={(e) => {
+                  setStartTime(e.target.value);
+                  if (e.target.value) setEndTime(addMinutesToTime(e.target.value, defaultMinutes));
+                }}
               />
             </div>
             <div>
@@ -120,7 +156,8 @@ export function QuickEditDialog({
                 id="qeEnd"
                 name="endTime"
                 type="time"
-                defaultValue={data.endTime}
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
                 required
               />
             </div>
@@ -183,19 +220,25 @@ export function QuickEditDialog({
             </span>
           </label>
 
-          {state?.error && (
+          {state?.error && !state.conflict && (
+            <div className="rounded-xl border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">{state.error}</div>
+          )}
+
+          {(overlap || state?.conflict) && (
             <div className="rounded-xl border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600 space-y-2">
-              <p>{state.error}</p>
-              {state.conflict && (
-                <label className="flex items-center gap-2 text-ink-soft">
-                  <input
-                    type="checkbox"
-                    name="allowOverlap"
-                    className="h-4 w-4 rounded border-cream-300 accent-sage-600"
-                  />
-                  אפשר חפיפה ושמור בכל זאת
-                </label>
-              )}
+              <p>
+                {overlap
+                  ? `שימו לב: הזמן חופף לפגישה קיימת — ${overlap}.`
+                  : state?.error}
+              </p>
+              <label className="flex items-center gap-2 text-ink-soft">
+                <input
+                  type="checkbox"
+                  name="allowOverlap"
+                  className="h-4 w-4 rounded border-cream-300 accent-sage-600"
+                />
+                אפשר חפיפה ושמור בכל זאת
+              </label>
             </div>
           )}
 

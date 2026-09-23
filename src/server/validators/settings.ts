@@ -1,5 +1,6 @@
 import "./zod-hebrew";
 import { z } from "zod";
+import { isValidLogoDataUrl } from "@/lib/branding";
 
 export const personalDetailsSchema = z.object({
   name: z.string().min(2, "נדרש שם").max(80),
@@ -38,3 +39,14 @@ export const sessionDefaultsSchema = z.object({
 });
 
 export type SessionDefaultsInput = z.infer<typeof sessionDefaultsSchema>;
+
+/** The practice's own name and logo in the app header. `logo` is a data: URL
+ *  from the browser, "" to leave the current one, or "REMOVE" to clear it. */
+export const brandingSchema = z.object({
+  brandName: z.string().trim().max(60, "עד 60 תווים").optional().or(z.literal("")),
+  logo: z
+    .string()
+    .refine((v) => v === "" || v === "REMOVE" || isValidLogoDataUrl(v), "קובץ התמונה לא תקין או גדול מדי"),
+});
+
+export type BrandingInput = z.infer<typeof brandingSchema>;
