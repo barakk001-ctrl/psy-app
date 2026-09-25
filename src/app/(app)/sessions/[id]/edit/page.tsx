@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
 import { SessionForm } from "@/components/sessions/session-form";
+import { sessionScopeInfoAction } from "@/server/actions/sessions";
 
 export default async function EditSessionPage({
   params,
@@ -42,9 +43,11 @@ export default async function EditSessionPage({
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     select: { id: true, firstName: true, lastName: true, defaultRate: true, treatmentType: true },
   });
-  const [meetingTypes, me] = await Promise.all([
+  const [meetingTypes, me, scope] = await Promise.all([
     getMeetingTypeNames(userId),
     db.user.findUnique({ where: { id: userId }, select: { defaultSessionMinutes: true } }),
+    // the client's following meetings in this slot — "all of them" is offered
+    sessionScopeInfoAction(sess.id),
   ]);
 
   const clientOptions = clients.map((c) => ({
@@ -78,6 +81,7 @@ export default async function EditSessionPage({
         meetingTypes={meetingTypes}
         clients={clientOptions}
         defaultMinutes={me?.defaultSessionMinutes}
+        scope={scope ?? undefined}
         initial={{
           id: sess.id,
           clientId: sess.clientId,

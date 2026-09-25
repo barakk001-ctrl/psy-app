@@ -19,8 +19,16 @@ import {
   seriesSlots,
   type Slot,
 } from "@/lib/recurrence";
-import { fromZonedDateTimeLocal, toZonedDateTimeLocal } from "@/lib/timezone";
+import { fromZonedDateTimeLocal } from "@/lib/timezone";
 import { encryptNote } from "@/lib/crypto";
+import { logAudit } from "@/lib/audit";
+import { moveFollowers, slotLabel, type MovedSlot } from "@/lib/standing-slot";
+import { keepReasonsText } from "@/lib/bulk-delete";
+import {
+  keepSeriesLinked,
+  loadFutureDeletePlan,
+  loadSlotFollowers,
+} from "@/lib/session-scope";
 import {
   createSessionSchema,
   sessionStatusSchema,
@@ -95,14 +103,51 @@ function overlapError(
 
 const LOCAL_DT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
+/** Where the client's following meetings in the same standing slot go when
+ *  this one moves to `newLocal` ("yyyy-MM-ddTHH:mm") for `durationMinutes`.
+ *  The caller has already verified the session belongs to `userId`. */
+async function followerMoves(
+  userId: string,
+  existing: {
+    id: string;
+    clientId: string;
+    startsAt: Date;
+    parentSessionId: string | null;
+    recurrenceRule: string | null;
+  },
+  newLocal: string,
+  durationMinutes: number,
+): Promise<MovedSlot[]> {
+  const followers = await loadSlotFollowers(userId, existing);
+  return moveFollowers(
+    followers,
+    existing.startsAt,
+    newLocal.slice(0, 10),
+    newLocal.slice(11, 16),
+    durationMinutes,
+  );
+}
+
+const SCOPE_SELECT = {
+  id: true,
+  clientId: true,
+  startsAt: true,
+  status: true,
+  parentSessionId: true,
+  recurrenceRule: true,
+} as const;
+
 /** Live check while a meeting's time is being chosen, so an overlap shows up
  *  before "שמירה" rather than as a refused save. Read-only; the save still runs
  *  its own check (including every slot of a new series), this only warns early.
- *  Times are clinic wall-clock "yyyy-MM-ddTHH:mm". */
+ *  With applyScope "future" it also checks where the client's following
+ *  meetings in the same slot would land. Times are clinic wall-clock
+ *  "yyyy-MM-ddTHH:mm". */
 export async function checkOverlapAction(input: {
   startLocal: string;
   endLocal: string;
   excludeId?: string;
+  applyScope?: "single" | "future";
 }): Promise<{ overlap: string | null }> {
   const userId = await requireUserId();
   if (!LOCAL_DT.test(input.startLocal) || !LOCAL_DT.test(input.endLocal)) {
@@ -111,12 +156,84 @@ export async function checkOverlapAction(input: {
   const startsAt = fromZonedDateTimeLocal(input.startLocal);
   const endsAt = fromZonedDateTimeLocal(input.endLocal);
   if (!(endsAt > startsAt)) return { overlap: null };
+
+  let moves: MovedSlot[] = [];
+  if (input.applyScope === "future" && input.excludeId) {
+    const existing = await db.session.findFirst({
+      where: { id: input.excludeId, userId },
+      select: SCOPE_SELECT,
+    });
+    if (existing) {
+      const minutes = Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000);
+      moves = await followerMoves(userId, existing, input.startLocal, minutes);
+    }
+  }
+
   const overlaps = await findOverlaps(
     userId,
-    [{ startsAt, endsAt }],
-    input.excludeId ? [input.excludeId] : undefined,
+    [{ startsAt, endsAt }, ...moves],
+    [...(input.excludeId ? [input.excludeId] : []), ...moves.map((m) => m.id)],
   );
   return { overlap: overlaps.length ? overlapList(overlaps) : null };
+}
+
+export type SessionScopeInfo = {
+  clientName: string;
+  /** "ימי שני ב-18:00" — the slot the meeting currently sits in */
+  slotLabel: string;
+  /** following scheduled meetings of the client in that slot */
+  followers: number;
+  /** this meeting starts after now */
+  isFuture: boolean;
+  /** future meetings of the client that "delete all future" would remove */
+  futureDelete: number;
+  /** future meetings kept because they hold notes/files/billing */
+  futureKeep: number;
+  keepReasons: string;
+  /** other future meetings that "delete all future" would delete or cancel —
+   *  the choice is offered only when there is at least one */
+  othersAffected: number;
+};
+
+async function scopeInfo(
+  userId: string,
+  sess: {
+    id: string;
+    clientId: string;
+    startsAt: Date;
+    parentSessionId: string | null;
+    recurrenceRule: string | null;
+    client: { firstName: string; lastName: string };
+  },
+): Promise<SessionScopeInfo> {
+  const now = new Date();
+  const [followers, plan] = await Promise.all([
+    loadSlotFollowers(userId, sess, now),
+    loadFutureDeletePlan(userId, sess.clientId, now),
+  ]);
+  return {
+    clientName: `${sess.client.firstName} ${sess.client.lastName}`,
+    slotLabel: slotLabel(sess.startsAt),
+    followers: followers.length,
+    isFuture: sess.startsAt.getTime() > now.getTime(),
+    futureDelete: plan.deleteIds.length,
+    futureKeep: plan.keep.length,
+    keepReasons: keepReasonsText(plan.keep),
+    othersAffected: [...plan.deleteIds, ...plan.scheduledKeepIds].filter((x) => x !== sess.id)
+      .length,
+  };
+}
+
+/** Read-only: what "all of this client's meetings" would cover for a meeting —
+ *  used to offer (and count) the choice in the calendar popup. */
+export async function sessionScopeInfoAction(id: string): Promise<SessionScopeInfo | null> {
+  const userId = await requireUserId();
+  if (typeof id !== "string" || !id) return null;
+  const sess = await db.session.findFirst({
+    where: { id, userId },
+    select: { ...SCOPE_SELECT, client: { select: { firstName: true, lastName: true } } },
+  });
+  return sess ? scopeInfo(userId, sess) : null;
 }
 
 export async function createSessionAction(
@@ -266,7 +383,7 @@ export async function updateSessionAction(
   // Verify ownership and load existing session
   const existing = await db.session.findFirst({
     where: { id: data.id, userId },
-    select: { id: true, startsAt: true, status: true, clientId: true },
+    select: SCOPE_SELECT,
   });
   if (!existing) return { error: "פגישה לא נמצאה" };
 
@@ -280,33 +397,57 @@ export async function updateSessionAction(
   const startsAt = fromZonedDateTimeLocal(data.startsAt);
   const endsAt = new Date(startsAt.getTime() + data.durationMinutes * 60 * 1000);
 
+  // "All of this client's following meetings": the client's later scheduled
+  // meetings in the same standing slot move with this one — same day offset,
+  // the new start time and length (e.g. Monday 18:00 → Wednesday 17:00).
+  const moves =
+    formData.get("applyScope") === "future"
+      ? await followerMoves(userId, existing, data.startsAt, data.durationMinutes)
+      : [];
+
   if (!data.allowOverlap) {
-    const overlaps = await findOverlaps(userId, [{ startsAt, endsAt }], [data.id]);
+    const overlaps = await findOverlaps(
+      userId,
+      [{ startsAt, endsAt }, ...moves],
+      [data.id, ...moves.map((m) => m.id)],
+    );
     if (overlaps.length > 0) return overlapError(overlaps);
   }
 
-  await db.session.update({
-    where: { id: data.id, userId },
-    data: {
-      clientId: data.clientId,
-      startsAt,
-      endsAt,
-      location: data.location,
-      meetingUrl: data.meetingUrl || null,
-      rate: data.rate ?? null,
-      treatmentType: data.treatmentType,
-    },
-  });
+  await db.$transaction([
+    db.session.update({
+      where: { id: data.id, userId },
+      data: {
+        clientId: data.clientId,
+        startsAt,
+        endsAt,
+        location: data.location,
+        meetingUrl: data.meetingUrl || null,
+        rate: data.rate ?? null,
+        treatmentType: data.treatmentType,
+      },
+    }),
+    ...moves.map((m) =>
+      db.session.update({
+        where: { id: m.id, userId },
+        data: { startsAt: m.startsAt, endsAt: m.endsAt },
+      }),
+    ),
+  ]);
 
   // If the time changed and the session is still scheduled, refresh reminders
   const timeChanged = startsAt.getTime() !== existing.startsAt.getTime();
   if (timeChanged && existing.status === "SCHEDULED") {
     await rescheduleSessionReminders(data.id);
   }
+  for (const m of moves) {
+    await rescheduleSessionReminders(m.id);
+  }
 
   revalidatePath("/calendar");
   revalidatePath("/dashboard");
   revalidatePath(`/sessions/${data.id}`);
+  for (const m of moves) revalidatePath(`/sessions/${m.id}`);
   revalidatePath(`/clients/${data.clientId}`);
   if (existing.clientId !== data.clientId) {
     revalidatePath(`/clients/${existing.clientId}`);
@@ -398,17 +539,18 @@ export async function deleteFutureSessionsAction(formData: FormData) {
   const deletableIds = future.filter((s) => !s.note).map((s) => s.id);
   const keepIds = future.filter((s) => s.note).map((s) => s.id);
 
-  await db.$transaction([
-    db.reminderJob.updateMany({
+  await db.$transaction(async (tx) => {
+    await tx.reminderJob.updateMany({
       where: { sessionId: { in: ids }, status: "PENDING" },
       data: { status: "CANCELLED" },
-    }),
-    db.session.updateMany({
-      where: { id: { in: keepIds } },
+    });
+    await tx.session.updateMany({
+      where: { userId, id: { in: keepIds } },
       data: { status: "CANCELLED" },
-    }),
-    db.session.deleteMany({ where: { id: { in: deletableIds } } }),
-  ]);
+    });
+    await keepSeriesLinked(tx, userId, deletableIds);
+    await tx.session.deleteMany({ where: { userId, id: { in: deletableIds } } });
+  });
 
   revalidatePath("/calendar");
   revalidatePath("/dashboard");
@@ -448,14 +590,7 @@ export async function quickEditSessionAction(
 
   const existing = await db.session.findFirst({
     where: { id, userId },
-    select: {
-      id: true,
-      status: true,
-      startsAt: true,
-      clientId: true,
-      parentSessionId: true,
-      recurrenceRule: true,
-    },
+    select: SCOPE_SELECT,
   });
   if (!existing) return { error: "פגישה לא נמצאה" };
 
@@ -468,40 +603,21 @@ export async function quickEditSessionAction(
   const startsAt = fromZonedDateTimeLocal(`${date}T${startTime}`);
   const endsAt = fromZonedDateTimeLocal(`${date}T${endTime}`);
 
-  // "Apply to all future": shift every later SCHEDULED session in the series
-  // to the new start/end times — and by the same number of days, if the date
-  // moved (e.g. the standing Tuesday 9:00 slot becomes Wednesday 9:30).
-  const inSeries = !!(existing.parentSessionId || existing.recurrenceRule);
-  let futureUpdates: { id: string; startsAt: Date; endsAt: Date }[] = [];
-  if (applyScope === "future" && inSeries) {
-    const rootId = existing.parentSessionId ?? existing.id;
-    const oldDate = toZonedDateTimeLocal(existing.startsAt).slice(0, 10);
-    const deltaDays = Math.round(
-      (Date.parse(`${date}T00:00Z`) - Date.parse(`${oldDate}T00:00Z`)) / 86400000,
-    );
-    const laterInSeries = await db.session.findMany({
-      where: {
-        userId,
-        status: "SCHEDULED",
-        startsAt: { gt: existing.startsAt },
-        OR: [{ id: rootId }, { parentSessionId: rootId }],
-        NOT: { id },
-      },
-      select: { id: true, startsAt: true },
-      orderBy: { startsAt: "asc" },
-    });
-    futureUpdates = laterInSeries.map((s) => {
-      const ownDate = toZonedDateTimeLocal(s.startsAt).slice(0, 10);
-      const shifted = new Date(Date.parse(`${ownDate}T00:00Z`) + deltaDays * 86400000)
-        .toISOString()
-        .slice(0, 10);
-      return {
-        id: s.id,
-        startsAt: fromZonedDateTimeLocal(`${shifted}T${startTime}`),
-        endsAt: fromZonedDateTimeLocal(`${shifted}T${endTime}`),
-      };
-    });
-  }
+  // "All of this client's following meetings": every later scheduled meeting
+  // of the client in the same standing slot (same weekday and start time, or
+  // the same recurring series) moves to the new start/end times — and by the
+  // same number of days, if the date moved (Monday 18:00 → Wednesday 17:00).
+  // Standing meetings booked one by one are not a series, so the slot is what
+  // ties them together.
+  const futureUpdates =
+    applyScope === "future"
+      ? await followerMoves(
+          userId,
+          existing,
+          `${date}T${startTime}`,
+          Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000),
+        )
+      : [];
 
   if (!allowOverlap) {
     const slots = [
@@ -633,15 +749,70 @@ export async function deleteSessionAction(formData: FormData) {
 
   const existing = await db.session.findFirst({
     where: { id, userId },
-    select: { id: true, clientId: true },
+    select: { id: true, clientId: true, note: { select: { id: true } } },
   });
   if (!existing) return;
 
   await cancelSessionReminders(id);
-  await db.session.delete({ where: { id, userId } });
+  await db.$transaction(async (tx) => {
+    // Deleting a series' first meeting must not cut the rest loose
+    await keepSeriesLinked(tx, userId, [id]);
+    await tx.session.delete({ where: { id, userId } });
+  });
+  if (existing.note) {
+    await logAudit(userId, "NOTE_DELETE", { sessionId: id, clientId: existing.clientId });
+  }
 
   revalidatePath("/calendar");
   revalidatePath("/dashboard");
   revalidatePath(`/clients/${existing.clientId}`);
   redirect("/calendar");
+}
+
+/**
+ * "Delete all of this client's future meetings" — for a client who stopped
+ * coming. Only meetings that start after now are touched; of those, any that
+ * hold a clinical note, an attachment, a payment record, an app invoice or a
+ * Morning document are kept (and cancelled, so no reminder goes out). Past
+ * meetings are never touched. Lands on the client's card with the result.
+ */
+export async function deleteClientFutureSessionsAction(formData: FormData) {
+  const userId = await requireUserId();
+  const clientId = formData.get("clientId");
+  if (typeof clientId !== "string" || !clientId) return;
+
+  const client = await db.client.findFirst({
+    where: { id: clientId, userId },
+    select: { id: true },
+  });
+  if (!client) return;
+
+  const plan = await loadFutureDeletePlan(userId, clientId);
+
+  await db.$transaction(async (tx) => {
+    await keepSeriesLinked(tx, userId, plan.deleteIds);
+    if (plan.scheduledKeepIds.length) {
+      await tx.session.updateMany({
+        where: { userId, id: { in: plan.scheduledKeepIds } },
+        data: { status: "CANCELLED" },
+      });
+    }
+    // Reminder jobs of deleted meetings go with them (ON DELETE CASCADE)
+    await tx.session.deleteMany({ where: { userId, clientId, id: { in: plan.deleteIds } } });
+  });
+  for (const keptId of plan.scheduledKeepIds) {
+    await cancelSessionReminders(keptId);
+  }
+  await logAudit(userId, "SESSIONS_BULK_DELETE", { clientId });
+
+  revalidatePath("/calendar");
+  revalidatePath("/dashboard");
+  revalidatePath(`/clients/${clientId}`);
+  const why = [...new Set(plan.keep.flatMap((k) => k.reasons))].join(",");
+  const params = new URLSearchParams({
+    futureDeleted: String(plan.deleteIds.length),
+    futureKept: String(plan.keep.length),
+    ...(why ? { keptWhy: why } : {}),
+  });
+  redirect(`/clients/${clientId}?${params}`);
 }

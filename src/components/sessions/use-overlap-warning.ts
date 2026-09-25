@@ -5,12 +5,15 @@ import { checkOverlapAction } from "@/server/actions/sessions";
 
 /** Asks the server whether a chosen time clashes with another meeting, shortly
  *  after the time stops changing. Returns the clashing meetings as text, or null.
+ *  With applyScope "future" the client's following meetings in the same slot
+ *  are checked where they would land, too.
  *  Times are clinic wall-clock "yyyy-MM-ddTHH:mm". */
 export function useOverlapWarning(
   startLocal: string | undefined,
   endLocal: string | undefined,
   excludeId?: string,
   enabled = true,
+  applyScope: "single" | "future" = "single",
 ): string | null {
   const [overlap, setOverlap] = useState<string | null>(null);
   useEffect(() => {
@@ -21,7 +24,7 @@ export function useOverlapWarning(
     let stale = false;
     const t = setTimeout(async () => {
       try {
-        const res = await checkOverlapAction({ startLocal, endLocal, excludeId });
+        const res = await checkOverlapAction({ startLocal, endLocal, excludeId, applyScope });
         if (!stale) setOverlap(res.overlap);
       } catch {
         // offline or signed out: the save will still check
@@ -31,7 +34,7 @@ export function useOverlapWarning(
       stale = true;
       clearTimeout(t);
     };
-  }, [startLocal, endLocal, excludeId, enabled]);
+  }, [startLocal, endLocal, excludeId, enabled, applyScope]);
   return overlap;
 }
 

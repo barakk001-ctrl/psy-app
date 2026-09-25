@@ -22,7 +22,8 @@ import { SessionStatusActions } from "@/components/sessions/session-status-actio
 import { NoteEditor } from "@/components/sessions/note-editor";
 import { DeleteSeriesButton } from "@/components/sessions/delete-series-button";
 import { SessionBillingCard } from "@/components/sessions/session-billing-card";
-import { DeleteSessionButton } from "@/components/sessions/delete-session-button";
+import { DeleteSessionChoice } from "@/components/sessions/delete-session-choice";
+import { sessionScopeInfoAction } from "@/server/actions/sessions";
 import { SessionFilesCard } from "@/components/sessions/session-files-card";
 import { buildWhatsappReminderText, buildWhatsappUrl } from "@/lib/whatsapp";
 
@@ -87,6 +88,9 @@ export default async function SessionDetailPage({
       })
     : 0;
 
+  // "Delete all of this client's future meetings" — counted up front
+  const scopeInfo = await sessionScopeInfoAction(sess.id);
+
   // Decrypt server-side. The plaintext flows down to the NoteEditor client component
   // because the user already has authorization to read their own note.
   let initialNote = "";
@@ -149,7 +153,11 @@ export default async function SessionDetailPage({
             </Button>
           </Link>
           <SessionStatusActions sessionId={sess.id} currentStatus={sess.status} />
-          <DeleteSessionButton sessionId={sess.id} />
+          <DeleteSessionChoice
+            sessionId={sess.id}
+            clientId={sess.clientId}
+            info={scopeInfo}
+          />
         </div>
       </header>
 

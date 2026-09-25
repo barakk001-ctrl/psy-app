@@ -8,7 +8,8 @@ export type AuditAction =
   | "RECORD_VIEW" // decrypted a client's clinical record (notes feed)
   | "NOTE_SAVE"
   | "NOTE_DELETE"
-  | "NOTE_APPEND";
+  | "NOTE_APPEND"
+  | "SESSIONS_BULK_DELETE"; // deleted a client's future meetings (never ones with notes)
 
 export async function logAudit(
   userId: string,

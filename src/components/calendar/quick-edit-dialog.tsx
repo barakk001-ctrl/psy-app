@@ -10,10 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { DEFAULT_SESSION_MINUTES, addMinutesToTime } from "@/lib/session-duration";
 import { useOverlapWarning } from "@/components/sessions/use-overlap-warning";
+import { ApplyScopeChoice } from "@/components/sessions/apply-scope-choice";
+import { DeleteSessionChoice } from "@/components/sessions/delete-session-choice";
 import {
-  deleteSessionAction,
   quickEditSessionAction,
+  sessionScopeInfoAction,
   type QuickEditState,
+  type SessionScopeInfo,
 } from "@/server/actions/sessions";
 
 export type QuickEditData = {
@@ -25,8 +28,6 @@ export type QuickEditData = {
   endTime: string; // HH:MM
   treatmentType: string;
   cancelled: boolean;
-  /** part of a recurring series — offers "apply to all future" on time changes */
-  inSeries: boolean;
 };
 
 export function QuickEditDialog({
@@ -52,12 +53,35 @@ export function QuickEditDialog({
   const [endTime, setEndTime] = useState(data.endTime);
   const [date, setDate] = useState(data.date);
   const [startTime, setStartTime] = useState(data.startTime);
-  // Checked live, so a clash shows up before "שמירה"; a cancelled meeting can't clash
+  const [scope, setScope] = useState<"single" | "future">("single");
+  // The client's other meetings (same standing slot / future ones), fetched on
+  // open: they decide whether "all of this client's meetings" is offered
+  const [info, setInfo] = useState<SessionScopeInfo | null>(null);
+  useEffect(() => {
+    let stale = false;
+    sessionScopeInfoAction(data.id)
+      .then((res) => {
+        if (!stale) setInfo(res);
+      })
+      .catch(() => {
+        // offline: only "this meeting" is offered
+      });
+    return () => {
+      stale = true;
+    };
+  }, [data.id]);
+  const timeChanged =
+    date !== data.date || startTime !== data.startTime || endTime !== data.endTime;
+  const offerScope = timeChanged && !!info && info.followers > 0;
+  const appliedScope = offerScope ? scope : "single";
+  // Checked live, so a clash shows up before "שמירה" — including where the
+  // following meetings would land; a cancelled meeting can't clash
   const overlap = useOverlapWarning(
     date && startTime ? `${date}T${startTime}` : undefined,
     date && endTime ? `${date}T${endTime}` : undefined,
     data.id,
     !cancelled,
+    appliedScope,
   );
 
   useEffect(() => {
@@ -84,7 +108,7 @@ export function QuickEditDialog({
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative w-full max-w-lg glass rounded-3xl border border-cream-200/80 shadow-lift p-6 space-y-5">
+      <div className="relative w-full max-w-lg max-h-[calc(100dvh-1.5rem)] overflow-y-auto glass rounded-3xl border border-cream-200/80 shadow-lift p-6 space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-2xl text-ink">עריכת פגישה</h2>
           <button
@@ -163,35 +187,14 @@ export function QuickEditDialog({
             </div>
           </div>
 
-          {data.inSeries && (
-            <div className="rounded-xl border border-cream-300 bg-white/60 px-4 py-3 space-y-2">
-              <p className="text-sm font-medium text-ink-soft">
-                על אילו פגישות להחיל את שינוי המועד?
-              </p>
-              <label className="flex items-center gap-2 text-sm text-ink-soft cursor-pointer">
-                <input
-                  type="radio"
-                  name="applyScope"
-                  value="single"
-                  defaultChecked
-                  className="h-4 w-4 accent-sage-600"
-                />
-                רק הפגישה הזו
-              </label>
-              <label className="flex items-center gap-2 text-sm text-ink-soft cursor-pointer">
-                <input
-                  type="radio"
-                  name="applyScope"
-                  value="future"
-                  className="h-4 w-4 accent-sage-600"
-                />
-                הפגישה הזו וכל הפגישות הבאות בסדרה
-              </label>
-              <p className="text-xs text-ink-subtle">
-                למשל: פגישה קבועה שעוברת מ-9:00 ל-9:30 — כל הפגישות הבאות יעברו
-                לשעה החדשה (וגם ליום אחר בשבוע, אם שיניתם תאריך).
-              </p>
-            </div>
+          {offerScope && (
+            <ApplyScopeChoice
+              value={scope}
+              onChange={setScope}
+              clientName={info!.clientName}
+              slotLabel={info!.slotLabel}
+              followers={info!.followers}
+            />
           )}
 
           <div>
@@ -260,23 +263,14 @@ export function QuickEditDialog({
           </div>
         </form>
 
-        <form
-          action={deleteSessionAction}
-          onSubmit={(e) => {
-            if (!window.confirm("למחוק את הפגישה לצמיתות? גם הסיכום שלה יימחק.")) {
-              e.preventDefault();
-            }
-          }}
-          className="border-t border-cream-200 pt-3"
-        >
-          <input type="hidden" name="id" value={data.id} />
-          <button
-            type="submit"
-            className="text-sm text-terracotta-600 hover:text-terracotta-500"
-          >
-            מחיקה לצמיתות
-          </button>
-        </form>
+        <div className="border-t border-cream-200 pt-3">
+          <DeleteSessionChoice
+            sessionId={data.id}
+            clientId={data.clientId}
+            info={info}
+            variant="dialog"
+          />
+        </div>
       </div>
     </div>
   );

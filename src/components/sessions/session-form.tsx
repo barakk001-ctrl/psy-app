@@ -19,6 +19,7 @@ import {
   type SessionFormState,
 } from "@/server/actions/sessions";
 import { addMinutesLocal, useOverlapWarning } from "./use-overlap-warning";
+import { ApplyScopeChoice } from "./apply-scope-choice";
 
 type ClientOption = {
   id: string;
@@ -45,6 +46,7 @@ export function SessionForm({
   initial,
   meetingTypes,
   defaultMinutes = DEFAULT_SESSION_MINUTES,
+  scope,
 }: {
   clients: ClientOption[];
   defaults?: { startsAt?: string; clientId?: string };
@@ -52,6 +54,9 @@ export function SessionForm({
   meetingTypes: string[];
   /** The practitioner's own default meeting length, from settings. */
   defaultMinutes?: number;
+  /** Edit only: the client's following meetings in the same standing slot,
+   *  offered "all of them" when the date/time changes. */
+  scope?: { clientName: string; slotLabel: string; followers: number };
 }) {
   const isEdit = !!initial;
   const action = isEdit ? updateSessionAction : createSessionAction;
@@ -94,10 +99,18 @@ export function SessionForm({
   const rateDefault = initial?.rate ?? "";
   // Checked live, so a clash shows up while the time is being chosen
   const [startsAt, setStartsAt] = useState<string>(startsAtDefault ?? "");
+  const [applyScope, setApplyScope] = useState<"single" | "future">("single");
+  const timeChanged =
+    isEdit &&
+    (startsAt !== initial!.startsAt || Number(duration) !== initial!.durationMinutes);
+  const offerScope = timeChanged && !!scope && scope.followers > 0;
+  const appliedScope = offerScope ? applyScope : "single";
   const overlap = useOverlapWarning(
     startsAt,
     startsAt ? addMinutesLocal(startsAt, Number(duration)) : undefined,
     initial?.id,
+    true,
+    appliedScope,
   );
   const meetingUrlDefault = initial?.meetingUrl ?? "";
 
@@ -194,6 +207,16 @@ export function SessionForm({
               </Select>
             </div>
           </div>
+
+          {offerScope && (
+            <ApplyScopeChoice
+              value={applyScope}
+              onChange={setApplyScope}
+              clientName={scope!.clientName}
+              slotLabel={scope!.slotLabel}
+              followers={scope!.followers}
+            />
+          )}
 
           <div>
             <Label htmlFor="treatmentType">סוג טיפול</Label>

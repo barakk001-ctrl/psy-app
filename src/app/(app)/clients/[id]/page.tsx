@@ -10,13 +10,30 @@ import { Button } from "@/components/ui/button";
 import { ArchiveButton } from "@/components/clients/archive-button";
 import { SessionFlags } from "@/components/sessions/session-flags";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
+import { KEEP_REASON_LABELS, type KeepReason } from "@/lib/bulk-delete";
 
 export default async function ClientDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ futureDeleted?: string; futureKept?: string; keptWhy?: string }>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
+  // Result of "delete all of this client's future meetings" (session page / popup)
+  const bulk =
+    sp.futureDeleted !== undefined
+      ? {
+          deleted: Number(sp.futureDeleted) || 0,
+          kept: Number(sp.futureKept) || 0,
+          why: (sp.keptWhy ?? "")
+            .split(",")
+            .filter((r): r is KeepReason => r in KEEP_REASON_LABELS)
+            .map((r) => KEEP_REASON_LABELS[r])
+            .join(", "),
+        }
+      : null;
   const session = await auth();
   const userId = session!.user.id;
 
@@ -103,6 +120,37 @@ export default async function ClientDetailPage({
         <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
         חזרה לרשימת הלקוחות
       </Link>
+
+      {bulk && (
+        <div
+          role="status"
+          className="rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-ink-soft space-y-2"
+        >
+          <p className="font-medium text-ink">
+            {bulk.deleted === 1
+              ? "נמחקה פגישה עתידית אחת."
+              : `נמחקו ${bulk.deleted} פגישות עתידיות.`}{" "}
+            פגישות שכבר עברו נשארו ברשומה.
+          </p>
+          {bulk.kept > 0 && (
+            <p>
+              {bulk.kept === 1
+                ? `פגישה עתידית אחת לא נמחקה כי יש בה ${bulk.why || "רשומות"} — היא סומנה כמבוטלת ונשמרה.`
+                : `${bulk.kept} פגישות עתידיות לא נמחקו כי יש בהן ${bulk.why || "רשומות"} — הן סומנו כמבוטלות ונשמרו.`}
+            </p>
+          )}
+          {client.status !== "ARCHIVED" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span>אם הטיפול הסתיים, אפשר גם לאחסן את התיק:</span>
+              <ArchiveButton
+                clientId={client.id}
+                clientName={`${client.firstName} ${client.lastName}`}
+                archived={false}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <header className="flex flex-wrap items-start gap-6 justify-between">
         <div className="flex items-center gap-4">
