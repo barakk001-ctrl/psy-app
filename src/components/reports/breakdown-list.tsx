@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatCurrency } from "@/lib/format";
 
 export type BreakdownRow = {
@@ -25,7 +26,13 @@ export function BreakdownList({
       {rows.map((row) => (
         <li key={row.key} className="px-5 py-3">
           <div className="flex items-center justify-between mb-1.5 text-sm">
-            <span className="text-ink-soft truncate ms-2">{row.label}</span>
+            {row.href ? (
+              <Link href={row.href} className="text-ink-soft hover:text-sage-700 truncate ms-2">
+                {row.label}
+              </Link>
+            ) : (
+              <span className="text-ink-soft truncate ms-2">{row.label}</span>
+            )}
             <span className="text-ink font-medium shrink-0 tabular-nums">
               {formatCurrency(row.value)}
             </span>

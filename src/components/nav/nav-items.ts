@@ -14,7 +14,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/calendar", label: "יומן", icon: Calendar, primaryMobile: true },
   { href: "/clients", label: "לקוחות", icon: Users, primaryMobile: true },
   { href: "/invoices", label: "חשבוניות", icon: FileText, primaryMobile: true },
-  { href: "/reports", label: "דוחות", icon: BarChart3 },
+  { href: "/reports", label: "פילוח ודוחות", icon: BarChart3 },
   { href: "/settings", label: "הגדרות", icon: Settings },
 ];
 

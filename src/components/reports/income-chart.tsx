@@ -26,14 +26,15 @@ export function IncomeChart({
           return (
             <div
               key={i}
-              className="flex-1 h-full flex flex-col items-center justify-end gap-1.5 group min-w-0"
+              tabIndex={0}
+              className="flex-1 h-full flex flex-col items-center justify-end gap-1.5 group min-w-0 outline-none"
               title={`${d.label}: ${formatCurrency(d.value)}`}
             >
               <span
                 className={cn(
                   "text-[10px] text-ink-muted whitespace-nowrap transition-opacity",
                   d.value > 0
-                    ? "opacity-0 group-hover:opacity-100"
+                    ? "opacity-0 group-hover:opacity-100 group-focus:opacity-100"
                     : "opacity-0",
                 )}
               >
