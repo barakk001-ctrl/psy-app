@@ -16,7 +16,7 @@ import {
 
 export type ClientFormInitial = {
   id: string;
-  status?: "ACTIVE" | "INACTIVE" | "ARCHIVED";
+  status?: "ACTIVE" | "INACTIVE";
   treatmentType?: string;
   firstName: string;
   lastName: string;
@@ -60,7 +60,7 @@ export function ClientForm({
         <input type="hidden" name="nextStart" value={nextStart} />
       )}
 
-      {isEdit && initial!.status !== "ARCHIVED" && (
+      {isEdit && (
         <Card>
           <CardContent className="space-y-2">
             <Label htmlFor="status">סטטוס</Label>
@@ -69,7 +69,8 @@ export function ClientForm({
               <option value="INACTIVE">לא פעיל/ה — בהפסקה או סיים/ה טיפול</option>
             </Select>
             <p className="text-xs text-ink-muted">
-              לקוחות לא פעילים לא מוצגים ברשימות הבחירה של פגישות וחשבוניות חדשות.
+              לקוחות לא פעילים עוברים ללשונית ״לא פעילים״ ולא מוצגים בבחירת לקוח/ה לפגישה
+              חדשה. כל ההיסטוריה נשמרת.
             </p>
           </CardContent>
         </Card>

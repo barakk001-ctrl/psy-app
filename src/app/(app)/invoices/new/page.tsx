@@ -15,8 +15,9 @@ export default async function NewInvoicePage({
 
   const [clients, sessions] = await Promise.all([
     db.client.findMany({
-      where: { userId, status: { not: "ARCHIVED" } },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      // Inactive clients too (listed after the active ones)
+      where: { userId },
+      orderBy: [{ status: "asc" }, { lastName: "asc" }, { firstName: "asc" }],
       select: { id: true, firstName: true, lastName: true },
     }),
     db.session.findMany({

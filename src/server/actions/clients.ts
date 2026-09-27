@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { subscriptionReadOnly } from "@/lib/subscription-server";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 
-import { clientSchema } from "@/server/validators/client";
+import { clientSchema, clientStatusSchema } from "@/server/validators/client";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -126,28 +126,20 @@ export async function updateClientAction(
   redirect(`/clients/${id}`);
 }
 
-export async function archiveClientAction(formData: FormData) {
+/** פעיל / לא פעיל — the toggle on the client card and the clients list.
+ *  Inactive clients keep everything (meetings, summaries, invoices); they
+ *  only move to the "לא פעילים" tab and out of the new-meeting pickers. */
+export async function setClientStatusAction(formData: FormData) {
   const userId = await requireUserId();
   const id = String(formData.get("id") ?? "");
-  if (!id) return;
+  const parsed = clientStatusSchema.safeParse(formData.get("status"));
+  if (!id || !parsed.success) return;
 
-  await db.client.update({
+  await db.client.updateMany({
     where: { id, userId },
-    data: { status: "ARCHIVED" },
+    data: { status: parsed.data },
   });
   revalidatePath("/clients");
   revalidatePath(`/clients/${id}`);
-}
-
-export async function unarchiveClientAction(formData: FormData) {
-  const userId = await requireUserId();
-  const id = String(formData.get("id") ?? "");
-  if (!id) return;
-
-  await db.client.update({
-    where: { id, userId },
-    data: { status: "ACTIVE" },
-  });
-  revalidatePath("/clients");
-  revalidatePath(`/clients/${id}`);
+  revalidatePath("/dashboard");
 }

@@ -24,9 +24,10 @@ export const clientSchema = z.object({
       return Number.isNaN(n) ? undefined : n;
     }),
   generalNotes: z.string().max(2000).optional().or(z.literal("")),
-  // Active/inactive is set from the edit form; archiving stays a separate action
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   treatmentType: z.string().trim().min(1, "נדרש סוג מפגש").max(60).default("טיפול פרטני"),
 });
+
+export const clientStatusSchema = z.enum(["ACTIVE", "INACTIVE"]);
 
 export type ClientInput = z.infer<typeof clientSchema>;

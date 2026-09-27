@@ -7,8 +7,10 @@ import { decryptNote } from "@/lib/crypto";
 import { logAudit } from "@/lib/audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArchiveButton } from "@/components/clients/archive-button";
-import { SessionFlags } from "@/components/sessions/session-flags";
+import { ClientStatusToggle } from "@/components/clients/client-status-toggle";
+import { SessionList } from "@/components/clients/session-list";
+import { PdfButton } from "@/components/ui/pdf-button";
+import { tookPlace } from "@/lib/income";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { KEEP_REASON_LABELS, type KeepReason } from "@/lib/bulk-delete";
 
@@ -40,20 +42,6 @@ export default async function ClientDetailPage({
   const client = await db.client.findFirst({
     where: { id, userId },
     include: {
-      sessions: {
-        orderBy: { startsAt: "desc" },
-        take: 10,
-        include: {
-          invoiceItem: {
-            include: {
-              invoice: {
-                select: { number: true, morningDocNumber: true },
-              },
-            },
-          },
-          note: { select: { id: true } },
-        },
-      },
       morningDocuments: {
         orderBy: { docDate: "desc" },
         take: 20,
@@ -75,8 +63,21 @@ export default async function ClientDetailPage({
 
   if (!client) notFound();
 
-  const [completedCount, notedSessions] = await Promise.all([
-    db.session.count({ where: { clientId: id, userId, status: "COMPLETED" } }),
+  const [allSessions, notedSessions] = await Promise.all([
+    db.session.findMany({
+      where: { clientId: id, userId },
+      orderBy: { startsAt: "desc" },
+      include: {
+        invoiceItem: {
+          include: {
+            invoice: {
+              select: { number: true, morningDocNumber: true },
+            },
+          },
+        },
+        note: { select: { id: true } },
+      },
+    }),
     db.session.findMany({
       // The record includes documented meetings AND cancellations
       where: {
@@ -106,6 +107,18 @@ export default async function ClientDetailPage({
     }
     return { id: s.id, startsAt: s.startsAt, cancelled: s.status === "CANCELLED", text };
   });
+  // Meetings split by what actually happened (the old single "history" list
+  // mixed booked future meetings in with past ones)
+  const now = new Date();
+  const upcoming = allSessions
+    .filter((s) => s.status === "SCHEDULED" && s.startsAt.getTime() > now.getTime())
+    .reverse(); // soonest first
+  const past = allSessions.filter((s) => tookPlace(s, now)); // newest first
+  const cancelled = allSessions.filter(
+    (s) => s.status === "CANCELLED" || s.status === "NO_SHOW",
+  );
+  const summariesCount = noteFeed.filter((n) => n.text).length;
+
   // One entry per record view, not per note — the feed is a single act of access
   if (noteFeed.some((n) => n.text)) {
     await logAudit(userId, "RECORD_VIEW", { clientId: id });
@@ -139,14 +152,10 @@ export default async function ClientDetailPage({
                 : `${bulk.kept} פגישות עתידיות לא נמחקו כי יש בהן ${bulk.why || "רשומות"} — הן סומנו כמבוטלות ונשמרו.`}
             </p>
           )}
-          {client.status !== "ARCHIVED" && (
+          {client.status === "ACTIVE" && (
             <div className="flex flex-wrap items-center gap-2">
-              <span>אם הטיפול הסתיים, אפשר גם לאחסן את התיק:</span>
-              <ArchiveButton
-                clientId={client.id}
-                clientName={`${client.firstName} ${client.lastName}`}
-                archived={false}
-              />
+              <span>אם הטיפול הסתיים, אפשר לסמן את התיק כלא פעיל:</span>
+              <ClientStatusToggle clientId={client.id} status={client.status} />
             </div>
           )}
         </div>
@@ -159,50 +168,38 @@ export default async function ClientDetailPage({
             {client.lastName[0]}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               <h1 className="font-display text-3xl text-ink">
                 {client.firstName} {client.lastName}
               </h1>
-              {client.status === "ARCHIVED" && (
-                <span className="text-[10px] uppercase tracking-wider bg-cream-200 text-ink-muted px-2 py-0.5 rounded-full">
-                  מאוחסן/ת
-                </span>
-              )}
+              <ClientStatusToggle clientId={client.id} status={client.status} />
             </div>
             <p className="text-sm text-ink-muted mt-1">
-              <b className="text-ink">{completedCount} פגישות התקיימו</b> ·{" "}
+              <b className="text-ink">{past.length} פגישות התקיימו</b>
+              {upcoming.length > 0 && <> · {upcoming.length} עתידיות</>} ·{" "}
               {client._count.sessions} פגישות סה״כ · {client._count.invoices} חשבוניות
               {client.intakeDate && <> · נפתח תיק ב-{formatDate(client.intakeDate)}</>}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <ArchiveButton
-            clientId={client.id}
-            clientName={`${client.firstName} ${client.lastName}`}
-            archived={client.status === "ARCHIVED"}
-          />
           <Link href={`/clients/${client.id}/edit`}>
             <Button variant="secondary" size="sm">
               <Pencil className="w-4 h-4" />
               עריכה
             </Button>
           </Link>
-          {client.status !== "ARCHIVED" && (
-            <>
-              <Link href={`/invoices/new?clientId=${client.id}`}>
-                <Button variant="secondary" size="sm">
-                  חשבונית חדשה
-                </Button>
-              </Link>
-              <Link href={`/sessions/new?clientId=${client.id}`}>
-                <Button size="sm">
-                  <CalIcon className="w-4 h-4" />
-                  פגישה חדשה
-                </Button>
-              </Link>
-            </>
-          )}
+          <Link href={`/invoices/new?clientId=${client.id}`}>
+            <Button variant="secondary" size="sm">
+              חשבונית חדשה
+            </Button>
+          </Link>
+          <Link href={`/sessions/new?clientId=${client.id}`}>
+            <Button size="sm">
+              <CalIcon className="w-4 h-4" />
+              פגישה חדשה
+            </Button>
+          </Link>
         </div>
       </header>
 
@@ -256,8 +253,15 @@ export default async function ClientDetailPage({
         </Card>
 
         <Card className="lg:col-span-2">
-          <CardHeader>
+          <CardHeader className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle>סיכומי פגישות</CardTitle>
+            {summariesCount > 0 && (
+              <PdfButton
+                url={`/api/clients/${client.id}/summaries`}
+                fileName={`סיכומי פגישות - ${client.firstName} ${client.lastName}.pdf`.trim()}
+                label="ייצוא סיכומים ל-PDF"
+              />
+            )}
           </CardHeader>
           <CardContent className="p-0">
             {noteFeed.length === 0 ? (
@@ -303,93 +307,28 @@ export default async function ClientDetailPage({
           </CardContent>
         </Card>
 
-        <details className="lg:col-span-3 group">
-          <summary className="cursor-pointer list-none">
-            <Card className="hover:border-sage-300 transition-colors">
-              <CardContent className="py-4 flex items-center justify-between">
-                <span className="font-display text-lg text-ink">
-                  היסטוריית פגישות ({client._count.sessions})
-                </span>
-                <span className="text-xs text-ink-muted group-open:hidden">
-                  הצגה ←
-                </span>
-                <span className="text-xs text-ink-muted hidden group-open:inline">
-                  הסתרה ↑
-                </span>
-              </CardContent>
-            </Card>
-          </summary>
-          <Card className="mt-3">
-          <CardContent className="p-0">
-            {client.sessions.length === 0 ? (
-              <div className="p-10 text-center text-sm text-ink-muted">
-                עדיין אין פגישות עבור לקוח זה.
-              </div>
-            ) : (
-              <ul className="divide-y divide-cream-200">
-                {client.sessions.map((s) => (
-                  <li key={s.id}>
-                    <Link
-                      href={`/sessions/${s.id}`}
-                      className="px-5 py-3 flex items-center justify-between hover:bg-cream-100/60 transition-colors"
-                    >
-                      <div>
-                        <div className="text-sm text-ink flex items-center gap-2">
-                          {formatDateTime(s.startsAt)}
-                          {s.startsAt.getTime() <= Date.now() &&
-                            s.status !== "CANCELLED" && (
-                              <SessionFlags
-                                documented={!!s.note}
-                                paymentDone={!!s.paymentStatus || !!s.invoiceItem}
-                              />
-                            )}
-                        </div>
-                        <div className="text-xs text-ink-muted mt-0.5">
-                          {s.status === "COMPLETED" && "התקיימה"}
-                          {s.status === "SCHEDULED" && "מתוכננת"}
-                          {s.status === "CANCELLED" && "בוטלה"}
-                          {s.status === "NO_SHOW" && "לא התקיימה"}
-                          {s.invoiceItem?.invoice && (
-                            <>
-                              {" · "}חשבונית #
-                              {String(s.invoiceItem.invoice.number).padStart(4, "0")}
-                              {s.invoiceItem.invoice.morningDocNumber && (
-                                <>
-                                  {" · "}קבלה{" "}
-                                  <span dir="ltr">
-                                    {s.invoiceItem.invoice.morningDocNumber}
-                                  </span>
-                                </>
-                              )}
-                            </>
-                          )}
-                          {!s.invoiceItem?.invoice && s.morningDocNumber && (
-                            <>
-                              {" · "}חשבונית morning{" "}
-                              <span dir="ltr">{s.morningDocNumber}</span>
-                            </>
-                          )}
-                          {!s.invoiceItem?.invoice && s.morningInvoiceReceiptNumber && (
-                            <>
-                              {" · "}חשבונית מס-קבלה{" "}
-                              <span dir="ltr">{s.morningInvoiceReceiptNumber}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      {s.rate && (
-                        <span className="text-xs text-ink-muted">
-                          {formatCurrency(s.rate.toString())}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-          </Card>
-        </details>
+        <div className="lg:col-span-3 space-y-3">
+          <SessionList
+            title="פגישות עתידיות"
+            sessions={upcoming}
+            emptyText="אין פגישות עתידיות ביומן."
+            defaultOpen
+          />
+          <SessionList
+            title="פגישות שהתקיימו"
+            sessions={past}
+            emptyText="עדיין אין פגישות שהתקיימו."
+            showFlags
+          />
+          {cancelled.length > 0 && (
+            <SessionList
+              title="בוטלו / לא התקיימו"
+              sessions={cancelled}
+              emptyText=""
+              muted
+            />
+          )}
+        </div>
 
         {client.sessionFiles.length > 0 && (
           <Card className="lg:col-span-3">

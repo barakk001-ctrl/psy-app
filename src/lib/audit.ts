@@ -9,6 +9,7 @@ export type AuditAction =
   | "NOTE_SAVE"
   | "NOTE_DELETE"
   | "NOTE_APPEND"
+  | "RECORD_EXPORT" // exported a client's summaries to PDF
   | "SESSIONS_BULK_DELETE"; // deleted a client's future meetings (never ones with notes)
 
 export async function logAudit(

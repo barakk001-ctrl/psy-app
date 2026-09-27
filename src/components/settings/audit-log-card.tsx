@@ -10,6 +10,7 @@ const ACTION_LABELS: Record<string, string> = {
   NOTE_DELETE: "מחיקת סיכום",
   NOTE_APPEND: "צירוף הודעה לסיכום",
   SESSIONS_BULK_DELETE: "מחיקת הפגישות העתידיות של מטופל/ת",
+  RECORD_EXPORT: "ייצוא סיכומי פגישות ל-PDF",
 };
 
 export type AuditEntry = {

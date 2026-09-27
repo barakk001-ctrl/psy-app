@@ -33,7 +33,7 @@ export default async function EditSessionPage({
   if (!sess) notFound();
 
   // Get all active clients for the dropdown.
-  // Also include the session's current client even if archived,
+  // Also include the session's current client even if inactive,
   // so the dropdown doesn't break for old sessions.
   const clients = await db.client.findMany({
     where: {

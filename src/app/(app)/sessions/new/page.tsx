@@ -15,7 +15,12 @@ export default async function NewSessionPage({
   const userId = session!.user.id;
 
   const clients = await db.client.findMany({
-    where: { userId, status: "ACTIVE" },
+    // Active clients — plus the one this meeting is for, even if inactive
+    // (the "פגישה חדשה" button on an inactive client's card)
+    where: {
+      userId,
+      OR: [{ status: "ACTIVE" }, ...(params.clientId ? [{ id: params.clientId }] : [])],
+    },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     select: { id: true, firstName: true, lastName: true, defaultRate: true, treatmentType: true },
   });
@@ -45,6 +50,9 @@ export default async function NewSessionPage({
       </Link>
       <header>
         <h1 className="font-display text-3xl text-ink">פגישה חדשה</h1>
+        <p className="text-ink-muted text-sm mt-1">
+          בוחרים לקוח/ה, מועד ומשך. אפשר לקבוע פגישה קבועה שחוזרת כל שבוע או שבועיים.
+        </p>
       </header>
       <SessionForm
         meetingTypes={meetingTypes}

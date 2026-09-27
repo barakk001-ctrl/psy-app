@@ -176,10 +176,11 @@ model AuditLog {
   @@index([userId, createdAt(sort: Desc)])
 }
 
+// One status (פעיל / לא פעיל). "ARCHIVED" was merged into INACTIVE on
+// 2026-09-28 — it only hid clients from lists, same as inactive.
 enum ClientStatus {
   ACTIVE
   INACTIVE
-  ARCHIVED
 }
 
 // ─────────────────────────────────────────────────────────────

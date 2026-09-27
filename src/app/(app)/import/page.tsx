@@ -11,8 +11,9 @@ export default async function ImportPage() {
   const now = new Date();
   const [clients, inbox, sessions] = await Promise.all([
     db.client.findMany({
-      where: { userId, status: { not: "ARCHIVED" } },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      // Inactive clients too (listed after the active ones)
+      where: { userId },
+      orderBy: [{ status: "asc" }, { lastName: "asc" }, { firstName: "asc" }],
       select: { id: true, firstName: true, lastName: true, phone: true },
     }),
     db.inboxMessage.findMany({

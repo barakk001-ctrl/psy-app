@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Users, UserPlus, Phone, Mail } from "lucide-react";
+import { ClientStatusMoveButton } from "@/components/clients/client-status-toggle";
 
 export default async function ClientsPage({
   searchParams,
@@ -13,13 +14,14 @@ export default async function ClientsPage({
   searchParams: Promise<{ view?: string }>;
 }) {
   const params = await searchParams;
+  // "archived" is the old name of the inactive tab — keep old links working
   const view =
-    params.view === "archived" ? "ARCHIVED" : params.view === "inactive" ? "INACTIVE" : "ACTIVE";
+    params.view === "inactive" || params.view === "archived" ? "INACTIVE" : "ACTIVE";
 
   const session = await auth();
   const userId = session!.user.id;
 
-  const [clients, activeCount, inactiveCount, archivedCount] = await Promise.all([
+  const [clients, activeCount, inactiveCount] = await Promise.all([
     db.client.findMany({
       where: { userId, status: view },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
@@ -27,13 +29,11 @@ export default async function ClientsPage({
     }),
     db.client.count({ where: { userId, status: "ACTIVE" } }),
     db.client.count({ where: { userId, status: "INACTIVE" } }),
-    db.client.count({ where: { userId, status: "ARCHIVED" } }),
   ]);
 
   const VIEWS = [
     { key: "ACTIVE", href: "/clients", label: `פעילים (${activeCount})` },
     { key: "INACTIVE", href: "/clients?view=inactive", label: `לא פעילים (${inactiveCount})` },
-    { key: "ARCHIVED", href: "/clients?view=archived", label: `מאוחסנים (${archivedCount})` },
   ] as const;
 
   return (
@@ -42,9 +42,8 @@ export default async function ClientsPage({
         <div>
           <h1 className="font-display text-3xl text-ink">לקוחות</h1>
           <p className="text-ink-muted mt-1 text-sm">
-            {view === "ARCHIVED" && `${clients.length} לקוחות מאוחסנים`}
-            {view === "INACTIVE" && `${clients.length} לקוחות לא פעילים`}
-            {view === "ACTIVE" && `${clients.length} לקוחות פעילים`}
+            כל התיקים שלך. לקוחות שסיימו או בהפסקה עוברים ל״לא פעילים״ — ההיסטוריה
+            נשמרת במלואה, ואפשר להחזיר אותם בלחיצה.
           </p>
         </div>
         <Link href="/clients/new">
@@ -55,7 +54,7 @@ export default async function ClientsPage({
       </header>
 
       {/* View filter */}
-      {activeCount + inactiveCount + archivedCount > 0 && (
+      {activeCount + inactiveCount > 0 && (
         <div className="inline-flex bg-cream-100 border border-cream-300 rounded-full p-1 flex-wrap">
           {VIEWS.map((v) => (
             <Link
@@ -79,7 +78,6 @@ export default async function ClientsPage({
           <CardContent className="py-16 text-center">
             <Users className="w-12 h-12 mx-auto text-ink-subtle mb-4" strokeWidth={1.25} />
             <h3 className="font-display text-xl text-ink">
-              {view === "ARCHIVED" && "אין לקוחות מאוחסנים"}
               {view === "INACTIVE" && "אין לקוחות לא פעילים"}
               {view === "ACTIVE" && "עדיין אין לקוחות"}
             </h3>
@@ -101,15 +99,15 @@ export default async function ClientsPage({
         <Card>
           <ul className="divide-y divide-cream-200">
             {clients.map((c) => (
-              <li key={c.id}>
+              <li key={c.id} className="flex items-center hover:bg-cream-100/60 transition-colors">
                 <Link
                   href={`/clients/${c.id}`}
-                  className="flex items-center gap-4 px-5 py-4 hover:bg-cream-100/60 transition-colors"
+                  className="flex-1 min-w-0 flex items-center gap-4 ps-5 pe-2 py-4"
                 >
                   <div
                     className={cn(
                       "w-10 h-10 rounded-full flex items-center justify-center font-display text-base shrink-0",
-                      c.status === "ARCHIVED"
+                      c.status === "INACTIVE"
                         ? "bg-cream-200 text-ink-muted"
                         : "bg-sage-100 text-sage-700",
                     )}
@@ -122,16 +120,11 @@ export default async function ClientsPage({
                       <span
                         className={cn(
                           "font-medium",
-                          c.status === "ARCHIVED" ? "text-ink-muted" : "text-ink",
+                          c.status === "INACTIVE" ? "text-ink-muted" : "text-ink",
                         )}
                       >
                         {c.firstName} {c.lastName}
                       </span>
-                      {c.status === "INACTIVE" && (
-                        <span className="text-[10px] uppercase tracking-wider bg-cream-200 text-ink-muted px-1.5 py-0.5 rounded">
-                          לא פעיל
-                        </span>
-                      )}
                     </div>
                     <div className="flex items-center gap-4 text-xs text-ink-muted mt-1">
                       {c.phone && (
@@ -153,6 +146,9 @@ export default async function ClientsPage({
                     )}
                   </div>
                 </Link>
+                <div className="pe-3 sm:pe-4">
+                  <ClientStatusMoveButton clientId={c.id} status={c.status} />
+                </div>
               </li>
             ))}
           </ul>

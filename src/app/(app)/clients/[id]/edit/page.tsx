@@ -34,6 +34,9 @@ export default async function EditClientPage({
         <h1 className="font-display text-3xl text-ink">
           עריכת פרטים — {client.firstName} {client.lastName}
         </h1>
+        <p className="text-ink-muted text-sm mt-1">
+          פרטי קשר, תעריף, סוג מפגש וסטטוס (פעיל / לא פעיל).
+        </p>
       </header>
       <ClientForm
         meetingTypes={meetingTypes}
