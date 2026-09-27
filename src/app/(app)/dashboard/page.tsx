@@ -7,10 +7,14 @@ import { AgreementBanner } from "@/components/dashboard/agreement-banner";
 import { ExplainerVideo } from "@/components/auth/explainer-video";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { TodoCard } from "@/components/dashboard/todo-card";
+import { LogoAvatar } from "@/components/layout/logo-avatar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, formatCurrency } from "@/lib/format";
 import { fromZonedDateTimeLocal, toZonedDateTimeLocal } from "@/lib/timezone";
+import { expectedIncome, sumAmounts } from "@/lib/income";
+import { loadIncome } from "@/lib/income-data";
+import { getPeriodRange, periodLabel } from "@/lib/report-periods";
 import {
   Calendar,
   UserPlus,
@@ -25,8 +29,8 @@ export default async function DashboardPage() {
   const userId = session!.user.id;
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  // This month by the clinic's calendar — the same rules as the reports page
+  const [monthStart, monthEnd] = getPeriodRange("this-month", now);
 
   // Today's bounds by the clinic's wall clock (server runs in UTC)
   const todayLocal = toZonedDateTimeLocal(now).slice(0, 10);
@@ -37,7 +41,7 @@ export default async function DashboardPage() {
   const dayStart = fromZonedDateTimeLocal(`${todayLocal}T00:00`);
   const dayEnd = fromZonedDateTimeLocal(`${tomorrowLocal}T00:00`);
 
-  const [activeClients, todaySessions, monthPayments, outstanding, todos, monthExpected, monthSessionPaid, me] = await Promise.all([
+  const [activeClients, todaySessions, monthData, outstanding, todos, me] = await Promise.all([
     db.client.count({ where: { userId, status: "ACTIVE" } }),
     db.session.findMany({
       // All of today's meetings — the ones that already happened included,
@@ -55,13 +59,7 @@ export default async function DashboardPage() {
         note: { select: { id: true } },
       },
     }),
-    db.payment.aggregate({
-      where: {
-        invoice: { userId },
-        paidAt: { gte: monthStart, lt: monthEnd },
-      },
-      _sum: { amount: true },
-    }),
+    loadIncome(userId, monthStart, monthEnd),
     db.invoice.aggregate({
       // Drafts count too — an unpaid invoice is a debt even before it's sent
       where: { userId, status: { in: ["DRAFT", "SENT", "PARTIALLY_PAID"] } },
@@ -73,36 +71,16 @@ export default async function DashboardPage() {
       take: 20,
       select: { id: true, text: true, done: true },
     }),
-    // Expected income: rates of this month's scheduled + completed meetings
-    db.session.aggregate({
-      where: {
-        userId,
-        startsAt: { gte: monthStart, lt: monthEnd },
-        status: { in: ["SCHEDULED", "COMPLETED"] },
-      },
-      _sum: { rate: true },
-    }),
-    // Quick per-meeting payments (Morning-first flow) — only for meetings
-    // without an app invoice, so nothing double-counts
-    db.session.aggregate({
-      where: {
-        userId,
-        startsAt: { gte: monthStart, lt: monthEnd },
-        paymentStatus: "PAID",
-        invoiceItem: { is: null },
-      },
-      _sum: { paidAmount: true },
-    }),
     db.user.findUnique({
       where: { id: userId },
-      select: { agreementVersion: true, name: true },
+      select: { agreementVersion: true, name: true, logoUrl: true, brandName: true },
     }),
   ]);
   const needsAgreement = me?.agreementVersion !== AGREEMENT_VERSION;
 
-  const monthIncome =
-    Number(monthPayments._sum.amount ?? 0) +
-    Number(monthSessionPaid._sum.paidAmount ?? 0);
+  // Received: app-invoice payments + meetings marked paid (src/lib/income.ts)
+  const monthIncome = sumAmounts(monthData.entries);
+  const monthExpected = expectedIncome(monthData.sessions);
   const outstandingAmount =
     Number(outstanding._sum.total ?? 0) - Number(outstanding._sum.amountPaid ?? 0);
 
@@ -127,10 +105,16 @@ export default async function DashboardPage() {
               timeZone: "Asia/Jerusalem",
             }).format(now)}
           </p>
-          <h1 className="font-display text-4xl text-ink mt-1">
-            שלום, {(me?.name ?? session!.user.name)?.split(" ")[0]}
-          </h1>
-          <p className="text-sm text-ink-muted mt-1.5">ברוכה הבאה למרפאה האישית שלך 🌿</p>
+          <div className="flex items-center gap-3 mt-1">
+            <LogoAvatar logoUrl={me?.logoUrl} name={me?.name ?? session!.user.name} />
+            <h1 className="font-display text-4xl text-ink">
+              שלום, {(me?.name ?? session!.user.name)?.split(" ")[0]}
+            </h1>
+          </div>
+          <p className="text-sm text-ink-muted mt-2">
+            ברוכה הבאה למרפאה האישית שלך 🌿 כאן רואים את היום במבט אחד: הפגישות של
+            היום, הכנסות החודש ומה עוד מחכה לתיעוד או לתשלום.
+          </p>
           <div className="flex flex-wrap gap-2 mt-5">
             <Link href="/clients/new">
               <Button variant="secondary" size="sm">
@@ -154,13 +138,13 @@ export default async function DashboardPage() {
         <StatCard label="לקוחות פעילים" value={activeClients} />
         <StatCard
           label="הכנסה צפויה החודש"
-          value={formatCurrency(Number(monthExpected._sum.rate ?? 0))}
+          value={formatCurrency(monthExpected)}
           hint="לפי הפגישות ביומן החודש"
         />
         <StatCard
           label="הכנסות החודש"
           value={formatCurrency(monthIncome)}
-          hint={new Intl.DateTimeFormat("he-IL", { month: "long", year: "numeric" }).format(now)}
+          hint={periodLabel("this-month", now)}
         />
         <StatCard
           label="חוב פתוח"

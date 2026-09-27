@@ -105,7 +105,8 @@ export default async function SettingsPage({
       <header>
         <h1 className="font-display text-3xl text-ink">הגדרות</h1>
         <p className="text-ink-muted text-sm mt-1">
-          פרטים אישיים ועסקיים שמופיעים בחשבוניות.
+          הפרטים שלך ושל העסק, מיתוג, סוגי מפגשים, חיבור ל-<span dir="ltr">morning</span>,
+          אבטחה ויומן הגישה לרשומות.
         </p>
       </header>
 

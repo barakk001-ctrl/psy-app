@@ -9,6 +9,13 @@ import { MorningDocsPanel } from "@/components/invoices/morning-docs-panel";
 import { getMorningCredentials } from "@/lib/morning";
 import { formatCurrency, formatDate } from "@/lib/format";
 
+// "ב-morning" kept on one line (the hyphen is a break point before the LTR word)
+const inMorning = (
+  <span className="whitespace-nowrap">
+    ב-<span dir="ltr">morning</span>
+  </span>
+);
+
 export default async function InvoicesPage() {
   const session = await auth();
   const userId = session!.user.id;
@@ -32,8 +39,9 @@ export default async function InvoicesPage() {
   const clientOptions = morningConnected
     ? (
         await db.client.findMany({
-          where: { userId, status: { not: "ARCHIVED" } },
-          orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+          // Inactive clients too (listed after the active ones)
+          where: { userId },
+          orderBy: [{ status: "asc" }, { lastName: "asc" }, { firstName: "asc" }],
           select: { id: true, firstName: true, lastName: true },
         })
       ).map((c) => ({ id: c.id, name: `${c.firstName} ${c.lastName}` }))
@@ -44,10 +52,26 @@ export default async function InvoicesPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl text-ink">חשבוניות</h1>
-          <p className="text-ink-muted mt-1 text-sm">
-            {invoices.length === 0
-              ? "אין חשבוניות עדיין"
-              : `${invoices.length} חשבוניות`}
+          {/* What this page is — and isn't (Keren asked whether it issues into morning) */}
+          <p className="text-ink-muted mt-1 text-sm max-w-2xl">
+            {morningConnected ? (
+              <>
+                חשבוניות פנימיות של המערכת (דרישת תשלום / קבלה — לא חשבונית מס). כדי שמסמך
+                יופיע {inMorning}, רושמים תשלום בחשבונית ולוחצים בה ״הפקת קבלה {inMorning}״.
+              </>
+            ) : (
+              <>
+                חשבוניות פנימיות של המערכת (דרישת תשלום / קבלה — לא חשבונית מס) — הן לא
+                מופיעות {inMorning}. כדי להפיק מכאן קבלה {inMorning}, מחברים את החשבון ב
+                <Link href="/settings" className="text-sage-600 hover:text-sage-700 hover:underline">
+                  הגדרות
+                </Link>
+                .
+              </>
+            )}
+            {invoices.length > 0 && (
+              <span className="text-ink-subtle"> · {invoices.length} חשבוניות</span>
+            )}
           </p>
         </div>
         <Link href="/invoices/new">
