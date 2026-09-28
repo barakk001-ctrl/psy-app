@@ -126,7 +126,10 @@ export default async function SettingsPage({
 
       <BrandingCard initial={{ brandName: user.brandName, logoUrl: user.logoUrl }} />
 
-      <MeetingTypesCard types={meetingTypes} defaultMinutes={user.defaultSessionMinutes} />
+      {/* the calendar links here: /settings#meeting-types */}
+      <div id="meeting-types" className="scroll-mt-24">
+        <MeetingTypesCard types={meetingTypes} defaultMinutes={user.defaultSessionMinutes} />
+      </div>
 
       <CalendarFeedCard
         token={user.calendarToken}

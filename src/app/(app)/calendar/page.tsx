@@ -73,6 +73,12 @@ export default async function CalendarPage() {
           <p className="text-ink-muted text-xs sm:text-sm hidden sm:block">
             לחץ/י על משבצת ריקה לקביעת פגישה. גרור/י כדי לשנות זמן.
           </p>
+          <p className="text-ink-muted text-xs hidden sm:block">
+            לעריכת סוגי המפגשים והצבעים שלהם ביומן —{" "}
+            <Link href="/settings#meeting-types" className="underline underline-offset-2 hover:text-ink">
+              הגדרות ← סוגי מפגשים
+            </Link>
+          </p>
         </div>
         <Link href="/sessions/new">
           <Button size="sm">
