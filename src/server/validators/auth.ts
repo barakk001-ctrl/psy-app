@@ -32,5 +32,25 @@ export const resetPasswordSchema = z
     path: ["confirm"],
   });
 
+/** Settings → שינוי סיסמה: the current password, then the new one twice (same rules as registration). */
+export const changePasswordSchema = z
+  .object({
+    current: z.string().min(1, "נדרשת הסיסמה הנוכחית"),
+    password: z
+      .string()
+      .min(8, "הסיסמה חייבת להיות באורך 8 תווים לפחות")
+      .regex(/[A-Za-z]/, "הסיסמה חייבת לכלול לפחות אות אחת")
+      .regex(/[0-9]/, "הסיסמה חייבת לכלול לפחות ספרה אחת"),
+    confirm: z.string(),
+  })
+  .refine((d) => d.password === d.confirm, {
+    message: "הסיסמאות אינן תואמות",
+    path: ["confirm"],
+  })
+  .refine((d) => d.password !== d.current, {
+    message: "הסיסמה החדשה זהה לנוכחית",
+    path: ["password"],
+  });
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;

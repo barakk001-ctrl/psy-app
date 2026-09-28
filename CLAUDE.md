@@ -39,7 +39,7 @@ Every action follows the same pattern — copy it for new actions:
 
 Auth.js v5 beta (credentials only, bcryptjs), JWT sessions. Config split: `src/auth.config.ts` (edge-safe, used by `src/middleware.ts`) vs `src/auth.ts` (Prisma + credentials, Node-only). The middleware matcher **excludes `/api`** — API routes must guard themselves. Route groups: `(auth)` = public login/register/forgot-password/reset-password; `(app)` = protected layout (sidebar + mobile top/tab bars + clinic banner).
 
-Layered on top: **TOTP 2FA with backup codes** (`two-factor.ts`, settings card), **Face ID / biometric lock overlay** for the installed PWA, and password reset via email.
+Layered on top: **TOTP 2FA with backup codes** (`two-factor.ts`, settings card), **Face ID / biometric lock overlay** for the installed PWA, password reset via email, and **password change in Settings** (`changePasswordAction`: needs the current password, rate-limited per user, clears any pending reset link, audit-logged `PASSWORD_CHANGE`). Sessions are JWTs, so a change doesn't sign out other devices.
 
 ### Encrypted clinical notes + audit log
 

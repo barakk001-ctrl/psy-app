@@ -7,6 +7,7 @@ import { MorningSettingsForm } from "@/components/settings/morning-settings-form
 import { BiometricSettings } from "@/components/settings/biometric-settings";
 import { InboxSettings } from "@/components/settings/inbox-settings";
 import { MeetingTypesCard } from "@/components/settings/meeting-types-card";
+import { ChangePasswordCard } from "@/components/settings/change-password-card";
 import { AuditLogCard } from "@/components/settings/audit-log-card";
 import { CalendarFeedCard } from "@/components/settings/calendar-feed-card";
 import { SubscriptionCard } from "@/components/settings/subscription-card";
@@ -143,6 +144,8 @@ export default async function SettingsPage({
       />
 
       <InboxSettings token={user.inboxToken} />
+
+      <ChangePasswordCard />
 
       <TwoFactorSettings
         enabled={user.totpEnabled}

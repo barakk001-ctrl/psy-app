@@ -11,6 +11,7 @@ const ACTION_LABELS: Record<string, string> = {
   NOTE_APPEND: "צירוף הודעה לסיכום",
   SESSIONS_BULK_DELETE: "מחיקת הפגישות העתידיות של מטופל/ת",
   RECORD_EXPORT: "ייצוא סיכומי פגישות ל-PDF",
+  PASSWORD_CHANGE: "שינוי סיסמה",
 };
 
 export type AuditEntry = {

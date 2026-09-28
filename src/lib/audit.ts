@@ -10,7 +10,8 @@ export type AuditAction =
   | "NOTE_DELETE"
   | "NOTE_APPEND"
   | "RECORD_EXPORT" // exported a client's summaries to PDF
-  | "SESSIONS_BULK_DELETE"; // deleted a client's future meetings (never ones with notes)
+  | "SESSIONS_BULK_DELETE" // deleted a client's future meetings (never ones with notes)
+  | "PASSWORD_CHANGE"; // changed the account password from Settings
 
 export async function logAudit(
   userId: string,

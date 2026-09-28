@@ -7,6 +7,10 @@ import { db } from "@/lib/db";
 import { encryptSecret } from "@/lib/crypto";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { getMorningCredentials, testMorningConnection } from "@/lib/morning";
+import bcrypt from "bcryptjs";
+import { rateLimit } from "@/lib/rate-limit";
+import { logAudit } from "@/lib/audit";
+import { changePasswordSchema } from "@/server/validators/auth";
 import {
   brandingSchema,
   businessInfoSchema,
@@ -227,6 +231,43 @@ export async function updatePersonalDetailsAction(
 
   revalidatePath("/settings");
   revalidatePath("/dashboard");
+  return { saved: true };
+}
+
+/** Settings → שינוי סיסמה. Needs the current password, so an unlocked device alone can't change it. */
+export async function changePasswordAction(
+  _: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  const userId = await requireUserId();
+
+  const parsed = changePasswordSchema.safeParse({
+    current: formData.get("current") ?? "",
+    password: formData.get("password") ?? "",
+    confirm: formData.get("confirm") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: "אנא תקנו את השגיאות בטופס", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  // Guessing the current password from a signed-in session is still guessing
+  const limit = rateLimit(`change-password:${userId}`, { limit: 5, windowMs: 15 * 60_000 });
+  if (!limit.allowed) {
+    return { error: "יותר מדי ניסיונות — נסו שוב בעוד כמה דקות" };
+  }
+
+  const me = await db.user.findUnique({ where: { id: userId }, select: { hashedPassword: true } });
+  if (!me?.hashedPassword || !(await bcrypt.compare(parsed.data.current, me.hashedPassword))) {
+    return { error: "הסיסמה הנוכחית שגויה", fieldErrors: { current: ["הסיסמה הנוכחית שגויה"] } };
+  }
+
+  await db.user.update({
+    where: { id: userId },
+    // a pending "forgot password" link must not outlive the password it was meant to replace
+    data: { hashedPassword: await bcrypt.hash(parsed.data.password, 10), resetToken: null, resetTokenExpiry: null },
+  });
+  await logAudit(userId, "PASSWORD_CHANGE");
+  revalidatePath("/settings");
   return { saved: true };
 }
 
