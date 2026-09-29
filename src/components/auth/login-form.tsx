@@ -6,9 +6,18 @@ import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { loginAction, type FormState } from "@/server/actions/auth";
+import { GoogleButton, OrDivider } from "@/components/auth/google-button";
+import { googleSignInAction, loginAction, type FormState } from "@/server/actions/auth";
 
-export function LoginForm() {
+export function LoginForm({
+  googleEnabled = false,
+  notice,
+}: {
+  /** Show "המשך עם Google" — only when the Google keys are configured */
+  googleEnabled?: boolean;
+  /** A message carried in the URL, e.g. a failed Google sign-in */
+  notice?: string;
+}) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     loginAction,
     null,
@@ -96,9 +105,9 @@ export function LoginForm() {
           </>
         )}
 
-        {state?.error && (
+        {(state?.error ?? (state ? undefined : notice)) && (
           <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
-            {state.error}
+            {state?.error ?? notice}
           </div>
         )}
 
@@ -106,6 +115,15 @@ export function LoginForm() {
           {pending ? "מתחבר…" : needTotp ? "אימות והתחברות" : "התחברות"}
         </Button>
       </form>
+
+      {googleEnabled && !needTotp && (
+        <>
+          <OrDivider />
+          <form action={googleSignInAction}>
+            <GoogleButton />
+          </form>
+        </>
+      )}
 
       <p className="text-sm text-ink-muted mt-6 text-center">
         <Link href="/forgot-password" className="text-sage-600 hover:text-sage-700">

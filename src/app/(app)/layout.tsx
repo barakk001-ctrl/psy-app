@@ -15,7 +15,7 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
   const [sub, branding] = await Promise.all([
     subscriptionStateFor(session.user.id),

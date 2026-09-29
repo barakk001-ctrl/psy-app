@@ -46,6 +46,7 @@ export default async function SettingsPage({
       inboxToken: true,
       totpEnabled: true,
       totpBackupCodes: true,
+      hashedPassword: true,
       morningApiKeyId: true,
       morningApiSecret: true,
       morningSandbox: true,
@@ -145,7 +146,7 @@ export default async function SettingsPage({
 
       <InboxSettings token={user.inboxToken} />
 
-      <ChangePasswordCard />
+      <ChangePasswordCard hasPassword={!!user.hashedPassword} email={user.email} />
 
       <TwoFactorSettings
         enabled={user.totpEnabled}

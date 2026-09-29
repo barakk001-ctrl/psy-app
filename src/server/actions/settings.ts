@@ -11,6 +11,7 @@ import bcrypt from "bcryptjs";
 import { rateLimit } from "@/lib/rate-limit";
 import { logAudit } from "@/lib/audit";
 import { changePasswordSchema } from "@/server/validators/auth";
+import { sendPasswordResetLink } from "@/lib/password-reset";
 import {
   brandingSchema,
   businessInfoSchema,
@@ -269,6 +270,37 @@ export async function changePasswordAction(
   await logAudit(userId, "PASSWORD_CHANGE");
   revalidatePath("/settings");
   return { saved: true };
+}
+
+export type SetPasswordLinkState = { error?: string; sent?: boolean } | null;
+
+/**
+ * Settings, for an account opened through Google (no password yet): emails the
+ * usual one-hour "set a password" link to the account's own address. A
+ * signed-in session alone can't set a password — proving the mailbox is
+ * required, as with "שכחת סיסמה?".
+ */
+export async function sendSetPasswordLinkAction(
+  _: SetPasswordLinkState,
+  __: FormData,
+): Promise<SetPasswordLinkState> {
+  const userId = await requireUserId();
+  const limit = rateLimit(`set-password-link:${userId}`, { limit: 3, windowMs: 60 * 60_000 });
+  if (!limit.allowed) return { error: "יותר מדי בקשות — נסו שוב מאוחר יותר" };
+
+  const me = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true, hashedPassword: true },
+  });
+  if (!me) return { error: "משתמש לא נמצא" };
+  if (me.hashedPassword) return { error: "לחשבון כבר יש סיסמה — אפשר לשנות אותה כאן" };
+
+  const result = await sendPasswordResetLink(me);
+  if (!result.ok) {
+    console.error("Set-password email failed:", result.error);
+    return { error: "שליחת האימייל נכשלה — נסו שוב מאוחר יותר" };
+  }
+  return { sent: true };
 }
 
 export type MorningSettingsState = {

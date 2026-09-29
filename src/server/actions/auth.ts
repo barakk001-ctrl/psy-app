@@ -1,17 +1,21 @@
 "use server";
 
 import crypto from "node:crypto";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { db } from "@/lib/db";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
-import { TRIAL_DAYS } from "@/lib/subscription";
 import { rateLimit } from "@/lib/rate-limit";
-import { sendEmail } from "@/lib/email";
-import { buildResetEmail } from "@/lib/reset-email";
-import { signIn, signOut } from "@/auth";
+import { createPracticeUser } from "@/lib/practice-user";
+import { sendPasswordResetLink } from "@/lib/password-reset";
+import {
+  GOOGLE_AGREEMENT_COOKIE,
+  GOOGLE_AGREEMENT_COOKIE_MAX_AGE_S,
+  isGoogleConfigured,
+} from "@/lib/google-auth";
+import { auth, signIn, signOut } from "@/auth";
 import {
   loginSchema,
   registerSchema,
@@ -69,13 +73,23 @@ export async function loginAction(_: FormState, formData: FormData): Promise<For
     return { error: "יותר מדי ניסיונות התחברות. נסה שוב בעוד מספר דקות." };
   }
 
+  const user = await db.user.findUnique({
+    where: { email },
+    select: { hashedPassword: true, totpEnabled: true },
+  });
+
+  // An account opened through Google has no password to check.
+  if (user && !user.hashedPassword) {
+    return {
+      error: isGoogleConfigured()
+        ? "לחשבון הזה אין סיסמה — הוא נפתח דרך Google. התחברו עם \"המשך עם Google\", או קבעו סיסמה דרך \"שכחת סיסמה?\"."
+        : "לחשבון הזה אין סיסמה. אפשר לקבוע סיסמה דרך \"שכחת סיסמה?\".",
+    };
+  }
+
   // Two-step: if the password is right and 2FA is on but no code was given,
   // ask for the code instead of failing.
   if (!parsed.data.totp) {
-    const user = await db.user.findUnique({
-      where: { email },
-      select: { hashedPassword: true, totpEnabled: true },
-    });
     if (
       user?.hashedPassword &&
       user.totpEnabled &&
@@ -147,16 +161,7 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
   }
 
   const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
-  await db.user.create({
-    data: {
-      email,
-      name: parsed.data.name,
-      hashedPassword,
-      agreementVersion: AGREEMENT_VERSION,
-      agreementAcceptedAt: new Date(),
-      trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
-    },
-  });
+  await createPracticeUser({ email, name: parsed.data.name, hashedPassword });
 
   try {
     await signIn("credentials", {
@@ -196,30 +201,12 @@ export async function requestPasswordResetAction(
 
   const user = await db.user.findUnique({
     where: { email },
-    select: { id: true, name: true },
+    select: { id: true, name: true, email: true },
   });
 
   // Always report success — never reveal whether the email is registered
   if (user) {
-    const token = crypto.randomBytes(32).toString("base64url");
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-    await db.user.update({
-      where: { id: user.id },
-      data: {
-        resetToken: tokenHash,
-        resetTokenExpiry: new Date(Date.now() + 60 * 60 * 1000),
-      },
-    });
-
-    const h = await headers();
-    const origin =
-      process.env.NEXTAUTH_URL ??
-      `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
-    const { subject, html, text } = buildResetEmail({
-      name: user.name,
-      resetUrl: `${origin}/reset-password/${token}`,
-    });
-    const result = await sendEmail({ to: email, subject, html, text });
+    const result = await sendPasswordResetLink(user);
     if (!result.ok) {
       console.error("Reset email failed:", result.error);
       return { error: "שליחת האימייל נכשלה — נסו שוב או פנו לתמיכה" };
@@ -270,4 +257,73 @@ export async function resetPasswordAction(
   });
 
   return { done: true };
+}
+
+// ── Google sign-in ─────────────────────────────────────────────────
+
+/** "המשך עם Google" on the login page. A new email is sent on to /register for the agreement. */
+export async function googleSignInAction() {
+  if (!isGoogleConfigured()) redirect("/login");
+  await signIn("google", { redirectTo: "/dashboard" });
+}
+
+/**
+ * "המשך עם Google" on the register page: the data-holding agreement must be
+ * ticked first (same precondition as the email form); the acceptance travels
+ * through Google's round-trip in a short-lived cookie read by auth.ts.
+ */
+export async function googleRegisterAction(formData: FormData) {
+  if (!isGoogleConfigured()) redirect("/register");
+  if (formData.get("agreement") !== "on") redirect("/register?google=agreement");
+
+  (await cookies()).set(GOOGLE_AGREEMENT_COOKIE, AGREEMENT_VERSION, {
+    httpOnly: true,
+    sameSite: "lax", // must survive the top-level redirect back from Google
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: GOOGLE_AGREEMENT_COOKIE_MAX_AGE_S,
+  });
+  await signIn("google", { redirectTo: "/dashboard" });
+}
+
+export type TwoFactorState = { error?: string } | null;
+
+/**
+ * /login/two-factor: the 6-digit code (or a backup code) after a Google
+ * sign-in. Only a correct code turns the pending session into a real one.
+ */
+export async function verifyTwoFactorAction(
+  _: TwoFactorState,
+  formData: FormData,
+): Promise<TwoFactorState> {
+  const session = await auth();
+  if (!session?.twoFactorPending) redirect("/login?error=2fa_expired");
+
+  const code = String(formData.get("code") ?? "").trim();
+  if (!code) return { error: "יש להזין את קוד האימות" };
+
+  try {
+    await signIn("two-factor", { code, redirect: false });
+  } catch (err) {
+    if (err instanceof AuthError) {
+      if (err.type === "CredentialsSignin") {
+        if ((err as AuthError & { code?: string }).code === "rate_limited") {
+          return { error: "יותר מדי ניסיונות התחברות. נסה שוב בעוד מספר דקות." };
+        }
+        // The pending window may have lapsed while typing
+        const still = await auth();
+        if (!still?.twoFactorPending) redirect("/login?error=2fa_expired");
+        return { error: "קוד האימות שגוי או שפג תוקפו" };
+      }
+      return { error: "אירעה שגיאה בהתחברות" };
+    }
+    throw err;
+  }
+
+  redirect("/dashboard");
+}
+
+/** "התחברות עם חשבון אחר" on the code page — drops the pending session. */
+export async function cancelTwoFactorAction() {
+  await signOut({ redirectTo: "/login" });
 }

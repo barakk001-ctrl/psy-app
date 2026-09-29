@@ -1,12 +1,17 @@
 "use client";
 
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
-import { Check, Eye, EyeOff, KeyRound } from "lucide-react";
+import { Check, Eye, EyeOff, KeyRound, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { changePasswordAction, type SettingsFormState } from "@/server/actions/settings";
+import {
+  changePasswordAction,
+  sendSetPasswordLinkAction,
+  type SetPasswordLinkState,
+  type SettingsFormState,
+} from "@/server/actions/settings";
 
 const FIELDS = [
   { name: "current", label: "סיסמה נוכחית", autoComplete: "current-password" },
@@ -14,7 +19,51 @@ const FIELDS = [
   { name: "confirm", label: "אימות הסיסמה החדשה", autoComplete: "new-password" },
 ] as const;
 
-export function ChangePasswordCard() {
+/**
+ * Settings → סיסמה. An account opened through Google has no password: instead
+ * of the change form it gets a button that emails a "set a password" link.
+ */
+export function ChangePasswordCard({ hasPassword = true, email }: { hasPassword?: boolean; email?: string }) {
+  return hasPassword ? <ChangePasswordForm /> : <SetPasswordByEmail email={email} />;
+}
+
+function SetPasswordByEmail({ email }: { email?: string }) {
+  const [state, formAction, pending] = useActionState<SetPasswordLinkState, FormData>(
+    sendSetPasswordLinkAction,
+    null,
+  );
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <KeyRound className="w-5 h-5 text-sage-600" />
+          סיסמה
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-ink-soft leading-relaxed">
+          החשבון נפתח דרך Google ואין לו סיסמה — נכנסים עם &quot;המשך עם Google&quot;. כדי להתחבר גם
+          עם אימייל וסיסמה, נשלח קישור לקביעת סיסמה אל{" "}
+          {email ? <span dir="ltr">{email}</span> : "כתובת האימייל של החשבון"}.
+        </p>
+        {state?.sent ? (
+          <p className="inline-flex items-center gap-1.5 text-sm text-sage-600">
+            <MailCheck className="w-4 h-4" /> הקישור נשלח. הוא בתוקף לשעה אחת.
+          </p>
+        ) : (
+          <form action={formAction} className="flex items-center justify-between gap-3">
+            <span className="text-xs text-terracotta-600">{state?.error}</span>
+            <Button type="submit" size="sm" disabled={pending}>
+              {pending ? "שולח…" : "שליחת קישור לקביעת סיסמה"}
+            </Button>
+          </form>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ChangePasswordForm() {
   const [state, formAction, pending] = useActionState<SettingsFormState, FormData>(changePasswordAction, null);
   const [show, setShow] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);

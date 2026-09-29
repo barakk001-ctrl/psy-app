@@ -1,17 +1,29 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { registerAction, type FormState } from "@/server/actions/auth";
+import { GoogleButton, OrDivider } from "@/components/auth/google-button";
+import { googleRegisterAction, registerAction, type FormState } from "@/server/actions/auth";
 
-export function RegisterForm() {
+export function RegisterForm({
+  googleEnabled = false,
+  notice,
+}: {
+  /** Show "המשך עם Google" — only when the Google keys are configured */
+  googleEnabled?: boolean;
+  /** A message carried in the URL (e.g. Google sign-in needs the agreement first) */
+  notice?: string;
+}) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     registerAction,
     null,
   );
+  // Controlled so the Google button can require it before leaving for Google
+  const [agreed, setAgreed] = useState(false);
+  const [googleHint, setGoogleHint] = useState(false);
 
   return (
     <div>
@@ -80,6 +92,11 @@ export function RegisterForm() {
             type="checkbox"
             name="agreement"
             required
+            checked={agreed}
+            onChange={(e) => {
+              setAgreed(e.target.checked);
+              if (e.target.checked) setGoogleHint(false);
+            }}
             className="mt-0.5 h-4 w-4 rounded border-cream-300 accent-sage-600"
           />
           <span className="text-sm text-ink-soft leading-relaxed">
@@ -100,15 +117,40 @@ export function RegisterForm() {
           </p>
         )}
 
-        {state?.error && (
+        {googleHint && (
+          <p className="text-xs text-terracotta-600 -mt-2">
+            כדי להמשיך עם Google יש לסמן קודם את אישור ההסכם
+          </p>
+        )}
+
+        {(state?.error ?? (state ? undefined : notice)) && (
           <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
-            {state.error}
+            {state?.error ?? notice}
           </div>
         )}
 
         <Button type="submit" size="lg" disabled={pending} className="w-full">
           {pending ? "יוצר חשבון…" : "יצירת חשבון"}
         </Button>
+
+        {googleEnabled && (
+          <>
+            <OrDivider />
+            <p className="text-xs text-ink-subtle -mt-3 mb-3 text-center">
+              בלי סיסמה — נכנסים עם חשבון Google (עם אישור ההסכם שלמעלה)
+            </p>
+            {/* Same form, so the agreement checkbox travels with it */}
+            <GoogleButton
+              formAction={googleRegisterAction}
+              onClick={(e) => {
+                if (!agreed) {
+                  e.preventDefault();
+                  setGoogleHint(true);
+                }
+              }}
+            />
+          </>
+        )}
       </form>
 
       <p className="text-sm text-ink-muted mt-8 text-center">
