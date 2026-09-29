@@ -74,7 +74,7 @@ export default async function CalendarPage() {
             לחץ/י על משבצת ריקה לקביעת פגישה. גרור/י כדי לשנות זמן.
           </p>
           <p className="text-ink-muted text-xs hidden sm:block">
-            לעריכת סוגי המפגשים והצבעים שלהם ביומן —{" "}
+            לעריכת סוג וצבע מפגש —{" "}
             <Link href="/settings#meeting-types" className="underline underline-offset-2 hover:text-ink">
               הגדרות ← סוגי מפגשים
             </Link>
