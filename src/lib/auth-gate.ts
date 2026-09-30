@@ -95,9 +95,9 @@ export function gateRequest(
   const isLoggedIn = !!session?.user?.id;
   const isPending = !isLoggedIn && !!session?.twoFactorPending;
 
-  // The agreement text is readable by everyone — guests during
+  // The agreement and the terms are readable by everyone — guests during
   // registration and signed-in users during re-acceptance.
-  if (path === "/agreement") return { type: "allow" };
+  if (path === "/agreement" || path === "/terms") return { type: "allow" };
 
   // 2FA pending: the code page and nothing else.
   if (isPending) {
