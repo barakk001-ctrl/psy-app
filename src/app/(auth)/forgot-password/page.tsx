@@ -1,4 +1,4 @@
-import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
+import { ForgotPasswordForm } from "./forgot-password-form";
 
 // Rendered per request rather than prerendered at build time: on Railway's EU
 // builder, prerendering this page hit a Next.js bundler error ("Could not find
