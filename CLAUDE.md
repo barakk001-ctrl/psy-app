@@ -99,6 +99,10 @@ Besides the invoice PDF: the summaries and income-report PDFs use `components/pd
 
 Dashboard shows **today's meetings** (clinic wall clock) with bold done/missing indicators for documentation and payment (`SessionFlags` component on other pages). `/document` lists recent meetings missing notes; `/collect` lists meetings with no payment update + open invoices. **Branding**: Settings → מיתוג sets `User.brandName` (shown under "מרפאה אישית") and `User.logoUrl` (replaces the "מ" tile) — a data: URL the browser crops/shrinks to 256px, validated server-side by `isValidLogoDataUrl`; the (app) layout reads both and passes them to `BrandMark` in the sidebar and mobile top bar; the logo also shows in a small circle (`LogoAvatar`) beside the "שלום, …" greeting on the dashboard and in the letterhead banner. The clinic-room SVG illustration (`clinic-hero.tsx`) appears as the dashboard hero and as a letterhead banner on every other page (`clinic-banner.tsx`).
 
+### Subscriptions
+
+`src/lib/subscription.ts`: 30-day trial, then MONTHLY/YEARLY (`PRICING`); an expired account is read-only, never locked out. Card payments via Grow (`src/lib/billing.ts`) only once `GROW_USER_ID`/`GROW_PAGE_CODE` are set. `isAdmin` users see the subscriptions card in Settings (extend, exempt). **Only Barak (barakk001@gmail.com) is admin** — migration `20261003120000_single_admin` turned every other admin (Keren) into a non-admin, exempt user. Admin rights are changed by migration, not from the UI.
+
 ### Message import & inbox
 
 `/import` parses pasted WhatsApp-style messages into clients/sessions (`src/lib/message-parse.ts`); `/api/inbox` ingests external messages by token (configured in Settings). Imported text can be appended to a session's encrypted note.
