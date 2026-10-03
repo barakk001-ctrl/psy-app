@@ -29,6 +29,22 @@ describe("createSessionSchema", () => {
     expect(parsed.success).toBe(false);
   });
 
+  it("accepts the form's default series — open-ended (קבוע), no count", () => {
+    // The new-meeting form defaults to "קבוע": it sends openEnded=on and no
+    // occurrences field at all (the count input isn't rendered).
+    const parsed = createSessionSchema.safeParse({
+      ...base,
+      recurrence: "WEEKLY",
+      openEnded: "on",
+      occurrences: "", // what createSessionAction passes when the field is absent
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.openEnded).toBe(true);
+      expect(parsed.data.occurrences).toBeUndefined();
+    }
+  });
+
   it("bounds series length to 2-52", () => {
     expect(
       createSessionSchema.safeParse({ ...base, recurrence: "WEEKLY", occurrences: "1" })

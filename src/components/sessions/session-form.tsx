@@ -74,7 +74,7 @@ export function SessionForm({
     initial?.clientId ?? defaults?.clientId ?? "",
   );
   const [recurrence, setRecurrence] = useState<string>("NONE");
-  const [seriesMode, setSeriesMode] = useState<string>("COUNT");
+  const [seriesMode, setSeriesMode] = useState<string>("OPEN");
   const [treatmentType, setTreatmentType] = useState<string>(
     initial?.treatmentType ?? meetingTypes[0] ?? "טיפול פרטני",
   );
