@@ -6,7 +6,13 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { seriesRootOf, standingSlotFollowers } from "@/lib/standing-slot";
 import { planFutureDelete, type BulkDeletePlan } from "@/lib/bulk-delete";
-import { buildRecurrenceRule } from "@/lib/recurrence";
+import { buildRecurrenceRule, isOpenEndedRule } from "@/lib/recurrence";
+import {
+  closeRecurrenceRule,
+  planDeactivation,
+  type DeactivationCandidate,
+  type DeactivationPlan,
+} from "@/lib/client-deactivation";
 
 type Anchor = {
   id: string;
@@ -50,12 +56,12 @@ export async function loadSlotFollowers(userId: string, anchor: Anchor, now = ne
   );
 }
 
-/** What "delete all of this client's future meetings" would do right now. */
-export async function loadFutureDeletePlan(
+/** The client's meetings that start after now, as the pure planners take them. */
+async function loadFutureCandidates(
   userId: string,
   clientId: string,
-  now = new Date(),
-): Promise<BulkDeletePlan & { scheduledKeepIds: string[] }> {
+  now: Date,
+): Promise<DeactivationCandidate[]> {
   const rows = await db.session.findMany({
     where: { userId, clientId, startsAt: { gt: now } },
     select: {
@@ -73,26 +79,66 @@ export async function loadFutureDeletePlan(
     },
     orderBy: { startsAt: "asc" },
   });
-  const plan = planFutureDelete(
-    rows.map((r) => ({
-      id: r.id,
-      startsAt: r.startsAt,
-      hasNote: !!r.note,
-      fileCount: r._count.files,
-      hasInvoiceItem: !!r.invoiceItem,
-      paymentStatus: r.paymentStatus,
-      paidAmount: r.paidAmount,
-      morningDocNumber: r.morningDocNumber,
-      morningReceiptNumber: r.morningReceiptNumber,
-      morningInvoiceReceiptNumber: r.morningInvoiceReceiptNumber,
-    })),
-    now,
-  );
+  return rows.map((r) => ({
+    id: r.id,
+    startsAt: r.startsAt,
+    status: r.status,
+    hasNote: !!r.note,
+    fileCount: r._count.files,
+    hasInvoiceItem: !!r.invoiceItem,
+    paymentStatus: r.paymentStatus,
+    paidAmount: r.paidAmount,
+    morningDocNumber: r.morningDocNumber,
+    morningReceiptNumber: r.morningReceiptNumber,
+    morningInvoiceReceiptNumber: r.morningInvoiceReceiptNumber,
+  }));
+}
+
+/** What "delete all of this client's future meetings" would do right now. */
+export async function loadFutureDeletePlan(
+  userId: string,
+  clientId: string,
+  now = new Date(),
+): Promise<BulkDeletePlan & { scheduledKeepIds: string[] }> {
+  const rows = await loadFutureCandidates(userId, clientId, now);
+  const plan = planFutureDelete(rows, now);
   const keepIds = new Set(plan.keep.map((k) => k.id));
   const scheduledKeepIds = rows
     .filter((r) => keepIds.has(r.id) && r.status === "SCHEDULED")
     .map((r) => r.id);
   return { ...plan, scheduledKeepIds };
+}
+
+/** What marking this client "לא פעיל" would do to the calendar right now. */
+export async function loadDeactivationPlan(
+  userId: string,
+  clientId: string,
+  now = new Date(),
+): Promise<DeactivationPlan> {
+  return planDeactivation(await loadFutureCandidates(userId, clientId, now), now);
+}
+
+/**
+ * Ends every open-ended (קבוע) series of the client at the meetings it has,
+ * so the cron never extends it — not even after the client is reactivated.
+ * Run after the deletes (keepSeriesLinked may have promoted a new root).
+ */
+export async function closeClientOpenSeries(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  clientId: string,
+): Promise<void> {
+  const roots = await tx.session.findMany({
+    where: { userId, clientId, parentSessionId: null, recurrenceRule: { not: null } },
+    select: { id: true, recurrenceRule: true, _count: { select: { childSessions: true } } },
+  });
+  for (const r of roots) {
+    if (!isOpenEndedRule(r.recurrenceRule)) continue;
+    await tx.session.update({
+      where: { id: r.id },
+      data: { recurrenceRule: closeRecurrenceRule(r.recurrenceRule!, r._count.childSessions + 1) },
+    });
+  }
 }
 
 /**

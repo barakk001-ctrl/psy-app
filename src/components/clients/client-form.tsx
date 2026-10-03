@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import {
   updateClientAction,
   type ClientFormState,
 } from "@/server/actions/clients";
+import { DeactivationConfirmPanel } from "./client-status-toggle";
 
 export type ClientFormInitial = {
   id: string;
@@ -53,8 +54,36 @@ export function ClientForm({
   );
   const fieldErr = state?.fieldErrors ?? {};
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const initialStatus = initial?.status ?? "ACTIVE";
+  const [status, setStatus] = useState<string>(initialStatus);
+  // The server refused to mark the client inactive until confirmed (future
+  // meetings would leave the calendar); hidden again once she cancels.
+  const [confirmDismissed, setConfirmDismissed] = useState(false);
+  const deactivate = !confirmDismissed && status === "INACTIVE" ? state?.deactivate : undefined;
+
+  const send = (confirmCount?: number) => {
+    const form = formRef.current;
+    if (!form) return;
+    const fd = new FormData(form);
+    if (confirmCount !== undefined) fd.set("confirmDeactivate", String(confirmCount));
+    setConfirmDismissed(false);
+    startTransition(() => formAction(fd));
+  };
+
   return (
-    <form action={formAction} className="space-y-6" noValidate>
+    <form
+      ref={formRef}
+      // Submitted by hand rather than through the form's `action`: React resets
+      // every uncontrolled field after an action runs, so a save refused for a
+      // validation error or the inactive-confirmation would wipe what she typed.
+      onSubmit={(e) => {
+        e.preventDefault();
+        send();
+      }}
+      className="space-y-6"
+      noValidate
+    >
       {isEdit && <input type="hidden" name="id" value={initial!.id} />}
       {!isEdit && nextStart && (
         <input type="hidden" name="nextStart" value={nextStart} />
@@ -64,7 +93,12 @@ export function ClientForm({
         <Card>
           <CardContent className="space-y-2">
             <Label htmlFor="status">סטטוס</Label>
-            <Select id="status" name="status" defaultValue={initial!.status ?? "ACTIVE"}>
+            <Select
+              id="status"
+              name="status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
               <option value="ACTIVE">פעיל/ה</option>
               <option value="INACTIVE">לא פעיל/ה — בהפסקה או סיים/ה טיפול</option>
             </Select>
@@ -72,6 +106,11 @@ export function ClientForm({
               לקוחות לא פעילים עוברים ללשונית ״לא פעילים״ ולא מוצגים בבחירת לקוח/ה לפגישה
               חדשה. כל ההיסטוריה נשמרת.
             </p>
+            {initialStatus === "ACTIVE" && status === "INACTIVE" && (
+              <p className="text-xs text-terracotta-600">
+                הפגישות העתידיות יוסרו מהיומן — לפני השמירה יוצג כמה.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -222,6 +261,20 @@ export function ClientForm({
         <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
           {state.error}
         </div>
+      )}
+
+      {deactivate && (
+        <DeactivationConfirmPanel
+          confirm={deactivate}
+          pending={pending}
+          confirmLabel="כן, להעביר ולשמור"
+          cancelLabel="השארה כפעיל/ה"
+          onConfirm={() => send(deactivate.count)}
+          onCancel={() => {
+            setConfirmDismissed(true);
+            setStatus(initialStatus);
+          }}
+        />
       )}
 
       <div className="flex items-center gap-3 justify-end">

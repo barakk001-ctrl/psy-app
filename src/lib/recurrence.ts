@@ -48,3 +48,29 @@ export function ruleInterval(rule: string): number {
 
 /** How many instances to create/maintain ahead for an open-ended series. */
 export const OPEN_ENDED_BATCH = 26;
+
+/** Extend an open-ended series when less than this much of it lies ahead. */
+export const TOPUP_HORIZON_MS = 8 * 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Whether the cron should append meetings to a series now. Only open-ended
+ * (קבוע) series of an ACTIVE client that still have a booked future meeting
+ * and are running out (last meeting within the horizon). A series with no
+ * future SCHEDULED meeting was ended deliberately (deleted / client left) —
+ * never resurrect it; an inactive client's series never grows.
+ */
+export function shouldTopUpSeries(
+  s: {
+    recurrenceRule: string | null;
+    clientStatus: string;
+    aliveFutureCount: number;
+    lastStartsAt: Date | null;
+  },
+  now: Date,
+): boolean {
+  if (!isOpenEndedRule(s.recurrenceRule)) return false;
+  if (s.clientStatus !== "ACTIVE") return false;
+  if (s.aliveFutureCount === 0) return false;
+  if (!s.lastStartsAt) return false;
+  return s.lastStartsAt.getTime() - now.getTime() <= TOPUP_HORIZON_MS;
+}

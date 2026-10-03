@@ -99,7 +99,10 @@ export default async function ClientsPage({
         <Card>
           <ul className="divide-y divide-cream-200">
             {clients.map((c) => (
-              <li key={c.id} className="flex items-center hover:bg-cream-100/60 transition-colors">
+              <li
+                key={c.id}
+                className="flex flex-wrap items-center hover:bg-cream-100/60 transition-colors"
+              >
                 <Link
                   href={`/clients/${c.id}`}
                   className="flex-1 min-w-0 flex items-center gap-4 ps-5 pe-2 py-4"
@@ -146,9 +149,7 @@ export default async function ClientsPage({
                     )}
                   </div>
                 </Link>
-                <div className="pe-3 sm:pe-4">
-                  <ClientStatusMoveButton clientId={c.id} status={c.status} />
-                </div>
+                <ClientStatusMoveButton clientId={c.id} status={c.status} />
               </li>
             ))}
           </ul>

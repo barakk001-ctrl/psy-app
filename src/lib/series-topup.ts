@@ -3,18 +3,27 @@
 // Called from the reminders cron.
 
 import { db } from "@/lib/db";
-import { isOpenEndedRule, ruleInterval, seriesSlots } from "@/lib/recurrence";
+import {
+  isOpenEndedRule,
+  ruleInterval,
+  seriesSlots,
+  shouldTopUpSeries,
+} from "@/lib/recurrence";
 import { scheduleSessionReminders } from "@/lib/reminders";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
 
-const HORIZON_MS = 8 * 7 * 24 * 60 * 60 * 1000; // extend when < 8 weeks remain
 const EXTEND_BY = 18; // instances appended per extension
 
 export async function topUpOpenEndedSeries(): Promise<number> {
   const now = new Date();
 
   const parents = await db.session.findMany({
-    where: { recurrenceRule: { not: null }, parentSessionId: null },
+    // An inactive client's series never grows (shouldTopUpSeries checks it too)
+    where: {
+      recurrenceRule: { not: null },
+      parentSessionId: null,
+      client: { status: "ACTIVE" },
+    },
     select: {
       id: true,
       userId: true,
@@ -26,6 +35,7 @@ export async function topUpOpenEndedSeries(): Promise<number> {
       meetingUrl: true,
       rate: true,
       treatmentType: true,
+      client: { select: { status: true } },
     },
   });
 
@@ -35,19 +45,28 @@ export async function topUpOpenEndedSeries(): Promise<number> {
 
     const seriesFilter = { OR: [{ id: p.id }, { parentSessionId: p.id }] };
 
-    // A series with no future scheduled instances was ended deliberately
-    // (delete-from-here-onward) — never resurrect it.
     const aliveFuture = await db.session.count({
       where: { ...seriesFilter, status: "SCHEDULED", startsAt: { gt: now } },
     });
-    if (aliveFuture === 0) continue;
-
     const last = await db.session.findFirst({
       where: seriesFilter,
       orderBy: { startsAt: "desc" },
       select: { startsAt: true },
     });
-    if (!last || last.startsAt.getTime() - now.getTime() > HORIZON_MS) continue;
+    if (
+      !last ||
+      !shouldTopUpSeries(
+        {
+          recurrenceRule: p.recurrenceRule,
+          clientStatus: p.client.status,
+          aliveFutureCount: aliveFuture,
+          lastStartsAt: last.startsAt,
+        },
+        now,
+      )
+    ) {
+      continue;
+    }
 
     const interval = ruleInterval(p.recurrenceRule!);
     const durationMs = p.endsAt.getTime() - p.startsAt.getTime();

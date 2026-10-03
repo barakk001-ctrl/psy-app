@@ -6,6 +6,20 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { subscriptionReadOnly } from "@/lib/subscription-server";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
+import { logAudit } from "@/lib/audit";
+import { cancelSessionReminders } from "@/lib/reminders";
+import {
+  closeClientOpenSeries,
+  keepSeriesLinked,
+  loadDeactivationPlan,
+} from "@/lib/session-scope";
+import {
+  deactivationCount,
+  deactivationNotice,
+  needsDeactivationConfirm,
+  type DeactivationPlan,
+} from "@/lib/client-deactivation";
+import type { Prisma } from "@prisma/client";
 
 import { clientSchema, clientStatusSchema } from "@/server/validators/client";
 
@@ -18,7 +32,74 @@ async function requireUserId(): Promise<string> {
 export type ClientFormState = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
+  /** switching to "לא פעיל" would take meetings off the calendar — ask first */
+  deactivate?: DeactivationConfirm;
 } | null;
+
+/** What the practitioner is asked before a client is marked inactive. */
+export type DeactivationConfirm = { count: number; notice: string };
+
+/** The count the practitioner approved (sent back with the confirmed submit). */
+function confirmedCount(formData: FormData): number | null {
+  const raw = formData.get("confirmDeactivate");
+  if (typeof raw !== "string" || raw === "") return null;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
+/**
+ * Saves the client and, when they are being marked inactive, takes their
+ * future meetings off the calendar in the same transaction (the rules are in
+ * client-deactivation.ts): empty ones deleted, ones holding records cancelled,
+ * open-ended series closed so the cron never extends them again.
+ */
+async function saveClient(
+  userId: string,
+  clientId: string,
+  data: Prisma.ClientUpdateInput,
+  plan: DeactivationPlan | null,
+): Promise<void> {
+  await db.$transaction(async (tx) => {
+    await tx.client.update({ where: { id: clientId, userId }, data });
+    if (!plan) return;
+    // Deleting a series' first meeting must not cut the rest loose
+    await keepSeriesLinked(tx, userId, plan.deleteIds);
+    if (plan.cancelIds.length) {
+      await tx.session.updateMany({
+        where: { userId, clientId, id: { in: plan.cancelIds }, status: "SCHEDULED" },
+        data: { status: "CANCELLED" },
+      });
+    }
+    if (plan.deleteIds.length) {
+      // Reminder jobs of deleted meetings go with them (ON DELETE CASCADE)
+      await tx.session.deleteMany({ where: { userId, clientId, id: { in: plan.deleteIds } } });
+    }
+    await closeClientOpenSeries(tx, userId, clientId);
+  });
+  if (!plan) return;
+  for (const id of plan.cancelIds) await cancelSessionReminders(id);
+  if (deactivationCount(plan) > 0) {
+    await logAudit(userId, "SESSIONS_BULK_DELETE", { clientId });
+  }
+}
+
+/** Query string for the client card's "removed from the calendar" notice. */
+function resultParams(plan: DeactivationPlan | null): string {
+  if (!plan || deactivationCount(plan) === 0) return "";
+  const why = [...new Set(plan.keep.flatMap((k) => k.reasons))].join(",");
+  return `?${new URLSearchParams({
+    futureDeleted: String(plan.deleteIds.length),
+    futureKept: String(plan.cancelIds.length),
+    ...(why ? { keptWhy: why } : {}),
+  })}`;
+}
+
+function revalidateClient(id: string) {
+  revalidatePath("/clients");
+  revalidatePath(`/clients/${id}`);
+  revalidatePath("/calendar");
+  revalidatePath("/dashboard");
+}
 
 function parseClientForm(formData: FormData) {
   return clientSchema.safeParse({
@@ -100,13 +181,25 @@ export async function updateClientAction(
   // Verify ownership before update
   const existing = await db.client.findFirst({
     where: { id, userId },
-    select: { id: true },
+    select: { id: true, status: true },
   });
   if (!existing) return { error: "לקוח לא נמצא" };
 
-  await db.client.update({
-    where: { id, userId },
-    data: {
+  // Active → inactive takes the future meetings off the calendar; ask first
+  let plan: DeactivationPlan | null = null;
+  if (data.status === "INACTIVE" && existing.status === "ACTIVE") {
+    plan = await loadDeactivationPlan(userId, id);
+    if (needsDeactivationConfirm(plan, confirmedCount(formData))) {
+      return {
+        deactivate: { count: deactivationCount(plan), notice: deactivationNotice(plan)! },
+      };
+    }
+  }
+
+  await saveClient(
+    userId,
+    id,
+    {
       firstName: data.firstName,
       lastName: data.lastName,
       idNumber: data.idNumber || null,
@@ -119,27 +212,45 @@ export async function updateClientAction(
       treatmentType: data.treatmentType,
       ...(data.status ? { status: data.status } : {}),
     },
-  });
+    plan,
+  );
 
-  revalidatePath("/clients");
-  revalidatePath(`/clients/${id}`);
-  redirect(`/clients/${id}`);
+  revalidateClient(id);
+  redirect(`/clients/${id}${resultParams(plan)}`);
 }
 
+export type ClientStatusResult =
+  | { done: true; /** query string for the card's result notice ("" = none) */ result: string }
+  | { confirm: DeactivationConfirm }
+  | undefined;
+
 /** פעיל / לא פעיל — the toggle on the client card and the clients list.
- *  Inactive clients keep everything (meetings, summaries, invoices); they
- *  only move to the "לא פעילים" tab and out of the new-meeting pickers. */
-export async function setClientStatusAction(formData: FormData) {
+ *  Inactive clients keep their history (past meetings, summaries, invoices),
+ *  but their future meetings leave the calendar: switching active → inactive
+ *  first returns `confirm` with the counts when there are any, and only a
+ *  resubmit carrying `confirmDeactivate` (the approved count) applies it.
+ *  Reactivating changes nothing on the calendar — she books again. */
+export async function setClientStatusAction(formData: FormData): Promise<ClientStatusResult> {
   const userId = await requireUserId();
   const id = String(formData.get("id") ?? "");
   const parsed = clientStatusSchema.safeParse(formData.get("status"));
   if (!id || !parsed.success) return;
 
-  await db.client.updateMany({
+  const existing = await db.client.findFirst({
     where: { id, userId },
-    data: { status: parsed.data },
+    select: { status: true },
   });
-  revalidatePath("/clients");
-  revalidatePath(`/clients/${id}`);
-  revalidatePath("/dashboard");
+  if (!existing) return;
+
+  let plan: DeactivationPlan | null = null;
+  if (parsed.data === "INACTIVE" && existing.status === "ACTIVE") {
+    plan = await loadDeactivationPlan(userId, id);
+    if (needsDeactivationConfirm(plan, confirmedCount(formData))) {
+      return { confirm: { count: deactivationCount(plan), notice: deactivationNotice(plan)! } };
+    }
+  }
+
+  await saveClient(userId, id, { status: parsed.data }, plan);
+  revalidateClient(id);
+  return { done: true, result: resultParams(plan) };
 }
