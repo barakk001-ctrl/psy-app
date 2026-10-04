@@ -12,6 +12,8 @@ import { DEFAULT_SESSION_MINUTES, addMinutesToTime } from "@/lib/session-duratio
 import { useOverlapWarning } from "@/components/sessions/use-overlap-warning";
 import { ApplyScopeChoice } from "@/components/sessions/apply-scope-choice";
 import { DeleteSessionChoice } from "@/components/sessions/delete-session-choice";
+import { CancelScopeChoice } from "@/components/sessions/cancel-scope-choice";
+import { followingTotal } from "@/lib/cancel-following";
 import {
   quickEditSessionAction,
   sessionScopeInfoAction,
@@ -54,6 +56,8 @@ export function QuickEditDialog({
   const [date, setDate] = useState(data.date);
   const [startTime, setStartTime] = useState(data.startTime);
   const [scope, setScope] = useState<"single" | "future">("single");
+  const [cancelScope, setCancelScope] = useState<"single" | "following">("single");
+  const [clientId, setClientId] = useState(data.clientId);
   // The client's other meetings (same standing slot / future ones), fetched on
   // open: they decide whether "all of this client's meetings" is offered
   const [info, setInfo] = useState<SessionScopeInfo | null>(null);
@@ -72,7 +76,19 @@ export function QuickEditDialog({
   }, [data.id]);
   const timeChanged =
     date !== data.date || startTime !== data.startTime || endTime !== data.endTime;
-  const offerScope = timeChanged && !!info && info.followers > 0;
+  // Switching a meeting to cancelled: offer "all of this client's following
+  // meetings" too (a client who stopped coming). The server's fresher counts
+  // win if it refused because more meetings had appeared.
+  const followingCounts = state?.following ?? info?.following;
+  const offerCancelScope =
+    cancelled &&
+    !data.cancelled &&
+    clientId === data.clientId &&
+    !!info &&
+    !!followingCounts &&
+    followingTotal(followingCounts) > 0;
+  const cancellingFollowing = offerCancelScope && cancelScope === "following";
+  const offerScope = timeChanged && !!info && info.followers > 0 && !cancellingFollowing;
   const appliedScope = offerScope ? scope : "single";
   // Checked live, so a clash shows up before "שמירה" — including where the
   // following meetings would land; a cancelled meeting can't clash
@@ -85,12 +101,14 @@ export function QuickEditDialog({
   );
 
   useEffect(() => {
-    if (state?.saved) {
+    // After "cancel all following" the popup stays open to say what happened
+    if (state?.saved && !state.followingResult) {
       onClose();
       router.refresh();
     }
+    if (state?.saved && state.followingResult) router.refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state?.saved]);
+  }, [state]);
 
   const typeOptions = meetingTypes.includes(data.treatmentType)
     ? meetingTypes
@@ -121,6 +139,29 @@ export function QuickEditDialog({
           </button>
         </div>
 
+        {state?.saved && state.followingResult ? (
+          <div role="status" className="space-y-4">
+            <p className="rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-ink">
+              {state.followingResult}
+            </p>
+            <p className="text-sm text-ink-muted leading-relaxed">
+              אם הטיפול עם {info?.clientName ?? data.clientName} הסתיים, אפשר להעביר את התיק
+              ל״לא פעילים״ בכרטיס.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" onClick={onClose}>
+                סגירה
+              </Button>
+              <Link
+                href={`/clients/${data.clientId}`}
+                className="text-sm text-sage-600 hover:text-sage-700 inline-flex items-center gap-1"
+              >
+                לכרטיס של {info?.clientName ?? data.clientName}
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        ) : (
         <form
           // By hand, not `action`: React clears uncontrolled fields after an
           // action, so a refused save lost the new date and time.
@@ -135,7 +176,12 @@ export function QuickEditDialog({
 
           <div>
             <Label htmlFor="qeClient">מטופל/ת</Label>
-            <Select id="qeClient" name="clientId" defaultValue={data.clientId}>
+            <Select
+              id="qeClient"
+              name="clientId"
+              defaultValue={data.clientId}
+              onChange={(e) => setClientId(e.target.value)}
+            >
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -223,6 +269,15 @@ export function QuickEditDialog({
             </span>
           </label>
 
+          {offerCancelScope && (
+            <CancelScopeChoice
+              value={cancelScope}
+              onChange={setCancelScope}
+              clientName={info!.clientName}
+              counts={followingCounts!}
+            />
+          )}
+
           {state?.error && !state.conflict && (
             <div className="rounded-xl border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">{state.error}</div>
           )}
@@ -246,8 +301,16 @@ export function QuickEditDialog({
           )}
 
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Button type="submit" disabled={pending}>
-              {pending ? "שומר…" : "שמירה"}
+            <Button
+              type="submit"
+              variant={cancellingFollowing ? "danger" : "primary"}
+              disabled={pending}
+            >
+              {pending
+                ? "שומר…"
+                : cancellingFollowing
+                  ? `ביטול ${followingTotal(followingCounts!) + 1} פגישות`
+                  : "שמירה"}
             </Button>
             <Button type="button" variant="secondary" onClick={onClose}>
               חזרה
@@ -262,15 +325,18 @@ export function QuickEditDialog({
             </Link>
           </div>
         </form>
+        )}
 
-        <div className="border-t border-cream-200 pt-3">
-          <DeleteSessionChoice
-            sessionId={data.id}
-            clientId={data.clientId}
-            info={info}
-            variant="dialog"
-          />
-        </div>
+        {!(state?.saved && state.followingResult) && (
+          <div className="border-t border-cream-200 pt-3">
+            <DeleteSessionChoice
+              sessionId={data.id}
+              clientId={data.clientId}
+              info={info}
+              variant="dialog"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

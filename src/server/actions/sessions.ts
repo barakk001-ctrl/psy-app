@@ -25,10 +25,19 @@ import { logAudit } from "@/lib/audit";
 import { moveFollowers, slotLabel, type MovedSlot } from "@/lib/standing-slot";
 import { keepReasonsText } from "@/lib/bulk-delete";
 import {
+  closeClientOpenSeries,
   keepSeriesLinked,
   loadFutureDeletePlan,
   loadSlotFollowers,
 } from "@/lib/session-scope";
+import {
+  cancelFollowingResult,
+  followingCounts,
+  followingCutoff,
+  followingTotal,
+  needsFollowingConfirm,
+  type FollowingCounts,
+} from "@/lib/cancel-following";
 import {
   createSessionSchema,
   sessionStatusSchema,
@@ -193,6 +202,9 @@ export type SessionScopeInfo = {
   /** other future meetings that "delete all future" would delete or cancel —
    *  the choice is offered only when there is at least one */
   othersAffected: number;
+  /** the client's meetings after this one that "cancel this and all of the
+   *  client's following meetings" (calendar popup) would take off the calendar */
+  following: FollowingCounts;
 };
 
 async function scopeInfo(
@@ -207,9 +219,10 @@ async function scopeInfo(
   },
 ): Promise<SessionScopeInfo> {
   const now = new Date();
-  const [followers, plan] = await Promise.all([
+  const [followers, plan, followingPlan] = await Promise.all([
     loadSlotFollowers(userId, sess, now),
     loadFutureDeletePlan(userId, sess.clientId, now),
+    loadFutureDeletePlan(userId, sess.clientId, followingCutoff(sess.startsAt, now)),
   ]);
   return {
     clientName: `${sess.client.firstName} ${sess.client.lastName}`,
@@ -221,6 +234,7 @@ async function scopeInfo(
     keepReasons: keepReasonsText(plan.keep),
     othersAffected: [...plan.deleteIds, ...plan.scheduledKeepIds].filter((x) => x !== sess.id)
       .length,
+    following: followingCounts(followingPlan, sess.id),
   };
 }
 
@@ -562,6 +576,10 @@ export type QuickEditState = {
   saved?: boolean;
   /** conflict detected — allow resubmitting with allowOverlap */
   conflict?: boolean;
+  /** "cancel all following": more meetings than she approved — new counts */
+  following?: FollowingCounts;
+  /** "cancel all following" was applied — what happened, for the popup */
+  followingResult?: string;
 } | null;
 
 /** Compact calendar-popup edit: client, date, start/end times, type, cancel toggle. */
@@ -579,7 +597,15 @@ export async function quickEditSessionAction(
   const treatmentType = String(formData.get("treatmentType") ?? "").trim().slice(0, 60);
   const cancelled = formData.get("cancelled") === "on";
   const allowOverlap = formData.get("allowOverlap") === "on";
-  const applyScope = formData.get("applyScope") === "future" ? "future" : "single";
+  // Cancelling "and all of this client's following meetings" (a client who
+  // stopped coming); the count she approved comes along with it
+  const cancelFollowing = cancelled && formData.get("cancelScope") === "following";
+  const confirmedRaw = formData.get("cancelFollowingCount");
+  const confirmedFollowing =
+    typeof confirmedRaw === "string" && /^\d+$/.test(confirmedRaw) ? Number(confirmedRaw) : null;
+  // Moving the following meetings makes no sense when they are being cancelled
+  const applyScope =
+    !cancelFollowing && formData.get("applyScope") === "future" ? "future" : "single";
 
   if (!id || !clientId) return { error: "פרטים חסרים" };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "תאריך לא תקין" };
@@ -596,12 +622,35 @@ export async function quickEditSessionAction(
 
   const client = await db.client.findFirst({
     where: { id: clientId, userId },
-    select: { id: true },
+    select: { id: true, firstName: true, lastName: true },
   });
   if (!client) return { error: "לקוח לא נמצא" };
 
   const startsAt = fromZonedDateTimeLocal(`${date}T${startTime}`);
   const endsAt = fromZonedDateTimeLocal(`${date}T${endTime}`);
+
+  // The meeting page's "all future meetings of [client]" rules, started after
+  // this meeting (lib/cancel-following.ts). Planned from where the meeting is
+  // now, which is what the popup counted.
+  let followingPlan: Awaited<ReturnType<typeof loadFutureDeletePlan>> | null = null;
+  let following: FollowingCounts | null = null;
+  if (cancelFollowing) {
+    if (clientId !== existing.clientId) {
+      return { error: "אי אפשר להחליף מטופל/ת ולבטל את הפגישות הבאות באותה שמירה." };
+    }
+    followingPlan = await loadFutureDeletePlan(
+      userId,
+      existing.clientId,
+      followingCutoff(existing.startsAt, new Date()),
+    );
+    following = followingCounts(followingPlan, id);
+    if (needsFollowingConfirm(following, confirmedFollowing)) {
+      return {
+        error: "בינתיים השתנו הפגישות הבאות — בדקו את המספר המעודכן ושמרו שוב.",
+        following,
+      };
+    }
+  }
 
   // "All of this client's following meetings": every later scheduled meeting
   // of the client in the same standing slot (same weekday and start time, or
@@ -640,8 +689,9 @@ export async function quickEditSessionAction(
       ? "SCHEDULED"
       : existing.status;
 
-  await db.$transaction([
-    db.session.update({
+  const plan = followingPlan;
+  await db.$transaction(async (tx) => {
+    await tx.session.update({
       where: { id, userId },
       data: {
         clientId,
@@ -650,14 +700,39 @@ export async function quickEditSessionAction(
         status: nextStatus,
         ...(treatmentType ? { treatmentType } : {}),
       },
-    }),
-    ...futureUpdates.map((u) =>
-      db.session.update({
+    });
+    for (const u of futureUpdates) {
+      await tx.session.update({
         where: { id: u.id, userId },
         data: { startsAt: u.startsAt, endsAt: u.endsAt },
-      }),
-    ),
-  ]);
+      });
+    }
+    if (plan) {
+      const deleteIds = plan.deleteIds.filter((x) => x !== id);
+      const cancelIds = plan.scheduledKeepIds.filter((x) => x !== id);
+      // Deleting a series' first meeting must not cut the rest loose
+      await keepSeriesLinked(tx, userId, deleteIds);
+      if (cancelIds.length) {
+        await tx.session.updateMany({
+          where: { userId, clientId, id: { in: cancelIds }, status: "SCHEDULED" },
+          data: { status: "CANCELLED" },
+        });
+      }
+      if (deleteIds.length) {
+        // Reminder jobs of deleted meetings go with them (ON DELETE CASCADE)
+        await tx.session.deleteMany({ where: { userId, clientId, id: { in: deleteIds } } });
+      }
+      // Meetings before this one may still be booked: without this, an
+      // open-ended (קבוע) series would be topped up again after them
+      await closeClientOpenSeries(tx, userId, clientId);
+    }
+  });
+  if (plan) {
+    for (const keptId of plan.scheduledKeepIds) await cancelSessionReminders(keptId);
+    if (following && followingTotal(following) > 0) {
+      await logAudit(userId, "SESSIONS_BULK_DELETE", { clientId });
+    }
+  }
 
   if (nextStatus === "SCHEDULED") {
     await rescheduleSessionReminders(id);
@@ -673,6 +748,15 @@ export async function quickEditSessionAction(
   revalidatePath(`/sessions/${id}`);
   revalidatePath(`/clients/${clientId}`);
   if (existing.clientId !== clientId) revalidatePath(`/clients/${existing.clientId}`);
+  if (following) {
+    return {
+      saved: true,
+      followingResult: cancelFollowingResult(
+        following,
+        `${client.firstName} ${client.lastName}`.trim(),
+      ),
+    };
+  }
   return { saved: true };
 }
 
