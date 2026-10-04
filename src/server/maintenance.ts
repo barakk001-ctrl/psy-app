@@ -5,14 +5,16 @@
 // through the cron route, does nothing twice.
 
 import { purgeExpiredClients } from "@/lib/client-trash-data";
+import { topUpOpenEndedSeries } from "@/lib/series-topup";
 
 const FIRST_RUN_MS = 60 * 1000; // a minute after boot
 const EVERY_MS = 60 * 60 * 1000; // then hourly
 
 const globalForMaintenance = globalThis as unknown as { psyMaintenance?: boolean };
 
-export async function runMaintenance(now = new Date()): Promise<{ clientsPurged: number }> {
+export async function runMaintenance(now = new Date()): Promise<{ clientsPurged: number; seriesExtended: number }> {
   let clientsPurged = 0;
+  let seriesExtended = 0;
   try {
     // Clients 30 days in the recycle bin are deleted for good
     clientsPurged = await purgeExpiredClients(now);
@@ -20,7 +22,15 @@ export async function runMaintenance(now = new Date()): Promise<{ clientsPurged:
   } catch (err) {
     console.error("Maintenance: client purge failed:", err);
   }
-  return { clientsPurged };
+  try {
+    // Ongoing (קבוע) series that run low on future meetings get the next batch.
+    // Sends nothing itself: it only books meetings and queues their reminders.
+    seriesExtended = await topUpOpenEndedSeries();
+    if (seriesExtended > 0) console.log(`Maintenance: extended ${seriesExtended} ongoing series`);
+  } catch (err) {
+    console.error("Maintenance: series top-up failed:", err);
+  }
+  return { clientsPurged, seriesExtended };
 }
 
 export function startMaintenance(): void {
