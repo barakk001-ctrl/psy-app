@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { buildReminderEmail } from "@/lib/reminder-email";
 import { topUpOpenEndedSeries } from "@/lib/series-topup";
+import { runMaintenance } from "@/server/maintenance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,8 @@ async function run(req: Request) {
   });
 
   // Find due reminders. Limit per run so a backlog doesn't blow timeouts.
+  // (`db` leaves out jobs of clients in the recycle bin — and deleting a
+  // client cancels its pending jobs anyway.)
   const due = await db.reminderJob.findMany({
     where: {
       status: "PENDING",
@@ -147,8 +150,13 @@ async function run(req: Request) {
     console.error("Series top-up failed:", err);
   }
 
+  // The app also runs this hourly by itself (src/server/maintenance.ts); it
+  // is idempotent, so a cron calling this route as well is harmless.
+  const { clientsPurged } = await runMaintenance(now);
+
   return Response.json({
     ok: true,
+    clientsPurged,
     considered: due.length,
     sent,
     failed,

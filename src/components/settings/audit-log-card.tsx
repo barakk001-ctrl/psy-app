@@ -12,6 +12,9 @@ const ACTION_LABELS: Record<string, string> = {
   SESSIONS_BULK_DELETE: "מחיקת הפגישות העתידיות של מטופל/ת",
   RECORD_EXPORT: "ייצוא סיכומי פגישות ל-PDF",
   PASSWORD_CHANGE: "שינוי סיסמה",
+  CLIENT_TRASH: "מחיקת תיק — העברה לסל המחזור",
+  CLIENT_RESTORE: "שחזור תיק מסל המחזור",
+  CLIENT_PURGE: "מחיקת תיק לצמיתות",
 };
 
 export type AuditEntry = {
@@ -21,6 +24,8 @@ export type AuditEntry = {
   sessionId: string | null;
   clientId: string | null;
   clientName: string | null;
+  /** the card, the recycle bin, or nothing once the client is purged */
+  clientHref: string | null;
 };
 
 export function AuditLogCard({ entries }: { entries: AuditEntry[] }) {
@@ -34,8 +39,8 @@ export function AuditLogCard({ entries }: { entries: AuditEntry[] }) {
       </CardHeader>
       <CardContent>
         <p className="text-sm text-ink-muted leading-relaxed mb-3">
-          תיעוד אוטומטי של כל צפייה, שמירה או מחיקה של סיכומים קליניים בחשבון
-          זה — חלק מאמצעי אבטחת המידע של המערכת.
+          תיעוד אוטומטי של כל צפייה, שמירה או מחיקה של סיכומים קליניים ושל תיקים
+          בחשבון זה — חלק מאמצעי אבטחת המידע של המערכת.
         </p>
         {entries.length === 0 ? (
           <p className="text-sm text-ink-subtle">אין עדיין רישומים.</p>
@@ -48,9 +53,9 @@ export function AuditLogCard({ entries }: { entries: AuditEntry[] }) {
                   {e.clientName && (
                     <>
                       {" · "}
-                      {e.clientId ? (
+                      {e.clientHref ? (
                         <Link
-                          href={`/clients/${e.clientId}`}
+                          href={e.clientHref}
                           className="text-sage-600 hover:text-sage-700"
                         >
                           {e.clientName}

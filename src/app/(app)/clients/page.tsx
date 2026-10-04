@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
+import { db, dbAll } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Users, UserPlus, Phone, Mail } from "lucide-react";
 import { ClientStatusMoveButton } from "@/components/clients/client-status-toggle";
+import { DeleteClientButton, TrashRowActions } from "@/components/clients/client-trash";
+import { TRASH_DAYS, daysLeftText, trashDaysLeft } from "@/lib/client-trash";
+import { purgeExpiredClients } from "@/lib/client-trash-data";
+import { formatDate } from "@/lib/format";
 
 export default async function ClientsPage({
   searchParams,
@@ -16,25 +20,49 @@ export default async function ClientsPage({
   const params = await searchParams;
   // "archived" is the old name of the inactive tab — keep old links working
   const view =
-    params.view === "inactive" || params.view === "archived" ? "INACTIVE" : "ACTIVE";
+    params.view === "trash"
+      ? "TRASH"
+      : params.view === "inactive" || params.view === "archived"
+        ? "INACTIVE"
+        : "ACTIVE";
 
   const session = await auth();
   const userId = session!.user.id;
 
-  const [clients, activeCount, inactiveCount] = await Promise.all([
-    db.client.findMany({
-      where: { userId, status: view },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-      include: { _count: { select: { sessions: true } } },
-    }),
+  // The bin never shows a client whose 30 days are over, even if the hourly
+  // purge hasn't reached it yet
+  const now = new Date();
+  if (view === "TRASH") await purgeExpiredClients(now, userId);
+
+  // `db` leaves clients in the recycle bin out; the bin itself reads `dbAll`
+  const [clients, activeCount, inactiveCount, trashCount] = await Promise.all([
+    view === "TRASH"
+      ? Promise.resolve([])
+      : db.client.findMany({
+          where: { userId, status: view },
+          orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+          include: { _count: { select: { sessions: true } } },
+        }),
     db.client.count({ where: { userId, status: "ACTIVE" } }),
     db.client.count({ where: { userId, status: "INACTIVE" } }),
+    dbAll.client.count({ where: { userId, deletedAt: { not: null } } }),
   ]);
+  const trashed =
+    view === "TRASH"
+      ? await dbAll.client.findMany({
+          where: { userId, deletedAt: { not: null } },
+          orderBy: { deletedAt: "desc" },
+          select: { id: true, firstName: true, lastName: true, deletedAt: true },
+        })
+      : [];
 
   const VIEWS = [
     { key: "ACTIVE", href: "/clients", label: `פעילים (${activeCount})` },
     { key: "INACTIVE", href: "/clients?view=inactive", label: `לא פעילים (${inactiveCount})` },
-  ] as const;
+    ...(trashCount > 0 || view === "TRASH"
+      ? [{ key: "TRASH", href: "/clients?view=trash", label: `סל מחזור (${trashCount})` }]
+      : []),
+  ];
 
   return (
     <div className="space-y-6">
@@ -54,7 +82,7 @@ export default async function ClientsPage({
       </header>
 
       {/* View filter */}
-      {activeCount + inactiveCount > 0 && (
+      {activeCount + inactiveCount + trashCount > 0 && (
         <div className="inline-flex bg-cream-100 border border-cream-300 rounded-full p-1 flex-wrap">
           {VIEWS.map((v) => (
             <Link
@@ -73,7 +101,41 @@ export default async function ClientsPage({
         </div>
       )}
 
-      {clients.length === 0 ? (
+      {view === "TRASH" ? (
+        <Card>
+          <p className="px-5 pt-4 pb-3 text-sm text-ink-muted leading-relaxed border-b border-cream-200">
+            תיקים שנמחקו נשמרים כאן {TRASH_DAYS} יום — מוסתרים מכל מקום ובלי תזכורות — ואז
+            נמחקים לצמיתות עם כל הפגישות, הסיכומים והקבצים שלהם. שחזור מחזיר את התיק בדיוק
+            כפי שהיה, כלא פעיל.
+          </p>
+          {trashed.length === 0 ? (
+            <p className="px-5 py-10 text-center text-sm text-ink-subtle">סל המחזור ריק.</p>
+          ) : (
+            <ul className="divide-y divide-cream-200">
+              {trashed.map((c) => (
+                <li key={c.id} className="flex flex-wrap items-center">
+                  <div className="flex-1 min-w-0 flex items-center gap-4 ps-5 pe-2 py-4">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-display text-base shrink-0 bg-cream-200 text-ink-subtle">
+                      {c.firstName[0]}
+                      {c.lastName[0]}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-medium text-ink-muted">
+                        {c.firstName} {c.lastName}
+                      </div>
+                      <div className="text-xs text-ink-subtle mt-1">
+                        נמחק/ה ב-{formatDate(c.deletedAt!)} · מחיקה לצמיתות{" "}
+                        {daysLeftText(trashDaysLeft(c.deletedAt!, now))}
+                      </div>
+                    </div>
+                  </div>
+                  <TrashRowActions clientId={c.id} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      ) : clients.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
             <Users className="w-12 h-12 mx-auto text-ink-subtle mb-4" strokeWidth={1.25} />
@@ -150,6 +212,7 @@ export default async function ClientsPage({
                   </div>
                 </Link>
                 <ClientStatusMoveButton clientId={c.id} status={c.status} />
+                {c.status === "INACTIVE" && <DeleteClientButton clientId={c.id} variant="row" />}
               </li>
             ))}
           </ul>

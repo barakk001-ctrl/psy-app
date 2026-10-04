@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ClientStatusToggle } from "@/components/clients/client-status-toggle";
+import { DeleteClientButton } from "@/components/clients/client-trash";
 import { SessionList } from "@/components/clients/session-list";
 import { PdfButton } from "@/components/ui/pdf-button";
 import { tookPlace } from "@/lib/income";
@@ -202,6 +203,13 @@ export default async function ClientDetailPage({
           </Link>
         </div>
       </header>
+
+      {client.status === "INACTIVE" && (
+        // Only an inactive client can be deleted (to the recycle bin, 30 days)
+        <div className="-mt-4">
+          <DeleteClientButton clientId={client.id} />
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">

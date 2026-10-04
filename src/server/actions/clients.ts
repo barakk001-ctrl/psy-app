@@ -3,11 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
+import { db, dbAll } from "@/lib/db";
 import { subscriptionReadOnly } from "@/lib/subscription-server";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { logAudit } from "@/lib/audit";
-import { cancelSessionReminders } from "@/lib/reminders";
+import { cancelSessionReminders, scheduleSessionReminders } from "@/lib/reminders";
+import {
+  blockersText,
+  clientDeletionDecision,
+  deletionContentsText,
+} from "@/lib/client-trash";
+import { loadDeletionFacts, purgeClient } from "@/lib/client-trash-data";
 import {
   closeClientOpenSeries,
   keepSeriesLinked,
@@ -253,4 +259,136 @@ export async function setClientStatusAction(formData: FormData): Promise<ClientS
   await saveClient(userId, id, { status: parsed.data }, plan);
   revalidateClient(id);
   return { done: true, result: resultParams(plan) };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Deleting a client — the recycle bin (סל מחזור). Rules: lib/client-trash.ts.
+// ─────────────────────────────────────────────────────────────
+
+export type ClientDeletionPreview =
+  | { error: string }
+  | {
+      name: string;
+      allowed: false;
+      /** must be made inactive first */
+      active: boolean;
+      /** "חשבוניות שהופקו באפליקציה ורישומי תשלום בפגישות" */
+      blockers: string;
+    }
+  | {
+      name: string;
+      allowed: true;
+      /** "יחד עם התיק יימחקו: 3 פגישות, 2 סיכומים…" */
+      contents: string;
+      /** the record holds summaries or attachments — show the legal note */
+      clinicalWarning: boolean;
+    };
+
+/** Read-only: what deleting this client would remove, or why it can't be
+ *  deleted. `inTrash` = the permanent "delete now" from the recycle bin. */
+export async function clientDeletionPreviewAction(
+  clientId: string,
+  inTrash = false,
+): Promise<ClientDeletionPreview> {
+  const userId = await requireUserId();
+  if (typeof clientId !== "string" || !clientId) return { error: "לקוח לא נמצא" };
+  const facts = await loadDeletionFacts(userId, clientId, inTrash === true);
+  if (!facts) return { error: "לקוח לא נמצא" };
+  const decision = inTrash
+    ? ({ allowed: true, clinicalWarning: facts.notes > 0 || facts.files > 0 } as const)
+    : clientDeletionDecision(facts);
+  if (!decision.allowed) {
+    return {
+      name: facts.name,
+      allowed: false,
+      active: decision.blockers.includes("active"),
+      blockers: blockersText(decision.blockers),
+    };
+  }
+  return {
+    name: facts.name,
+    allowed: true,
+    contents: deletionContentsText(facts),
+    clinicalWarning: decision.clinicalWarning,
+  };
+}
+
+export type TrashResult = { error?: string; done?: boolean } | undefined;
+
+function revalidateEverywhere() {
+  // A deleted/restored client shows up (or not) on almost every page
+  revalidatePath("/", "layout");
+}
+
+/** Moves an inactive client without tax records to the recycle bin for
+ *  TRASH_DAYS: hidden everywhere, pending reminders cancelled. */
+export async function trashClientAction(formData: FormData): Promise<TrashResult> {
+  const userId = await requireUserId();
+  if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "מזהה לקוח חסר" };
+
+  const facts = await loadDeletionFacts(userId, id, false);
+  if (!facts) return { error: "לקוח לא נמצא" };
+  const decision = clientDeletionDecision(facts);
+  if (!decision.allowed) {
+    return {
+      error: decision.blockers.includes("active")
+        ? "אפשר למחוק רק לקוח/ה לא פעיל/ה. העבירו קודם ל״לא פעילים״."
+        : `אי אפשר למחוק: יש בתיק ${blockersText(decision.blockers)}, שחייבים להישמר לפי דיני המס.`,
+    };
+  }
+
+  const moved = await db.$transaction(async (tx) => {
+    const { count } = await tx.client.updateMany({
+      where: { id, userId, deletedAt: null, status: "INACTIVE" },
+      data: { deletedAt: new Date() },
+    });
+    if (count === 0) return false;
+    // No reminder may go out for a deleted client's meetings
+    await tx.reminderJob.updateMany({
+      where: { userId, status: "PENDING", session: { clientId: id } },
+      data: { status: "CANCELLED", error: "Client deleted" },
+    });
+    return true;
+  });
+  if (!moved) return { error: "לקוח לא נמצא" };
+  await logAudit(userId, "CLIENT_TRASH", { clientId: id });
+
+  revalidateEverywhere();
+  return { done: true };
+}
+
+/** Back from the recycle bin exactly as it was (inactive), reminders of any
+ *  future scheduled meetings set up again. */
+export async function restoreClientAction(formData: FormData): Promise<TrashResult> {
+  const userId = await requireUserId();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "מזהה לקוח חסר" };
+
+  const { count } = await dbAll.client.updateMany({
+    where: { id, userId, deletedAt: { not: null } },
+    data: { deletedAt: null, status: "INACTIVE" },
+  });
+  if (count === 0) return { error: "הלקוח/ה כבר לא בסל המחזור" };
+
+  const upcoming = await db.session.findMany({
+    where: { userId, clientId: id, status: "SCHEDULED", startsAt: { gt: new Date() } },
+    select: { id: true },
+  });
+  for (const s of upcoming) await scheduleSessionReminders(s.id);
+  await logAudit(userId, "CLIENT_RESTORE", { clientId: id });
+
+  revalidateEverywhere();
+  return { done: true };
+}
+
+/** "מחיקה לצמיתות עכשיו" from the recycle bin — no waiting for the 30 days. */
+export async function purgeClientNowAction(formData: FormData): Promise<TrashResult> {
+  const userId = await requireUserId();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "מזהה לקוח חסר" };
+  if (!(await purgeClient(userId, id))) return { error: "הלקוח/ה כבר לא בסל המחזור" };
+  revalidateEverywhere();
+  return { done: true };
 }

@@ -2,8 +2,7 @@
 // meetings the pure rules in standing-slot.ts and bulk-delete.ts decide on.
 // Every query is scoped by userId.
 
-import type { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
+import { db, type DbTx } from "@/lib/db";
 import { seriesRootOf, standingSlotFollowers } from "@/lib/standing-slot";
 import { planFutureDelete, type BulkDeletePlan } from "@/lib/bulk-delete";
 import { buildRecurrenceRule, isOpenEndedRule } from "@/lib/recurrence";
@@ -124,7 +123,7 @@ export async function loadDeactivationPlan(
  * Run after the deletes (keepSeriesLinked may have promoted a new root).
  */
 export async function closeClientOpenSeries(
-  tx: Prisma.TransactionClient,
+  tx: DbTx,
   userId: string,
   clientId: string,
 ): Promise<void> {
@@ -149,7 +148,7 @@ export async function closeClientOpenSeries(
  * open-ended top-up).
  */
 export async function keepSeriesLinked(
-  tx: Prisma.TransactionClient,
+  tx: DbTx,
   userId: string,
   deletingIds: string[],
 ): Promise<void> {

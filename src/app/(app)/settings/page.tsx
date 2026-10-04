@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
+import { db, dbAll } from "@/lib/db";
 import { BusinessInfoForm } from "@/components/settings/business-info-form";
 import { BrandingCard } from "@/components/settings/branding-card";
 import { PersonalDetailsForm } from "@/components/settings/personal-details-form";
@@ -71,23 +71,33 @@ export default async function SettingsPage({
     take: 30,
   });
   const auditClientIds = [...new Set(auditRows.map((r) => r.clientId).filter(Boolean))] as string[];
+  // dbAll: clients in the recycle bin are still named here (until purged)
   const auditClients = auditClientIds.length
-    ? await db.client.findMany({
+    ? await dbAll.client.findMany({
         where: { id: { in: auditClientIds }, userId },
-        select: { id: true, firstName: true, lastName: true },
+        select: { id: true, firstName: true, lastName: true, deletedAt: true },
       })
     : [];
-  const clientNames = Object.fromEntries(
-    auditClients.map((c) => [c.id, `${c.firstName} ${c.lastName}`.trim()]),
-  );
-  const auditEntries = auditRows.map((r) => ({
-    id: r.id,
-    action: r.action,
-    createdAt: r.createdAt,
-    sessionId: r.sessionId,
-    clientId: r.clientId,
-    clientName: r.clientId ? (clientNames[r.clientId] ?? "(לקוח שנמחק)") : null,
-  }));
+  const auditClientById = new Map(auditClients.map((c) => [c.id, c]));
+  const auditEntries = auditRows.map((r) => {
+    const c = r.clientId ? auditClientById.get(r.clientId) : undefined;
+    const name = c ? `${c.firstName} ${c.lastName}`.trim() : null;
+    return {
+      id: r.id,
+      action: r.action,
+      createdAt: r.createdAt,
+      sessionId: r.sessionId,
+      clientId: r.clientId,
+      clientName: !r.clientId
+        ? null
+        : !c
+          ? "(לקוח שנמחק)"
+          : c.deletedAt
+            ? `${name} (בסל המחזור)`
+            : name,
+      clientHref: !c ? null : c.deletedAt ? "/clients?view=trash" : `/clients/${c.id}`,
+    };
+  });
 
   const subState = getSubscriptionState(user);
   const adminUsers: AdminUserRow[] = user.isAdmin

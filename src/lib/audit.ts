@@ -11,7 +11,10 @@ export type AuditAction =
   | "NOTE_APPEND"
   | "RECORD_EXPORT" // exported a client's summaries to PDF
   | "SESSIONS_BULK_DELETE" // deleted a client's future meetings (never ones with notes)
-  | "PASSWORD_CHANGE"; // changed the account password from Settings
+  | "PASSWORD_CHANGE" // changed the account password from Settings
+  | "CLIENT_TRASH" // moved a client (with their record) to the recycle bin
+  | "CLIENT_RESTORE" // restored a client from the recycle bin
+  | "CLIENT_PURGE"; // deleted a client and their record for good (by hand or after 30 days)
 
 export async function logAudit(
   userId: string,
