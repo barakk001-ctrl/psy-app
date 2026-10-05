@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useState, useRef } from "react";
+import { useActionState, useState, startTransition } from "react";
 import { Lock, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { saveNoteAction, type NoteFormState } from "@/server/actions/notes";
+import { isNoteDirty } from "@/lib/note-dirty";
 
 export function NoteEditor({
   sessionId,
@@ -13,21 +14,32 @@ export function NoteEditor({
   sessionId: string;
   initialContent: string;
 }) {
+  const [content, setContent] = useState(initialContent);
+  // The last text the server confirmed saving. "Unsaved changes" means the
+  // textarea differs from this — it moves forward on every successful save,
+  // to exactly the text that was sent (text typed while saving stays dirty).
+  const [savedContent, setSavedContent] = useState(initialContent);
+
   const [state, formAction, pending] = useActionState<NoteFormState, FormData>(
-    saveNoteAction,
+    async (prev, formData) => {
+      const result = await saveNoteAction(prev, formData);
+      if (result?.saved) setSavedContent(String(formData.get("content") ?? ""));
+      return result;
+    },
     null,
   );
-  const [content, setContent] = useState(initialContent);
-  const initialRef = useRef(initialContent);
-  const dirty = content !== initialRef.current;
 
-  // After a successful save, the new "initial" is whatever we just sent
-  if (state?.saved && !dirty) {
-    initialRef.current = content;
-  }
+  const dirty = isNoteDirty(content, savedContent);
 
   return (
-    <form action={formAction} className="space-y-3">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        startTransition(() => formAction(formData));
+      }}
+      className="space-y-3"
+    >
       <input type="hidden" name="sessionId" value={sessionId} />
 
       <div className="flex items-center gap-2 text-xs text-ink-muted">
@@ -50,13 +62,13 @@ export function NoteEditor({
 
       <div className="flex items-center justify-between">
         <div className="text-xs text-ink-subtle">
-          {state?.saved && !dirty && (
+          {state?.saved && !dirty && !pending && (
             <span className="inline-flex items-center gap-1 text-sage-600">
               <Check className="w-3.5 h-3.5" />
               נשמר
             </span>
           )}
-          {dirty && <span>שינויים שלא נשמרו</span>}
+          {dirty && !pending && <span>שינויים שלא נשמרו</span>}
         </div>
         <Button type="submit" size="sm" disabled={pending || !dirty}>
           {pending ? "שומר…" : "שמירת סיכום"}
