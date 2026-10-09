@@ -13,3 +13,14 @@ export function normalizeNoteText(text: string): string {
 export function isNoteDirty(current: string, savedBaseline: string): boolean {
   return normalizeNoteText(current) !== normalizeNoteText(savedBaseline);
 }
+
+/**
+ * The text the automatic sign-out may save on its own, or null to leave the
+ * note alone: nothing changed, or the textarea was emptied — an empty save
+ * deletes the note, which must never happen without her pressing save.
+ */
+export function noteDraftToKeep(current: string, savedBaseline: string): string | null {
+  if (!isNoteDirty(current, savedBaseline)) return null;
+  if (current.trim() === "") return null;
+  return current;
+}

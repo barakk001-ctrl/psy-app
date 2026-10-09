@@ -10,6 +10,13 @@ declare module "next-auth" {
      * until the code is entered at /login/two-factor. Never a signed-in user.
      */
     twoFactorPending?: { userId: string; email: string | null };
+    /** Sign-in time (ms) of a signed-in session — see src/lib/idle-timeout.ts */
+    authTime?: number;
+  }
+
+  interface User {
+    /** The account's automatic sign-out setting, copied into the token at sign-in */
+    idleTimeoutMinutes?: number;
   }
 }
 
@@ -18,5 +25,9 @@ declare module "next-auth/jwt" {
     id?: string;
     /** Google sign-in waiting for the TOTP/backup code — see src/lib/auth-gate.ts */
     pending2fa?: { userId: string; since: number };
+    /** Idle/absolute expiry clock — see src/lib/idle-timeout.ts */
+    authTime?: number;
+    lastSeen?: number;
+    idleMinutes?: number;
   }
 }

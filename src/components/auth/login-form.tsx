@@ -12,11 +12,14 @@ import { googleSignInAction, loginAction, type FormState } from "@/server/action
 export function LoginForm({
   googleEnabled = false,
   notice,
+  info,
 }: {
   /** Show "המשך עם Google" — only when the Google keys are configured */
   googleEnabled?: boolean;
   /** A message carried in the URL, e.g. a failed Google sign-in */
   notice?: string;
+  /** A neutral message, e.g. "signed out after inactivity" */
+  info?: string;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     loginAction,
@@ -36,6 +39,15 @@ export function LoginForm({
         <h1 className="font-display text-3xl text-ink">ברוך שובך</h1>
         <p className="text-ink-muted mt-2">היכנס לחשבון שלך כדי להמשיך</p>
       </div>
+
+      {info && !state && (
+        <div
+          role="status"
+          className="mb-4 rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700"
+        >
+          {info}
+        </div>
+      )}
 
       <form action={formAction} className="space-y-4" noValidate>
         <div className={needTotp ? "hidden" : undefined}>

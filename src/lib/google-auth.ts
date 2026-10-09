@@ -2,6 +2,7 @@
 // and the Auth.js wiring live in src/auth.ts.
 
 import type { PendingTwoFactor } from "@/lib/auth-gate";
+import { freshSessionClock, type SessionClock } from "@/lib/idle-timeout";
 
 /** Google sign-in is offered only once both keys are configured. */
 export function isGoogleConfigured(env: Record<string, string | undefined> = process.env): boolean {
@@ -63,6 +64,7 @@ export type GoogleTokenUser = {
   email: string;
   totpEnabled: boolean;
   totpSecret: string | null;
+  idleTimeoutMinutes?: number;
 };
 
 /**
@@ -72,10 +74,17 @@ export type GoogleTokenUser = {
 export function tokenForGoogleUser(
   user: GoogleTokenUser,
   now: number,
-): { sub: string; name: string; email: string; id?: string; pending2fa?: PendingTwoFactor } {
+): {
+  sub: string;
+  name: string;
+  email: string;
+  id?: string;
+  pending2fa?: PendingTwoFactor;
+} & Partial<SessionClock> {
   const base = { sub: user.id, name: user.name, email: user.email };
   if (user.totpEnabled && user.totpSecret) {
+    // The idle clock starts when the code is entered (a fresh sign-in token).
     return { ...base, pending2fa: { userId: user.id, since: now } };
   }
-  return { ...base, id: user.id };
+  return { ...base, id: user.id, ...freshSessionClock(user.idleTimeoutMinutes, now) };
 }

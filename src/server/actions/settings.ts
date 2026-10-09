@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { auth, unstable_update } from "@/auth";
 import { db } from "@/lib/db";
 import { encryptSecret } from "@/lib/crypto";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
@@ -15,6 +15,7 @@ import { sendPasswordResetLink } from "@/lib/password-reset";
 import {
   brandingSchema,
   businessInfoSchema,
+  idleTimeoutSchema,
   personalDetailsSchema,
   sessionDefaultsSchema,
 } from "@/server/validators/settings";
@@ -382,4 +383,34 @@ export async function disconnectMorningAction() {
     data: { morningApiKeyId: null, morningApiSecret: null, morningSandbox: true },
   });
   revalidatePath("/settings");
+}
+
+/**
+ * Settings → ניתוק אוטומטי. Saved on the account (the browser timer reads it
+ * from the layout) and copied into the current session token, whose clock the
+ * server checks on every request — see src/lib/idle-timeout.ts. Other devices
+ * pick it up at their next sign-in.
+ */
+export async function updateIdleTimeoutAction(
+  _: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  const userId = await requireUserId();
+  const parsed = idleTimeoutSchema.safeParse({ minutes: formData.get("minutes") });
+  if (!parsed.success) return { error: "יש לבחור אחת מהאפשרויות" };
+
+  await db.user.update({
+    where: { id: userId },
+    data: { idleTimeoutMinutes: parsed.data.minutes },
+  });
+  try {
+    // The jwt callback takes only a valid `idleMinutes` from an update.
+    await unstable_update({ idleMinutes: parsed.data.minutes } as unknown as Parameters<
+      typeof unstable_update
+    >[0]);
+  } catch {
+    // the account is saved; the token follows at the next sign-in
+  }
+  revalidatePath("/", "layout");
+  return { saved: true };
 }

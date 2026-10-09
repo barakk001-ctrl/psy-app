@@ -19,6 +19,8 @@ import { SUBSCRIPTION_FIELD_SELECT, getSubscriptionState } from "@/lib/subscript
 import { billingConfigured } from "@/lib/billing";
 import { headers } from "next/headers";
 import { TwoFactorSettings } from "@/components/settings/two-factor-settings";
+import { IdleTimeoutCard } from "@/components/settings/idle-timeout-card";
+import { normalizeIdleTimeout } from "@/lib/idle-timeout";
 
 export default async function SettingsPage({
   searchParams,
@@ -53,6 +55,7 @@ export default async function SettingsPage({
       morningDocType: true,
       calendarToken: true,
       calendarNameMode: true,
+      idleTimeoutMinutes: true,
       ...SUBSCRIPTION_FIELD_SELECT,
     },
   });
@@ -164,6 +167,8 @@ export default async function SettingsPage({
           user.totpBackupCodes ? (JSON.parse(user.totpBackupCodes) as string[]).length : 0
         }
       />
+
+      <IdleTimeoutCard minutes={normalizeIdleTimeout(user.idleTimeoutMinutes)} />
 
       <BiometricSettings userEmail={user.email} userName={user.name} />
 

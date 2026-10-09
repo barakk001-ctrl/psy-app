@@ -29,9 +29,8 @@ function ipOf(h: Headers): string {
   return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 }
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  ...authConfig,
-  session: { strategy: "jwt" },
+export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
+  ...authConfig, // includes `session` (JWT, idle-expiry lifetime)
   providers: [
     Credentials({
       credentials: {
@@ -62,6 +61,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           id: user.id,
           email: user.email,
           name: user.name,
+          idleTimeoutMinutes: user.idleTimeoutMinutes,
         };
       },
     }),
@@ -90,7 +90,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const code = typeof credentials?.code === "string" ? credentials.code : "";
         if (!(await verifySecondFactor(user, code))) return null;
 
-        return { id: user.id, email: user.email, name: user.name };
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          idleTimeoutMinutes: user.idleTimeoutMinutes,
+        };
       },
     }),
 
@@ -160,7 +165,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const user = email
           ? await db.user.findUnique({
               where: { email },
-              select: { id: true, name: true, email: true, totpEnabled: true, totpSecret: true },
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                totpEnabled: true,
+                totpSecret: true,
+                idleTimeoutMinutes: true,
+              },
             })
           : null;
         if (!user) return null; // no session at all

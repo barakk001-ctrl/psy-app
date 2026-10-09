@@ -5,7 +5,8 @@ import { Lock, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { saveNoteAction, type NoteFormState } from "@/server/actions/notes";
-import { isNoteDirty } from "@/lib/note-dirty";
+import { isNoteDirty, noteDraftToKeep } from "@/lib/note-dirty";
+import { useUnsavedWork } from "@/components/security/use-unsaved-work";
 
 export function NoteEditor({
   sessionId,
@@ -30,6 +31,25 @@ export function NoteEditor({
   );
 
   const dirty = isNoteDirty(content, savedContent);
+
+  // Automatic sign-out after inactivity: warn about the unsaved summary, and
+  // save it (encrypted, audit-logged like any save) before signing out. An
+  // emptied textarea doesn't count: the note just stays as it was.
+  useUnsavedWork(
+    "סיכום פגישה",
+    () => noteDraftToKeep(content, savedContent) !== null,
+    async () => {
+      const text = noteDraftToKeep(content, savedContent);
+      if (text === null) return false;
+      const formData = new FormData();
+      formData.set("sessionId", sessionId);
+      formData.set("content", text);
+      const result = await saveNoteAction(null, formData);
+      if (!result?.saved) return false;
+      setSavedContent(text);
+      return true;
+    },
+  );
 
   return (
     <form

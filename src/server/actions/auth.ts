@@ -51,6 +51,15 @@ export async function signOutAction() {
   await signOut({ redirectTo: "/login" });
 }
 
+/**
+ * Automatic sign-out after inactivity (src/components/security/idle-guard.tsx).
+ * No redirect: the page then does a full load of /login itself, so nothing of
+ * the signed-in page stays in memory or in the router cache.
+ */
+export async function idleSignOutAction(): Promise<void> {
+  await signOut({ redirect: false });
+}
+
 export async function loginAction(_: FormState, formData: FormData): Promise<FormState> {
   const raw = {
     email: formData.get("email"),

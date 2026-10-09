@@ -74,7 +74,15 @@ describe("tokenForGoogleUser", () => {
 
   it("without 2FA the Google sign-in is a normal session", () => {
     const token = tokenForGoogleUser(user, 1000);
-    expect(token).toEqual({ sub: "u1", name: "קרן", email: "k@example.com", id: "u1" });
+    expect(token).toEqual({
+      sub: "u1",
+      name: "קרן",
+      email: "k@example.com",
+      id: "u1",
+      authTime: 1000,
+      lastSeen: 1000,
+      idleMinutes: 30,
+    });
     expect(resolveAuthState(token, 1000)).toEqual({ kind: "user", userId: "u1" });
   });
 
@@ -83,6 +91,11 @@ describe("tokenForGoogleUser", () => {
     expect(token.id).toBeUndefined();
     expect(token.pending2fa).toEqual({ userId: "u1", since: 1000 });
     expect(resolveAuthState(token, 2000).kind).toBe("pending");
+  });
+
+  it("carries the account's automatic sign-out setting", () => {
+    expect(tokenForGoogleUser({ ...user, idleTimeoutMinutes: 15 }, 1000).idleMinutes).toBe(15);
+    expect(tokenForGoogleUser({ ...user, idleTimeoutMinutes: 999 }, 1000).idleMinutes).toBe(30);
   });
 
   it("2FA flagged on without a secret behaves like the password login (no code asked)", () => {

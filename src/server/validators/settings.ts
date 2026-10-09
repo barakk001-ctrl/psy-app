@@ -1,5 +1,6 @@
 import "./zod-hebrew";
 import { z } from "zod";
+import { isIdleTimeoutOption } from "@/lib/idle-timeout";
 import { isValidLogoDataUrl } from "@/lib/branding";
 
 export const personalDetailsSchema = z.object({
@@ -50,3 +51,10 @@ export const brandingSchema = z.object({
 });
 
 export type BrandingInput = z.infer<typeof brandingSchema>;
+
+/** Settings → ניתוק אוטומטי: one of the offered timeouts (src/lib/idle-timeout.ts). */
+export const idleTimeoutSchema = z.object({
+  minutes: z.coerce
+    .number()
+    .refine(isIdleTimeoutOption, { message: "יש לבחור אחת מהאפשרויות" }),
+});
