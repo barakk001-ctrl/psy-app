@@ -1,56 +1,48 @@
-import { TherapyIllustration } from "@/components/auth/therapy-illustration";
+import { BrandEmblem } from "@/components/auth/brand-emblem";
+import { BrandScene } from "@/components/auth/brand-scene";
+import { copyrightYears } from "@/lib/copyright";
 
+// Shared by login, register, forgot/reset password and two-factor.
+// lg+: the brand panel takes ~58% (start side), the form the rest.
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen grid lg:grid-cols-[1fr_1.1fr]">
-      {/* Brand panel — visible on lg+ */}
-      <aside className="hidden lg:flex flex-col justify-between p-10 bg-sage-700 text-cream-50 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-20 pointer-events-none">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-full h-full"
-            viewBox="0 0 400 400"
-            fill="none"
-            aria-hidden
-          >
-            <circle cx="120" cy="100" r="2" fill="currentColor" />
-            <circle cx="280" cy="180" r="2" fill="currentColor" />
-            <circle cx="200" cy="260" r="2" fill="currentColor" />
-            <circle cx="340" cy="320" r="2" fill="currentColor" />
-            <circle cx="80" cy="340" r="2" fill="currentColor" />
-            <path
-              d="M120 100 L280 180 L200 260 L80 340"
-              stroke="currentColor"
-              strokeWidth="0.5"
-              strokeDasharray="2 4"
-            />
-          </svg>
-        </div>
-        <div>
-          <span className="font-display text-2xl">מרפאה אישית</span>
-        </div>
-        <div className="relative space-y-6 max-w-sm">
-          <TherapyIllustration className="w-full max-w-xs mx-auto drop-shadow-lg" />
-          <p className="font-display text-3xl leading-snug">
-            מערכת רגועה אחת לכל מה שהקליניקה שלך צריכה.
+    <div className="min-h-screen grid lg:grid-cols-[1.4fr_1fr]">
+      {/* Brand panel: visible on lg+ */}
+      <aside className="hidden lg:flex flex-col relative overflow-hidden bg-sage-700 text-cream-50">
+        <BrandScene className="absolute inset-0 w-full h-full pointer-events-none" />
+        <div className="relative flex-1 flex flex-col items-center justify-center text-center px-10 pt-12 pb-40">
+          <p className="font-display font-bold text-6xl xl:text-7xl leading-tight tracking-tight [text-shadow:0_2px_24px_rgba(26,23,20,0.25)]">
+            מרפאה אישית
           </p>
-          <p className="text-sm text-sage-50/80 leading-relaxed">
+          <div className="mt-6 h-px w-20 bg-cream-50/35" aria-hidden />
+          <p className="mt-6 font-display text-2xl xl:text-3xl leading-snug max-w-xl text-balance">
+            מערכת אחת לכל מה שהקליניקה שלך צריכה.
+          </p>
+          <p className="mt-4 text-base text-sage-50/80 leading-relaxed max-w-md text-balance">
             לקוחות, פגישות, סיכומים, חשבוניות ותשלומים — במקום אחד, בעברית, עם
             פרטיות שמתאימה למידע רפואי.
           </p>
         </div>
-        <div className="text-xs text-sage-50/60">
+        <div className="relative pb-6 text-center text-xs text-sage-50/60">
           הסיכומים הקליניים מוצפנים ברמת היישום (AES-256-GCM)
         </div>
       </aside>
 
-      {/* Form panel */}
-      <main className="flex items-center justify-center px-4 py-10 sm:px-8">
-        <div className="w-full max-w-md">
-          {/* On phones the brand panel is hidden — show the scene above the form */}
-          <TherapyIllustration className="lg:hidden w-56 mx-auto mb-6" />
-          {children}
+      {/* Form panel, with the copyright line at its foot */}
+      <main className="flex flex-col min-h-screen px-4 sm:px-8 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="flex-1 flex items-center justify-center py-10">
+          <div className="w-full max-w-md">
+            {/* On phones the brand panel is hidden: emblem and name above the form */}
+            <div className="lg:hidden flex flex-col items-center text-center mb-8">
+              <BrandEmblem className="w-28 text-sage-500" />
+              <p className="mt-3 font-display font-bold text-3xl text-sage-700">מרפאה אישית</p>
+            </div>
+            {children}
+          </div>
         </div>
+        <footer className="w-full max-w-md mx-auto border-t border-cream-200 pt-4 text-center text-xs text-ink-muted">
+          © כל הזכויות שמורות למרפאה אישית <span dir="ltr">{copyrightYears()}</span>
+        </footer>
       </main>
     </div>
   );
