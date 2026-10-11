@@ -10,13 +10,19 @@ import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { rateLimit } from "@/lib/rate-limit";
 import { createPracticeUser } from "@/lib/practice-user";
 import { sendPasswordResetLink } from "@/lib/password-reset";
+import { LOGIN_CODE_LIMITS, loginCodeRateKeys, normalizeLoginCode } from "@/lib/login-code";
+import { createLoginCode } from "@/lib/login-code-store";
+import { sendLoginCode } from "@/lib/login-code-channel";
 import {
   GOOGLE_AGREEMENT_COOKIE,
   GOOGLE_AGREEMENT_COOKIE_MAX_AGE_S,
   isGoogleConfigured,
 } from "@/lib/google-auth";
 import { auth, signIn, signOut } from "@/auth";
+import { TWO_FACTOR_PATH } from "@/lib/auth-gate";
 import {
+  loginCodeRequestSchema,
+  loginCodeVerifySchema,
   loginSchema,
   registerSchema,
   resetPasswordSchema,
@@ -335,4 +341,93 @@ export async function verifyTwoFactorAction(
 /** "התחברות עם חשבון אחר" on the code page — drops the pending session. */
 export async function cancelTwoFactorAction() {
   await signOut({ redirectTo: "/login" });
+}
+
+// ── One-time code sign-in ("כניסה עם קוד חד פעמי") ─────────────────
+
+export type LoginCodeState = {
+  error?: string;
+  /** Step two: the code was (as far as the visitor can tell) sent */
+  sent?: boolean;
+  email?: string;
+} | null;
+
+/**
+ * Step one on /login/code: emails a 6-digit code (src/lib/login-code.ts).
+ * Answers the same for a registered and an unknown address, and doesn't wait
+ * for the email to go out, so neither the reply nor its timing tells whether
+ * the address has an account. Send failures go to the server log
+ * (sendEmail logs the reason).
+ */
+export async function requestLoginCodeAction(
+  _: LoginCodeState,
+  formData: FormData,
+): Promise<LoginCodeState> {
+  const parsed = loginCodeRequestSchema.safeParse({ email: formData.get("email") ?? "" });
+  if (!parsed.success) return { error: "כתובת אימייל לא תקינה" };
+  const email = parsed.data.email.toLowerCase();
+
+  const keys = loginCodeRateKeys(email, await clientIp());
+  const byEmail = rateLimit(keys.sendPerEmail, LOGIN_CODE_LIMITS.sendPerEmail);
+  const byIp = rateLimit(keys.sendPerIp, LOGIN_CODE_LIMITS.sendPerIp);
+  if (!byEmail.allowed || !byIp.allowed) {
+    return { error: "נשלחו יותר מדי קודים. נסו שוב בעוד כמה דקות, או התחברו עם סיסמה." };
+  }
+
+  const user = await db.user.findUnique({
+    where: { email },
+    select: { id: true, name: true, email: true, loginPhone: true },
+  });
+  if (user) {
+    const code = await createLoginCode(user.id);
+    void sendLoginCode(user, code)
+      .then((r) => {
+        if (!r.ok) console.error(`[login-code] ${r.channel} send failed`);
+      })
+      .catch(() => console.error("[login-code] send threw"));
+  }
+
+  return { sent: true, email };
+}
+
+/** Step two: the code. With 2FA on, the session is pending and the
+ *  middleware takes her on to /login/two-factor for the authenticator code. */
+export async function verifyLoginCodeAction(
+  _: LoginCodeState,
+  formData: FormData,
+): Promise<LoginCodeState> {
+  const parsed = loginCodeVerifySchema.safeParse({
+    email: formData.get("email") ?? "",
+    code: formData.get("code") ?? "",
+  });
+  if (!parsed.success) return { sent: true, error: "יש להזין את הקוד שקיבלת" };
+  const email = parsed.data.email.toLowerCase();
+
+  const code = normalizeLoginCode(parsed.data.code);
+  if (!code) return { sent: true, email, error: "הקוד מורכב מ-6 ספרות" };
+
+  try {
+    await signIn("email-code", { email, code, redirect: false });
+  } catch (err) {
+    if (err instanceof AuthError) {
+      if (err.type === "CredentialsSignin") {
+        if ((err as AuthError & { code?: string }).code === "rate_limited") {
+          return { sent: true, email, error: "יותר מדי ניסיונות התחברות. נסה שוב בעוד מספר דקות." };
+        }
+        return {
+          sent: true,
+          email,
+          error: "הקוד שגוי או שפג תוקפו. בדקו שהוזן הקוד האחרון שנשלח, או שלחו קוד חדש.",
+        };
+      }
+      return { sent: true, email, error: "אירעה שגיאה בהתחברות" };
+    }
+    throw err;
+  }
+
+  // Straight to the authenticator step when the session is pending, so the
+  // address bar (and that form's own post) is /login/two-factor, not a
+  // redirected /dashboard.
+  const user = await db.user.findUnique({ where: { email }, select: { totpEnabled: true, totpSecret: true } });
+  redirect(user?.totpEnabled && user.totpSecret ? TWO_FACTOR_PATH : "/dashboard");
 }

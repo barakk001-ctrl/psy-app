@@ -15,6 +15,10 @@ const ACTION_LABELS: Record<string, string> = {
   CLIENT_TRASH: "מחיקת תיק — העברה לסל המחזור",
   CLIENT_RESTORE: "שחזור תיק מסל המחזור",
   CLIENT_PURGE: "מחיקת תיק לצמיתות",
+  LOGIN_PASSWORD: "כניסה למערכת — סיסמה",
+  LOGIN_GOOGLE: "כניסה למערכת — Google",
+  LOGIN_EMAIL_CODE: "כניסה למערכת — קוד חד-פעמי באימייל",
+  LOGIN_TWO_FACTOR: "כניסה למערכת — אימות דו-שלבי",
 };
 
 export type AuditEntry = {
@@ -39,8 +43,8 @@ export function AuditLogCard({ entries }: { entries: AuditEntry[] }) {
       </CardHeader>
       <CardContent>
         <p className="text-sm text-ink-muted leading-relaxed mb-3">
-          תיעוד אוטומטי של כל צפייה, שמירה או מחיקה של סיכומים קליניים ושל תיקים
-          בחשבון זה — חלק מאמצעי אבטחת המידע של המערכת.
+          תיעוד אוטומטי של כל כניסה לחשבון ושל כל צפייה, שמירה או מחיקה של סיכומים
+          קליניים ושל תיקים — חלק מאמצעי אבטחת המידע של המערכת.
         </p>
         {entries.length === 0 ? (
           <p className="text-sm text-ink-subtle">אין עדיין רישומים.</p>

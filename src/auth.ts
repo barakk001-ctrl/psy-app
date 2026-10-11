@@ -7,6 +7,9 @@ import { db } from "@/lib/db";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifySecondFactor } from "@/lib/second-factor";
+import { logAudit } from "@/lib/audit";
+import { LOGIN_CODE_LIMITS, loginCodeRateKeys } from "@/lib/login-code";
+import { consumeLoginCode } from "@/lib/login-code-store";
 import { createPracticeUser } from "@/lib/practice-user";
 import {
   GOOGLE_AGREEMENT_COOKIE,
@@ -20,6 +23,11 @@ import { loginSchema } from "@/server/validators/auth";
 
 /** The code page refuses further tries for a while — shown as its own message. */
 export class TwoFactorRateLimited extends CredentialsSignin {
+  code = "rate_limited";
+}
+
+/** Too many one-time-code tries for this email or IP. */
+export class LoginCodeRateLimited extends CredentialsSignin {
   code = "rate_limited";
 }
 
@@ -57,6 +65,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           if (!(await verifySecondFactor(user, parsed.data.totp ?? ""))) return null;
         }
 
+        await logAudit(user.id, "LOGIN_PASSWORD");
         return {
           id: user.id,
           email: user.email,
@@ -89,6 +98,43 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
         const code = typeof credentials?.code === "string" ? credentials.code : "";
         if (!(await verifySecondFactor(user, code))) return null;
+
+        await logAudit(user.id, "LOGIN_TWO_FACTOR");
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          idleTimeoutMinutes: user.idleTimeoutMinutes,
+        };
+      },
+    }),
+
+    // "כניסה עם קוד חד פעמי": the 6-digit code sent by email (SMS later) to
+    // the account's address. It proves the same thing as a password-reset
+    // link: control of the mailbox. So it replaces the password, never the
+    // authenticator: with 2FA on, the jwt callback below mints a pending
+    // token and the middleware sends her to /login/two-factor, exactly as
+    // after Google. Limits share the password login's buckets.
+    Credentials({
+      id: "email-code",
+      name: "email-code",
+      credentials: { email: { label: "Email", type: "email" }, code: { label: "Code", type: "text" } },
+      async authorize(credentials, request) {
+        const email = typeof credentials?.email === "string" ? normalizeEmail(credentials.email) : "";
+        const code = typeof credentials?.code === "string" ? credentials.code : "";
+        if (!email || !code) return null;
+
+        const keys = loginCodeRateKeys(email, ipOf(request.headers));
+        const byEmail = rateLimit(keys.verifyPerEmail, LOGIN_CODE_LIMITS.verifyPerEmail);
+        const byIp = rateLimit(keys.verifyPerIp, LOGIN_CODE_LIMITS.verifyPerIp);
+        if (!byEmail.allowed || !byIp.allowed) throw new LoginCodeRateLimited();
+
+        const user = await db.user.findUnique({
+          where: { email },
+          select: { id: true, email: true, name: true, idleTimeoutMinutes: true },
+        });
+        if (!user) return null;
+        if (!(await consumeLoginCode(user.id, code))) return null;
 
         return {
           id: user.id,
@@ -158,10 +204,11 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
     },
 
     async jwt(params) {
-      const { account, profile } = params;
-      if (account?.provider === "google") {
+      const { account, profile, user: signedIn } = params;
+      if (account?.provider === "google" || account?.provider === "email-code") {
         // A fresh token for OUR user (Google's own id/picture are dropped).
-        const email = profile?.email ? normalizeEmail(profile.email) : "";
+        const from = account.provider === "google" ? profile?.email : signedIn?.email;
+        const email = from ? normalizeEmail(from) : "";
         const user = email
           ? await db.user.findUnique({
               where: { email },
@@ -176,7 +223,10 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
             })
           : null;
         if (!user) return null; // no session at all
-        return tokenForGoogleUser(user, Date.now());
+        const token = tokenForGoogleUser(user, Date.now());
+        // A pending token is logged when its 2FA code is entered (LOGIN_TWO_FACTOR)
+        if (token.id) await logAudit(user.id, account.provider === "google" ? "LOGIN_GOOGLE" : "LOGIN_EMAIL_CODE");
+        return token;
       }
       return authConfig.callbacks.jwt(params);
     },

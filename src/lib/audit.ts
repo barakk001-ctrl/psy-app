@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 
-// Access log for clinical content. Logging must never break the page that
+// Access log for clinical content and sign-ins. Logging must never break the page that
 // triggered it — failures are swallowed (the log is best-effort by design).
 
 export type AuditAction =
@@ -14,7 +14,12 @@ export type AuditAction =
   | "PASSWORD_CHANGE" // changed the account password from Settings
   | "CLIENT_TRASH" // moved a client (with their record) to the recycle bin
   | "CLIENT_RESTORE" // restored a client from the recycle bin
-  | "CLIENT_PURGE"; // deleted a client and their record for good (by hand or after 30 days)
+  | "CLIENT_PURGE" // deleted a client and their record for good (by hand or after 30 days)
+  // Sign-ins (a full session, never a 2FA-pending one), by method:
+  | "LOGIN_PASSWORD"
+  | "LOGIN_GOOGLE"
+  | "LOGIN_EMAIL_CODE" // one-time code by email (src/lib/login-code.ts)
+  | "LOGIN_TWO_FACTOR"; // authenticator code entered after Google or a one-time code
 
 export async function logAudit(
   userId: string,

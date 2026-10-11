@@ -24,7 +24,7 @@ export function TwoFactorForm({ email }: { email: string | null }) {
       <div className="mb-8">
         <h1 className="font-display text-3xl text-ink">אימות דו-שלבי</h1>
         <p className="text-ink-muted mt-2">
-          התחברת עם Google{email ? <> כ-<span dir="ltr">{email}</span></> : null}. נשאר רק הקוד.
+          זיהינו אותך{email ? <> כ-<span dir="ltr">{email}</span></> : null}. נשאר רק הקוד מאפליקציית האימות.
         </p>
       </div>
 

@@ -68,8 +68,9 @@ export type GoogleTokenUser = {
 };
 
 /**
- * The session token minted after a Google sign-in. A user with 2FA on gets a
- * pending token (no `id`) — she's in only after the code at /login/two-factor.
+ * The session token minted after a Google sign-in or a one-time email code
+ * (auth.ts). A user with 2FA on gets a pending token (no `id`) — she's in
+ * only after the authenticator code at /login/two-factor.
  */
 export function tokenForGoogleUser(
   user: GoogleTokenUser,

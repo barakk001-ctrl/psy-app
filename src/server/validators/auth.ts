@@ -7,6 +7,15 @@ export const loginSchema = z.object({
   totp: z.string().optional().or(z.literal("")),
 });
 
+export const loginCodeRequestSchema = z.object({
+  email: z.string().trim().email("כתובת אימייל לא תקינה"),
+});
+
+export const loginCodeVerifySchema = z.object({
+  email: z.string().trim().email("כתובת אימייל לא תקינה"),
+  code: z.string().trim().min(1, "יש להזין את הקוד"),
+});
+
 export const registerSchema = z.object({
   name: z.string().min(2, "השם חייב להכיל לפחות 2 תווים"),
   email: z.string().email("כתובת אימייל לא תקינה"),

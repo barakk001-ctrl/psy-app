@@ -5,7 +5,7 @@ import { TwoFactorForm } from "@/components/auth/two-factor-form";
 export const dynamic = "force-dynamic";
 
 /**
- * Second step of a Google sign-in when the account has 2FA on. The
+ * Second step of a Google or one-time-code sign-in when the account has 2FA on. The
  * middleware sends a pending session here and nowhere else; anyone without
  * one goes back to the login page.
  */

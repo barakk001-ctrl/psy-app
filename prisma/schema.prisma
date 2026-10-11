@@ -82,6 +82,17 @@ model User {
   resetToken       String?
   resetTokenExpiry DateTime?
 
+  // Sign-in with a one-time code ("כניסה עם קוד חד פעמי"; rules in
+  // src/lib/login-code.ts). One live code per account: HMAC-hashed, single
+  // use, 10 minutes, at most 5 wrong tries. A new request replaces it.
+  loginCodeHash      String?
+  loginCodeExpiresAt DateTime?
+  loginCodeAttempts  Int       @default(0)
+  // Mobile number for codes by SMS: not used until an SMS provider is set up
+  // (src/lib/login-code-channel.ts). Separate from `phone`, which is the
+  // business number printed on invoices.
+  loginPhone         String?
+
   // Morning (Green Invoice) API connection — secret encrypted at app layer
   morningApiKeyId  String?
   morningApiSecret String?  // packed AES-256-GCM (iv:tag:ciphertext, base64)

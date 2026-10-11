@@ -128,6 +128,15 @@ export function LoginForm({
         </Button>
       </form>
 
+      {!needTotp && (
+        <Link
+          href={email.trim() ? `/login/code?email=${encodeURIComponent(email.trim())}` : "/login/code"}
+          className="mt-3 flex h-12 w-full items-center justify-center rounded-xl border border-sage-500/40 bg-white/60 text-base font-medium text-sage-700 transition-colors hover:bg-white hover:border-sage-500"
+        >
+          כניסה עם קוד חד פעמי
+        </Link>
+      )}
+
       {googleEnabled && !needTotp && (
         <>
           <OrDivider />
