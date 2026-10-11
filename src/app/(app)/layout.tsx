@@ -5,6 +5,7 @@ import { MobileTopBar } from "@/components/nav/mobile-top-bar";
 import { MobileTabBar } from "@/components/nav/mobile-tab-bar";
 import { BiometricLockOverlay } from "@/components/security/biometric-lock-overlay";
 import { IdleGuard } from "@/components/security/idle-guard";
+import { HelpWidget } from "@/components/help/help-widget";
 import { normalizeIdleTimeout } from "@/lib/idle-timeout";
 import { ClinicBanner } from "@/components/layout/clinic-banner";
 import { SubscriptionBanner } from "@/components/layout/subscription-banner";
@@ -23,7 +24,14 @@ export default async function AppLayout({
     subscriptionStateFor(session.user.id),
     db.user.findUnique({
       where: { id: session.user.id },
-      select: { brandName: true, logoUrl: true, idleTimeoutMinutes: true },
+      select: {
+        brandName: true,
+        logoUrl: true,
+        idleTimeoutMinutes: true,
+        name: true,
+        email: true,
+        phone: true,
+      },
     }),
   ]);
   const brand = branding ? { brandName: branding.brandName, logoUrl: branding.logoUrl } : undefined;
@@ -56,6 +64,13 @@ export default async function AppLayout({
         </main>
         <MobileTabBar />
       </div>
+      <HelpWidget
+        user={{
+          name: branding?.name ?? session.user.name ?? "",
+          email: branding?.email ?? session.user.email ?? "",
+          phone: branding?.phone ?? null,
+        }}
+      />
     </div>
   );
 }

@@ -108,6 +108,7 @@ model User {
   todos            Todo[]
   meetingTypes     MeetingType[]
   sessionFiles     SessionFile[]
+  supportRequests  SupportRequest[]
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -494,4 +495,45 @@ enum ReminderStatus {
   SENT
   FAILED
   CANCELLED
+}
+
+// "פנייה לתמיכה" from the in-app help widget (src/server/actions/support.ts).
+// Saved first, then emailed to SUPPORT_EMAIL — a request is never lost when the
+// email fails (emailStatus FAILED is retried by the hourly maintenance). The
+// optional screenshot is stored encrypted like session files. The text is what
+// the user typed; the form asks not to include client-identifying details and
+// nothing clinical is ever attached automatically.
+model SupportRequest {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  // Page the widget was opened on, with record ids replaced (sanitizePagePath)
+  pagePath  String?
+  userAgent String?
+
+  attachmentName       String?
+  attachmentType       String?
+  attachmentSize       Int?
+  attachmentCiphertext Bytes?
+  attachmentIv         String?
+  attachmentTag        String?
+
+  emailStatus   String    @default("PENDING") // PENDING | SENT | FAILED
+  emailError    String?
+  emailAttempts Int       @default(0)
+  emailedAt     DateTime?
+
+  status    String   @default("OPEN") // OPEN | DONE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([emailStatus, createdAt])
+  @@index([createdAt])
 }

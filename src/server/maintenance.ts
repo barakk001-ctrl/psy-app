@@ -6,15 +6,19 @@
 
 import { purgeExpiredClients } from "@/lib/client-trash-data";
 import { topUpOpenEndedSeries } from "@/lib/series-topup";
+import { retryFailedSupportEmails } from "@/lib/support-data";
 
 const FIRST_RUN_MS = 60 * 1000; // a minute after boot
 const EVERY_MS = 60 * 60 * 1000; // then hourly
 
 const globalForMaintenance = globalThis as unknown as { psyMaintenance?: boolean };
 
-export async function runMaintenance(now = new Date()): Promise<{ clientsPurged: number; seriesExtended: number }> {
+export async function runMaintenance(
+  now = new Date(),
+): Promise<{ clientsPurged: number; seriesExtended: number; supportEmailsSent: number }> {
   let clientsPurged = 0;
   let seriesExtended = 0;
+  let supportEmailsSent = 0;
   try {
     // Clients 30 days in the recycle bin are deleted for good
     clientsPurged = await purgeExpiredClients(now);
@@ -30,7 +34,14 @@ export async function runMaintenance(now = new Date()): Promise<{ clientsPurged:
   } catch (err) {
     console.error("Maintenance: series top-up failed:", err);
   }
-  return { clientsPurged, seriesExtended };
+  try {
+    // Support requests whose email to support failed are sent again
+    supportEmailsSent = await retryFailedSupportEmails(now);
+    if (supportEmailsSent > 0) console.log(`Maintenance: re-sent ${supportEmailsSent} support request email(s)`);
+  } catch (err) {
+    console.error("Maintenance: support email retry failed:", err);
+  }
+  return { clientsPurged, seriesExtended, supportEmailsSent };
 }
 
 export function startMaintenance(): void {

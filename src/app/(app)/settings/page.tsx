@@ -15,6 +15,10 @@ import {
   AdminSubscriptionsCard,
   type AdminUserRow,
 } from "@/components/settings/admin-subscriptions-card";
+import {
+  AdminSupportRequestsCard,
+  type AdminSupportRow,
+} from "@/components/settings/admin-support-requests-card";
 import { SUBSCRIPTION_FIELD_SELECT, getSubscriptionState } from "@/lib/subscription";
 import { billingConfigured } from "@/lib/billing";
 import { headers } from "next/headers";
@@ -109,6 +113,27 @@ export default async function SettingsPage({
         select: { id: true, name: true, email: true, ...SUBSCRIPTION_FIELD_SELECT },
       })
     : [];
+  const supportRequests: AdminSupportRow[] = user.isAdmin
+    ? (
+        await db.supportRequest.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 30,
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            subject: true,
+            message: true,
+            pagePath: true,
+            attachmentName: true,
+            emailStatus: true,
+            status: true,
+            createdAt: true,
+          },
+        })
+      ).map(({ attachmentName, ...r }) => ({ ...r, hasAttachment: !!attachmentName }))
+    : [];
 
   const morningConnected = !!(user.morningApiKeyId && user.morningApiSecret);
   const keyIdMasked = user.morningApiKeyId
@@ -179,6 +204,8 @@ export default async function SettingsPage({
       />
 
       {user.isAdmin && <AdminSubscriptionsCard users={adminUsers} meId={userId} />}
+
+      {user.isAdmin && <AdminSupportRequestsCard requests={supportRequests} />}
 
       <AuditLogCard entries={auditEntries} />
 
