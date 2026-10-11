@@ -99,6 +99,7 @@ describe("help articles", () => {
     expect(find("פגישה קבועה")[0]).toBe("schedule-meeting");
     expect(find("סיכום")[0]).toBe("session-summary");
     expect(find("ניתוק אוטומטי")).toContain("login-security");
+    expect(find("קוד חד פעמי")[0]).toBe("login-security");
     expect(find("פייס איידי")).toContain("login-security");
     expect(find("מורנינג")).toContain("connect-morning");
     expect(find("דוח חודשי")).toContain("reports");
