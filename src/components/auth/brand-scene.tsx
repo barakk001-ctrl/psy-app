@@ -5,6 +5,10 @@
 // Scales with "slice" anchored to the bottom: wider panels lose some sky,
 // taller ones lose a little of the sides; the hills are always in view.
 // Gradient ids are fixed, so render it once per page (the layout does).
+// The panel sits on the left with the form to its right, so the drawing is
+// mirrored as a whole: the sun and its glow go to the far (left) side, and
+// the tall sprig frames the edge next to the form. Coordinates below are
+// written for the unmirrored picture.
 
 const LEAF = "M0 0 C7 -8 19 -8 26 0 C19 8 7 8 0 0Z";
 
@@ -30,6 +34,7 @@ export function BrandScene({ className }: { className?: string }) {
       </defs>
 
       <rect width="800" height="620" fill="url(#brand-sky)" />
+      <g transform="matrix(-1 0 0 1 800 0)">
       <rect width="800" height="620" fill="url(#brand-glow)" />
 
       {/* quiet specks of light */}
@@ -89,6 +94,7 @@ export function BrandScene({ className }: { className?: string }) {
       <g fill="#DCE3D2" fillOpacity="0.7">
         <path d={LEAF} transform="translate(703 564) rotate(-156) scale(0.95)" />
         <path d={LEAF} transform="translate(686 510) rotate(-112) scale(0.75)" />
+      </g>
       </g>
     </svg>
   );

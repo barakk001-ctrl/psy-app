@@ -3,12 +3,13 @@ import { BrandScene } from "@/components/auth/brand-scene";
 import { copyrightYears } from "@/lib/copyright";
 
 // Shared by login, register, forgot/reset password and two-factor.
-// lg+: the brand panel takes ~58% (start side), the form the rest.
+// lg+: the form is on the right (first column in RTL, ~42%) and the brand
+// panel on the left (~58%), like the reference Keren chose.
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen grid lg:grid-cols-[1.4fr_1fr]">
-      {/* Brand panel: visible on lg+ */}
-      <aside className="hidden lg:flex flex-col relative overflow-hidden bg-sage-700 text-cream-50">
+    <div className="min-h-screen grid lg:grid-cols-[1fr_1.4fr]">
+      {/* Brand panel: visible on lg+, second column = the left side */}
+      <aside className="hidden lg:order-last lg:flex flex-col relative overflow-hidden bg-sage-700 text-cream-50">
         <BrandScene className="absolute inset-0 w-full h-full pointer-events-none" />
         <div className="relative flex-1 flex flex-col items-center justify-center text-center px-10 pt-12 pb-40">
           <p className="font-display font-bold text-6xl xl:text-7xl leading-tight tracking-tight [text-shadow:0_2px_24px_rgba(26,23,20,0.25)]">
