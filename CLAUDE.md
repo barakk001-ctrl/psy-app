@@ -22,6 +22,8 @@ CI (`.github/workflows/ci.yml`) runs lint, tsc, tests, and build on pushes/PRs t
 
 Requires a `.env` (copy from `.env.example`): `DATABASE_URL` (Postgres), `AUTH_SECRET`, and `NOTES_ENCRYPTION_KEY` (base64, exactly 32 bytes — crypto.ts throws otherwise). `RESEND_API_KEY`/`EMAIL_FROM`/`CRON_SECRET` are optional (reminders degrade gracefully). Email/password registration in production is gated by `ALLOWED_EMAILS`; `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (optional) turn on Google sign-in.
 
+**Email** goes only through `sendEmail` (`src/lib/email.ts`, Resend; reads `RESEND_API_KEY` + `EMAIL_FROM`; never throws, returns `{ok:false,error}`). Every failure logs one line `[email] send failed: <provider reason> | code= | status= | from-domain= | to-domain=` (`src/lib/email-log.ts` — domains only, never the recipient address/subject/body), so `railway logs --filter "send failed"` shows the cause. **Production state (checked 2026-10-11): `EMAIL_FROM` is on `resend.dev` and the Resend account has no verified domain, so Resend is in testing mode and delivers only to the account owner (barakk001@gmail.com); every other recipient is refused** ("You can only send testing emails to your own email address…"). Password reset, set-password links, invoice emails and anything new (email login codes, support form to Barak excepted) fail until a domain is verified at resend.com/domains (choose the EU region) and `EMAIL_FROM` is changed to an address on it.
+
 ## Architecture
 
 ### Mutations are server actions, not API routes

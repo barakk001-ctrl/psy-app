@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { emailFailureLog } from "@/lib/email-log";
 
 let resend: Resend | null = null;
 
@@ -29,15 +30,20 @@ export type SendEmailResult =
  * error so reminder jobs can still be marked FAILED with a clear reason.
  */
 export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
-  const client = getResend();
-  if (!client) {
-    return { ok: false, error: "RESEND_API_KEY is not configured" };
-  }
-
   const from = process.env.EMAIL_FROM;
-  if (!from) {
-    return { ok: false, error: "EMAIL_FROM is not configured" };
-  }
+  const fail = (
+    reason: string,
+    details: { code?: string | null; status?: number | null } = {},
+  ): SendEmailResult => {
+    // One clear line per failure (provider reason + domains only — no recipient
+    // address, subject or body), so the cause is visible in the Railway logs.
+    console.error(emailFailureLog({ reason, ...details, from, to: params.to }));
+    return { ok: false, error: reason };
+  };
+
+  const client = getResend();
+  if (!client) return fail("RESEND_API_KEY is not configured");
+  if (!from) return fail("EMAIL_FROM is not configured");
 
   try {
     const { data, error } = await client.emails.send({
@@ -49,10 +55,13 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
       replyTo: params.replyTo,
       attachments: params.attachments,
     });
-    if (error) return { ok: false, error: error.message };
-    if (!data?.id) return { ok: false, error: "No id returned by Resend" };
+    if (error) {
+      const { name, statusCode } = error as { name?: string; statusCode?: number | null };
+      return fail(error.message, { code: name, status: statusCode });
+    }
+    if (!data?.id) return fail("No id returned by Resend");
     return { ok: true, id: data.id };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    return fail(err instanceof Error ? err.message : String(err));
   }
 }
