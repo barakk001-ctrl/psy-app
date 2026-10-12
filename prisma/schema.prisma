@@ -108,6 +108,7 @@ model User {
   todos            Todo[]
   meetingTypes     MeetingType[]
   sessionFiles     SessionFile[]
+  clientDocuments  ClientDocument[]
   supportRequests  SupportRequest[]
 
   createdAt       DateTime  @default(now())
@@ -146,6 +147,7 @@ model Client {
   sessions      Session[]
   sessionNotes  SessionNote[]
   sessionFiles  SessionFile[]
+  documents     ClientDocument[]
   invoices      Invoice[]
   morningDocuments MorningDocument[]
 
@@ -194,6 +196,8 @@ model AuditLog {
   action    String   // NOTE_VIEW | RECORD_VIEW | NOTE_SAVE | NOTE_DELETE | NOTE_APPEND | SESSIONS_BULK_DELETE | CLIENT_TRASH | CLIENT_RESTORE | CLIENT_PURGE | ...
   sessionId String?
   clientId  String?
+  // The client document (ClientDocument) the entry is about, if any
+  documentId String?
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt(sort: Desc)])
@@ -321,6 +325,43 @@ model SessionFile {
 
   @@index([sessionId])
   @@index([clientId, createdAt])
+}
+
+// Documents uploaded to a client's file ("מסמכים" on the client card):
+// referral letters, assessments, consent and insurance forms. Clinical data,
+// so like notes: the file name and description are encrypted (packed
+// AES-256-GCM, encryptSecret) and the bytes live encrypted in a separate
+// table (ClientDocumentBlob), so listing a client's documents never loads
+// them. Rules: src/lib/client-documents.ts; storage: src/lib/document-storage.ts.
+model ClientDocument {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId              String
+  client                Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  nameCiphertext        String   // file name, packed AES-256-GCM
+  descriptionCiphertext String?  // optional short description, packed AES-256-GCM
+  category              String?  // REFERRAL | ASSESSMENT | CONSENT | INSURANCE | OTHER (null = none)
+  mimeType              String   // from the file's bytes, never the browser's claim
+  size                  Int      // plaintext bytes
+
+  blob                  ClientDocumentBlob?
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId, clientId, createdAt])
+}
+
+// The encrypted bytes of a ClientDocument (Postgres store of
+// document-storage.ts). Deleted with its document (and so with the client).
+model ClientDocumentBlob {
+  documentId String         @id
+  document   ClientDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  ciphertext Bytes
+  iv         String
+  tag        String
 }
 
 // ─────────────────────────────────────────────────────────────

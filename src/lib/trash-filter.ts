@@ -29,7 +29,10 @@ export function liveFilterFor(model: string | undefined): Record<string, unknown
     case "Session":
     case "SessionNote":
     case "SessionFile":
+    case "ClientDocument":
       return { client: LIVE_CLIENT };
+    case "ClientDocumentBlob":
+      return { document: { client: LIVE_CLIENT } };
     case "ReminderJob":
       return { session: { client: LIVE_CLIENT } };
     default:

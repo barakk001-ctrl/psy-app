@@ -20,11 +20,12 @@ export async function loadDeletionFacts(
   });
   if (!client) return null;
   const mine = { userId, clientId };
-  const [sessions, notes, files, invoices, paidSessions, morningOnSessions, morningAssigned] =
+  const [sessions, notes, files, documents, invoices, paidSessions, morningOnSessions, morningAssigned] =
     await Promise.all([
       dbAll.session.count({ where: mine }),
       dbAll.sessionNote.count({ where: { clientId, session: { userId } } }),
       dbAll.sessionFile.count({ where: mine }),
+      dbAll.clientDocument.count({ where: mine }),
       dbAll.invoice.count({ where: mine }),
       dbAll.session.count({
         where: { ...mine, OR: [{ paymentStatus: "PAID" }, { paidAmount: { not: null } }] },
@@ -47,6 +48,7 @@ export async function loadDeletionFacts(
     sessions,
     notes,
     files,
+    documents,
     invoices,
     paidSessions,
     morningDocs: morningOnSessions + morningAssigned,
@@ -55,9 +57,10 @@ export async function loadDeletionFacts(
 
 /**
  * Deletes a client for good, with everything that belongs to them: meetings,
- * encrypted notes, attachments (stored in the database, so they are really
- * gone — there is no file storage to orphan) and reminder jobs, all through
- * ON DELETE CASCADE. Only clients in the bin, and never one holding an app
+ * encrypted notes, attachments and uploaded documents (stored in the database,
+ * so they are really gone — there is no file storage to orphan; see
+ * document-storage.ts before moving documents elsewhere) and reminder jobs,
+ * all through ON DELETE CASCADE. Only clients in the bin, and never one holding an app
  * invoice (the FK would refuse anyway). Returns whether it was deleted.
  */
 export async function purgeClient(userId: string, clientId: string): Promise<boolean> {

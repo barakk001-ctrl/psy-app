@@ -6,9 +6,14 @@ const nextConfig: NextConfig = {
   experimental: {
     typedRoutes: false,
     serverActions: {
-      // File attachments upload through a server action
-      bodySizeLimit: "12mb",
+      // File attachments and client documents upload through server actions,
+      // one file per call (client documents: up to 15MB, MAX_DOCUMENT_BYTES)
+      bodySizeLimit: "16mb",
     },
+    // The middleware runs on page routes, so server-action POSTs pass through
+    // it, and Next buffers only the first 10MB of a body there by default —
+    // a bigger upload would arrive cut off. Keep this ≥ bodySizeLimit.
+    middlewareClientMaxBodySize: "16mb",
   },
 };
 

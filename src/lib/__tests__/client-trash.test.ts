@@ -22,6 +22,7 @@ function facts(extra: Partial<ClientDeletionFacts> = {}): ClientDeletionFacts {
     sessions: 0,
     notes: 0,
     files: 0,
+    documents: 0,
     invoices: 0,
     paidSessions: 0,
     morningDocs: 0,
@@ -56,6 +57,7 @@ describe("clientDeletionDecision", () => {
   it("warns about the legal duty to keep records when there are summaries or files", () => {
     expect(clientDeletionDecision(facts({ notes: 3 }))).toEqual({ allowed: true, clinicalWarning: true });
     expect(clientDeletionDecision(facts({ files: 1 }))).toEqual({ allowed: true, clinicalWarning: true });
+    expect(clientDeletionDecision(facts({ documents: 2 }))).toEqual({ allowed: true, clinicalWarning: true });
   });
 });
 
@@ -71,6 +73,12 @@ describe("texts", () => {
       "יחד עם התיק יימחקו: פגישה אחת.",
     );
     expect(deletionContentsText({ sessions: 0, notes: 0, files: 0 })).toContain("רק פרטי");
+    expect(deletionContentsText({ sessions: 2, notes: 0, files: 0, documents: 3 })).toBe(
+      "יחד עם התיק יימחקו: 2 פגישות ו-3 מסמכים.",
+    );
+    expect(deletionContentsText({ sessions: 0, notes: 0, files: 0, documents: 1 })).toBe(
+      "יחד עם התיק יימחקו: מסמך אחד.",
+    );
   });
 
   it("names the blockers (not the inactive rule)", () => {
@@ -145,5 +153,7 @@ describe("hidden everywhere: withLiveFilter", () => {
     expect(liveFilterFor("User")).toBeNull();
     expect(liveFilterFor("SessionNote")).toEqual({ client: { deletedAt: null } });
     expect(liveFilterFor("SessionFile")).toEqual({ client: { deletedAt: null } });
+    expect(liveFilterFor("ClientDocument")).toEqual({ client: { deletedAt: null } });
+    expect(liveFilterFor("ClientDocumentBlob")).toEqual({ document: { client: { deletedAt: null } } });
   });
 });

@@ -20,7 +20,7 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = dbAll;
 
 /**
  * The app's client. Every read of clients and of what belongs to them
- * (meetings, notes, files, reminder jobs) leaves out clients in the recycle
+ * (meetings, notes, files, documents, reminder jobs) leaves out clients in the recycle
  * bin, so a deleted client vanishes from lists, pickers, the calendar, the ICS
  * feed, dashboards, reports and reminders without each query having to
  * remember it (rules: trash-filter.ts).

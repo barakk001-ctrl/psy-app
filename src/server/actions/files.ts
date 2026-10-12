@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { encryptBuffer } from "@/lib/crypto";
+import { logAudit } from "@/lib/audit";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -58,6 +59,7 @@ export async function uploadSessionFileAction(
     },
   });
 
+  await logAudit(userId, "FILE_UPLOAD", { sessionId: session.id, clientId: session.clientId });
   revalidatePath(`/sessions/${sessionId}`);
   revalidatePath(`/clients/${session.clientId}`);
   return { uploaded: true };
@@ -75,6 +77,7 @@ export async function deleteSessionFileAction(formData: FormData) {
   if (!file) return;
 
   await db.sessionFile.delete({ where: { id: file.id } });
+  await logAudit(userId, "FILE_DELETE", { sessionId: file.sessionId, clientId: file.clientId });
   revalidatePath(`/sessions/${file.sessionId}`);
   revalidatePath(`/clients/${file.clientId}`);
 }

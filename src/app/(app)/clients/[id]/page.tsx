@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Mail, Phone, MapPin, Calendar as CalIcon, Pencil } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { decryptNote } from "@/lib/crypto";
+import { decryptNote, decryptSecret } from "@/lib/crypto";
 import { logAudit } from "@/lib/audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,11 @@ import { ClientStatusToggle } from "@/components/clients/client-status-toggle";
 import { DeleteClientButton } from "@/components/clients/client-trash";
 import { SessionList } from "@/components/clients/session-list";
 import { PdfButton } from "@/components/ui/pdf-button";
+import {
+  ClientDocumentsCard,
+  type ClientDocumentItem,
+} from "@/components/clients/client-documents-card";
+import { parseCategory } from "@/lib/client-documents";
 import { tookPlace } from "@/lib/income";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { KEEP_REASON_LABELS, type KeepReason } from "@/lib/bulk-delete";
@@ -49,13 +54,26 @@ export default async function ClientDetailPage({
       },
       sessionFiles: {
         orderBy: { createdAt: "desc" },
-        take: 20,
+        take: 50,
         select: {
           id: true,
           fileName: true,
           size: true,
           createdAt: true,
           sessionId: true,
+        },
+      },
+      // Metadata only — the bytes are in ClientDocumentBlob, read on demand
+      documents: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          nameCiphertext: true,
+          descriptionCiphertext: true,
+          category: true,
+          mimeType: true,
+          size: true,
+          createdAt: true,
         },
       },
       _count: { select: { sessions: true, invoices: true } },
@@ -119,6 +137,25 @@ export default async function ClientDetailPage({
     (s) => s.status === "CANCELLED" || s.status === "NO_SHOW",
   );
   const summariesCount = noteFeed.filter((n) => n.text).length;
+
+  // Names and descriptions are stored encrypted, like the notes
+  const reveal = (packed: string | null): string | null => {
+    if (!packed) return null;
+    try {
+      return decryptSecret(packed);
+    } catch {
+      return null;
+    }
+  };
+  const documents: ClientDocumentItem[] = client.documents.map((d) => ({
+    id: d.id,
+    name: reveal(d.nameCiphertext) ?? "(שגיאה בפענוח שם הקובץ)",
+    description: reveal(d.descriptionCiphertext),
+    category: parseCategory(d.category),
+    mimeType: d.mimeType,
+    size: d.size,
+    createdAt: d.createdAt.toISOString(),
+  }));
 
   // One entry per record view, not per note — the feed is a single act of access
   if (noteFeed.some((n) => n.text)) {
@@ -338,46 +375,17 @@ export default async function ClientDetailPage({
           )}
         </div>
 
-        {client.sessionFiles.length > 0 && (
-          <Card className="lg:col-span-3">
-            <CardHeader>
-              <CardTitle>מסמכים</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ul className="divide-y divide-cream-200">
-                {client.sessionFiles.map((f) => (
-                  <li
-                    key={f.id}
-                    className="px-5 py-3 flex items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0">
-                      <a
-                        href={`/api/files/${f.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-ink hover:text-sage-700 truncate block"
-                      >
-                        {f.fileName}
-                      </a>
-                      <div className="text-xs text-ink-subtle mt-0.5">
-                        {formatDate(f.createdAt)} ·{" "}
-                        {f.size < 1024 * 1024
-                          ? `${Math.round(f.size / 1024)}KB`
-                          : `${(f.size / (1024 * 1024)).toFixed(1)}MB`}
-                      </div>
-                    </div>
-                    <Link
-                      href={`/sessions/${f.sessionId}`}
-                      className="text-xs text-sage-600 hover:text-sage-700 shrink-0"
-                    >
-                      לפגישה ←
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
+        <ClientDocumentsCard
+          clientId={client.id}
+          documents={documents}
+          sessionFiles={client.sessionFiles.map((f) => ({
+            id: f.id,
+            fileName: f.fileName,
+            size: f.size,
+            createdAt: f.createdAt.toISOString(),
+            sessionId: f.sessionId,
+          }))}
+        />
 
         {client.morningDocuments.length > 0 && (
           <Card className="lg:col-span-3">

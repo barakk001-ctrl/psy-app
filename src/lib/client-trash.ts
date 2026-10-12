@@ -8,7 +8,7 @@
 //   records must be kept, so she keeps such a client inactive instead.
 // - Deleting moves the client to the bin for TRASH_DAYS: hidden everywhere,
 //   restorable as it was. After that the client and everything that belongs
-//   to them (meetings, encrypted notes, attachments, reminder jobs) is purged
+//   to them (meetings, encrypted notes, attachments, documents, reminder jobs) is purged
 //   automatically.
 
 export const TRASH_DAYS = 30;
@@ -46,6 +46,8 @@ export type ClientDeletionFacts = {
   sessions: number;
   notes: number;
   files: number;
+  /** documents uploaded to the client's file (ClientDocument) */
+  documents: number;
   invoices: number;
   /** meetings marked PAID or with an amount paid */
   paidSessions: number;
@@ -72,7 +74,7 @@ export function clientDeletionDecision(f: ClientDeletionFacts): DeletionDecision
   if (f.paidSessions > 0) blockers.push("payments");
   if (f.morningDocs > 0) blockers.push("morning");
   if (blockers.length) return { allowed: false, blockers };
-  return { allowed: true, clinicalWarning: f.notes > 0 || f.files > 0 };
+  return { allowed: true, clinicalWarning: f.notes > 0 || f.files > 0 || f.documents > 0 };
 }
 
 function count(n: number, one: string, many: string): string {
@@ -88,11 +90,14 @@ function joinHebrew(parts: string[]): string {
 }
 
 /** What goes with the client: "יחד עם התיק יימחקו: 3 פגישות, 2 סיכומים וקובץ מצורף אחד." */
-export function deletionContentsText(f: Pick<ClientDeletionFacts, "sessions" | "notes" | "files">): string {
+export function deletionContentsText(
+  f: Pick<ClientDeletionFacts, "sessions" | "notes" | "files"> & { documents?: number },
+): string {
   const parts: string[] = [];
   if (f.sessions) parts.push(count(f.sessions, "פגישה אחת", "פגישות"));
   if (f.notes) parts.push(count(f.notes, "סיכום אחד", "סיכומים"));
   if (f.files) parts.push(count(f.files, "קובץ מצורף אחד", "קבצים מצורפים"));
+  if (f.documents) parts.push(count(f.documents, "מסמך אחד", "מסמכים"));
   if (parts.length === 0) return "אין בתיק פגישות, סיכומים או קבצים — יימחקו רק פרטי הלקוח/ה.";
   return `יחד עם התיק יימחקו: ${joinHebrew(parts)}.`;
 }

@@ -48,6 +48,18 @@ export function clientAbsoluteDeadline(authTime: number | null | undefined): num
 export const HEARTBEAT_MS = 2 * 60_000;
 
 /**
+ * Work that goes on without any input — a long document upload — fires this
+ * window event (signalActivity) so the idle guard counts it as activity and
+ * never signs out in the middle of it. The upload's own requests keep the
+ * server's clock fresh.
+ */
+export const ACTIVITY_EVENT = "psy:activity";
+
+export function signalActivity(): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(ACTIVITY_EVENT));
+}
+
+/**
  * Lifetime of the session cookie and the JWT inside it, refreshed on every
  * request: the longest timeout plus the grace. The token's own clock is the
  * real check; this only makes an abandoned cookie disappear on its own.

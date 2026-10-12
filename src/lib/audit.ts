@@ -15,6 +15,16 @@ export type AuditAction =
   | "CLIENT_TRASH" // moved a client (with their record) to the recycle bin
   | "CLIENT_RESTORE" // restored a client from the recycle bin
   | "CLIENT_PURGE" // deleted a client and their record for good (by hand or after 30 days)
+  // Documents uploaded to a client's file (ClientDocument):
+  | "DOCUMENT_UPLOAD"
+  | "DOCUMENT_VIEW" // opened in the browser (PDF/image)
+  | "DOCUMENT_DOWNLOAD"
+  | "DOCUMENT_UPDATE" // renamed / description or category changed
+  | "DOCUMENT_DELETE"
+  // Files attached to a meeting (SessionFile):
+  | "FILE_UPLOAD"
+  | "FILE_VIEW"
+  | "FILE_DELETE"
   // Sign-ins (a full session, never a 2FA-pending one), by method:
   | "LOGIN_PASSWORD"
   | "LOGIN_GOOGLE"
@@ -24,7 +34,7 @@ export type AuditAction =
 export async function logAudit(
   userId: string,
   action: AuditAction,
-  ids: { sessionId?: string; clientId?: string } = {},
+  ids: { sessionId?: string; clientId?: string; documentId?: string } = {},
 ): Promise<void> {
   try {
     await db.auditLog.create({
@@ -33,6 +43,7 @@ export async function logAudit(
         action,
         sessionId: ids.sessionId ?? null,
         clientId: ids.clientId ?? null,
+        documentId: ids.documentId ?? null,
       },
     });
   } catch {

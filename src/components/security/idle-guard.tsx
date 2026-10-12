@@ -5,6 +5,7 @@ import { Clock, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { idleSignOutAction } from "@/server/actions/auth";
 import {
+  ACTIVITY_EVENT,
   HEARTBEAT_MS,
   clientAbsoluteDeadline,
   formatCountdown,
@@ -263,6 +264,8 @@ export function IdleGuard({
     }
     // scroll doesn't bubble — capture catches scrolling inside any element
     document.addEventListener("scroll", onActivity, { passive: true, capture: true });
+    // An upload in progress (signalActivity) counts as activity
+    window.addEventListener(ACTIVITY_EVENT, onActivity);
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
     window.addEventListener("pageshow", onPageShow);
@@ -274,6 +277,7 @@ export function IdleGuard({
         window.removeEventListener(type, onActivity, { capture: true });
       }
       document.removeEventListener("scroll", onActivity, { capture: true });
+      window.removeEventListener(ACTIVITY_EVENT, onActivity);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
       window.removeEventListener("pageshow", onPageShow);
