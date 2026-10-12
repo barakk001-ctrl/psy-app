@@ -27,6 +27,12 @@ export default {
           600: "#4A6048",
           700: "#3A4B39",
         },
+        // Soft gold accent (auth brand panel divider)
+        gold: {
+          200: "#EFE2C4",
+          300: "#E3CFA3",
+          400: "#D4B97F",
+        },
         terracotta: {
           500: "#B5654A",
           600: "#9A553D",

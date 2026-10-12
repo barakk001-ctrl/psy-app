@@ -1,6 +1,6 @@
 // The auth pages' small emblem, shown above the form on phones (where the
 // brand panel is hidden): a sage disc holding a low warm sun, two calm hills
-// and a young sprig: the same motif as the panel's full-bleed BrandScene.
+// and a young sprig, in the brand panel's lighter sage with a soft-gold sun.
 // Pure geometric SVG, no ids. The two faint ripple rings use currentColor:
 // give it a text colour that reads on the background.
 export function BrandEmblem({ className }: { className?: string }) {
@@ -16,7 +16,7 @@ export function BrandEmblem({ className }: { className?: string }) {
       <circle cx="120" cy="120" r="116" fill="none" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
 
       {/* disc */}
-      <circle cx="120" cy="120" r="92" fill="#4A6048" />
+      <circle cx="120" cy="120" r="92" fill="#5F7A63" />
 
       {/* quiet specks of light */}
       <circle cx="80" cy="80" r="1.6" fill="#FDFBF7" fillOpacity="0.55" />
@@ -24,17 +24,17 @@ export function BrandEmblem({ className }: { className?: string }) {
       <circle cx="186" cy="98" r="1" fill="#FDFBF7" fillOpacity="0.35" />
 
       {/* low warm sun with a soft halo */}
-      <circle cx="152" cy="126" r="34" fill="#EACDA6" fillOpacity="0.14" />
-      <circle cx="152" cy="126" r="22" fill="#EACDA6" fillOpacity="0.92" />
+      <circle cx="152" cy="126" r="34" fill="#E3CFA3" fillOpacity="0.14" />
+      <circle cx="152" cy="126" r="22" fill="#E3CFA3" fillOpacity="0.92" />
 
       {/* hills: wave on top, the disc's own arc underneath */}
       <path
         d="M29.8 138 C62 120 96 120 128 131 S184 146 210.2 138 A92 92 0 0 1 29.8 138 Z"
-        fill="#5C7559"
+        fill="#7A9479"
       />
       <path
         d="M41.5 168 C78 151 116 152 148 161 S186 172 198.5 168 A92 92 0 0 1 41.5 168 Z"
-        fill="#3A4B39"
+        fill="#4A6048"
       />
 
       {/* sprig */}
