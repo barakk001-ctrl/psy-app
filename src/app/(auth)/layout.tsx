@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { BrandEmblem } from "@/components/auth/brand-emblem";
+import { LogoMark, Wordmark } from "@/components/brand/logo-mark";
 import therapyRoom from "@/components/auth/login-room.jpg";
 import { copyrightYears } from "@/lib/copyright";
 
@@ -28,8 +28,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         />
         <div className="auth-brand-wash absolute inset-0" aria-hidden />
         <div className="relative flex-1 flex flex-col items-center justify-center text-center px-10 pt-12 pb-44">
+          <LogoMark size={76} className="mb-6" />
           <p className="font-display font-bold text-6xl xl:text-7xl leading-tight tracking-tight [text-shadow:0_2px_28px_rgba(20,30,22,0.35)]">
-            מרפאה אישית
+            מרפאה <span className="font-medium text-gold-200">אישית</span>
           </p>
           <div
             className="mt-6 h-0.5 w-28 rounded-full bg-gradient-to-r from-transparent via-gold-300 to-transparent"
@@ -50,12 +51,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       {/* Form panel, with the copyright line at its foot */}
       <main className="flex flex-col min-h-screen px-4 sm:px-8 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="flex-1 flex items-center justify-center py-10">
+        <div className="flex-1 flex items-center justify-center py-10 lg:py-8">
           <div className="w-full max-w-md">
-            {/* On phones the brand panel is hidden: emblem and name above the form */}
-            <div className="lg:hidden flex flex-col items-center text-center mb-8">
-              <BrandEmblem className="w-28 text-sage-500" />
-              <p className="mt-3 font-display font-bold text-3xl text-sage-700">מרפאה אישית</p>
+            {/* The mark and name above every form (on phones it is the only
+                branding, since the brand panel is hidden there) */}
+            <div className="flex flex-col items-center text-center mb-8 lg:mb-6">
+              <LogoMark size={52} className="lg:hidden" />
+              <LogoMark size={44} className="hidden lg:inline-flex" />
+              <Wordmark className="mt-3 text-3xl lg:mt-2.5 lg:text-2xl" />
             </div>
             {children}
           </div>
