@@ -32,7 +32,9 @@ export function canonicalOrigin(env: Env = process.env): string | null {
 
 /**
  * Every address the app answers on: the canonical one, APP_ALT_ORIGINS
- * (comma-separated) and Railway's own service domain.
+ * (comma-separated — the old Railway address lives here) and
+ * RAILWAY_PUBLIC_DOMAIN (which Railway points at the custom domain once one
+ * exists, so it can't be relied on for the old address).
  */
 export function trustedOrigins(env: Env = process.env): string[] {
   const list = [
