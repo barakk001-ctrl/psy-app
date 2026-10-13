@@ -67,6 +67,7 @@ export function PaymentForm({
           <Select id="method" name="method" defaultValue="CASH">
             <option value="CASH">מזומן</option>
             <option value="BIT">ביט</option>
+            <option value="PAYBOX">פייבוקס</option>
             <option value="BANK_TRANSFER">העברה בנקאית</option>
             <option value="CHECK">המחאה</option>
             <option value="CREDIT_CARD">כרטיס אשראי</option>

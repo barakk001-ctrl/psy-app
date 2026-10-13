@@ -229,7 +229,7 @@ export default async function ClientDetailPage({
           </Link>
           <Link href={`/invoices/new?clientId=${client.id}`}>
             <Button variant="secondary" size="sm">
-              חשבונית חדשה
+              חשבונית / קבלה
             </Button>
           </Link>
           <Link href={`/sessions/new?clientId=${client.id}`}>

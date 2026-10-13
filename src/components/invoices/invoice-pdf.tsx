@@ -267,6 +267,7 @@ const styles = StyleSheet.create({
 });
 
 const METHOD_LABELS: Record<string, string> = {
+  PAYBOX: "פייבוקס",
   CASH: "מזומן",
   BIT: "ביט",
   CHECK: "המחאה",
@@ -310,6 +311,8 @@ function formatDate(d: Date) {
 }
 
 export type InvoicePDFData = {
+  /** a "מסמך חדש" draft: its type ("קבלה"…) — the PDF says it isn't a tax document */
+  draftLabel?: string | null;
   number: number;
   issueDate: Date;
   dueDate: Date | null;
@@ -381,7 +384,9 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
           </View>
 
           <View style={styles.invoiceMeta}>
-            <Text style={styles.docTitle}>חשבונית</Text>
+            <Text style={styles.docTitle}>
+              {data.draftLabel ? rtl(`טיוטה: ${data.draftLabel}`) : "חשבונית"}
+            </Text>
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>{rtl("מס׳:")}</Text>
               <Text style={styles.metaValue}>
@@ -523,9 +528,11 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
 
         <Text style={styles.footer} fixed>
           {rtl(
-            `מסמך זה אינו חשבונית מס. לבירורים: ${
-              data.business.phone ?? data.business.email ?? ""
-            }`,
+            data.draftLabel
+              ? "טיוטה בלבד — אינה מסמך מס. המסמך הרשמי יונפק בנפרד."
+              : `מסמך זה אינו חשבונית מס. לבירורים: ${
+                  data.business.phone ?? data.business.email ?? ""
+                }`,
           )}
         </Text>
       </Page>

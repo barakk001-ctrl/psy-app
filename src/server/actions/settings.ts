@@ -320,7 +320,8 @@ export async function saveMorningSettingsAction(
   const secret = String(formData.get("morningApiSecret") ?? "").trim();
   const sandbox = formData.get("morningSandbox") === "on";
   const docTypeRaw = Number(formData.get("morningDocType") ?? 400);
-  const docType = docTypeRaw === 320 ? 320 : 400;
+  // The type "מסמך חדש" starts on: 400 קבלה, 320 חשבונית מס/קבלה, 305 חשבונית מס
+  const docType = docTypeRaw === 320 || docTypeRaw === 305 ? docTypeRaw : 400;
 
   // No new keys entered — update preferences on the existing connection
   if (!keyId && !secret) {

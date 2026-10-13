@@ -16,6 +16,7 @@ import { PaymentForm } from "@/components/invoices/payment-form";
 import { SendInvoiceEmailButton } from "@/components/invoices/send-invoice-email-button";
 import { InvoicePdfButton } from "@/components/invoices/invoice-pdf-button";
 import { MorningReceiptButton } from "@/components/invoices/morning-receipt-button";
+import { DocumentView } from "@/components/invoices/document-view";
 import { getMorningCredentials } from "@/lib/morning";
 import {
   markInvoiceSentAction,
@@ -24,23 +25,18 @@ import {
 import { deletePaymentAction } from "@/server/actions/payments";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { VAT_RATE, vatBreakdown } from "@/lib/vat";
+import { PAYMENT_METHOD_LABELS } from "@/lib/income";
 
-const METHOD_LABELS = {
-  CASH: "מזומן",
-  BIT: "ביט",
-  CHECK: "המחאה",
-  BANK_TRANSFER: "העברה בנקאית",
-  CREDIT_CARD: "כרטיס אשראי",
-  PAYPAL: "PayPal",
-  OTHER: "אחר",
-} as const;
 
 export default async function InvoiceDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ issued?: string; saved?: string; issueError?: string; uncertain?: string }>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
   const session = await auth();
   const userId = session!.user.id;
 
@@ -54,6 +50,36 @@ export default async function InvoiceDetailPage({
   });
 
   if (!invoice) notFound();
+
+  // Documents from "מסמך חדש" (in morning's terms) have their own view
+  if (invoice.docType != null) {
+    const [owner, creds] = await Promise.all([
+      db.user.findUnique({
+        where: { id: userId },
+        select: { name: true, businessName: true, businessId: true, address: true, phone: true, vatLiable: true },
+      }),
+      getMorningCredentials(userId),
+    ]);
+    return (
+      <DocumentView
+        invoice={invoice}
+        morningConnected={!!creds}
+        business={{
+          name: owner?.businessName ?? owner?.name ?? "",
+          businessId: owner?.businessId ?? null,
+          address: owner?.address ?? null,
+          phone: owner?.phone ?? null,
+          vatLiable: !!owner?.vatLiable,
+        }}
+        notice={{
+          issued: sp.issued === "1",
+          saved: sp.saved === "1",
+          issueError: sp.issueError,
+          uncertain: sp.uncertain === "1",
+        }}
+      />
+    );
+  }
 
   const total = Number(invoice.total);
   const paid = Number(invoice.amountPaid);
@@ -286,7 +312,7 @@ export default async function InvoiceDetailPage({
                 <li key={p.id} className="flex items-center justify-between px-5 py-3">
                   <div>
                     <div className="text-sm text-ink">
-                      {formatCurrency(p.amount.toString())} · {METHOD_LABELS[p.method]}
+                      {formatCurrency(p.amount.toString())} · {PAYMENT_METHOD_LABELS[p.method] ?? p.method}
                     </div>
                     <div className="text-xs text-ink-muted mt-0.5">
                       {formatDate(p.paidAt)}

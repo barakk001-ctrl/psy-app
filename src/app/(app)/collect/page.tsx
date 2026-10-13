@@ -102,7 +102,7 @@ export default async function CollectPage() {
                 href="/invoices/new"
                 className="inline-block text-sage-600 hover:text-sage-700"
               >
-                יצירת חשבונית חדשה ←
+                מסמך חדש (חשבונית / קבלה) ←
               </Link>
             </CardContent>
           </Card>

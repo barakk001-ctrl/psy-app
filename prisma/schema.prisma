@@ -412,6 +412,27 @@ model Invoice {
   morningDocUrl    String?
   morningDocNumber String?
 
+  // "מסמך חדש" (src/lib/billing-docs.ts): the document this row is, in
+  // morning's terms — 305 חשבונית מס, 320 חשבונית מס/קבלה, 400 קבלה, 330
+  // חשבונית זיכוי. null = an older app invoice (a payment request). The app
+  // never issues tax documents itself: until morning returns a number
+  // (morningDocId/Number above) the row is a draft, not a tax document.
+  docType          Int?
+  // Line prices include VAT (true) or VAT is added on top (false); only
+  // matters for a VAT-liable business (עוסק מורשה)
+  vatIncluded      Boolean   @default(true)
+  // Client details as printed on the document (prefilled from the client)
+  docClientName    String?
+  docClientTaxId   String?
+  // When set, morning emails the issued document's link to this address
+  docClientEmail   String?
+  // "תיאור תכולת המסמך" (shown on receipts, which have no item lines)
+  description      String?
+  // The document this one refers to (same user): for a credit note (330) the
+  // invoice it cancels, for a receipt (400) the tax invoice (305) it pays
+  relatedInvoiceId String?
+  morningIssuedAt  DateTime?
+
   items         InvoiceItem[]
   payments      Payment[]
 
@@ -459,6 +480,16 @@ model Payment {
   reference     String?       // tx id, check #, last 4 digits, etc.
   notes         String?
 
+  // Receipt-line details, as morning asks for them per payment type
+  bankName      String?       // transfer / cheque
+  bankBranch    String?
+  bankAccount   String?
+  chequeNumber  String?
+  cardType      String?       // VISA | MASTERCARD | ISRACARD | AMEX | DINERS
+  cardLast4     String?
+  dealType      String?       // REGULAR | INSTALLMENTS | CREDIT
+  installments  Int?
+
   // For online providers
   provider      String?       // "tranzila" | "cardcom" | "paypal" | null
   providerTxId  String?
@@ -471,6 +502,7 @@ model Payment {
 enum PaymentMethod {
   CASH
   BIT
+  PAYBOX
   CHECK
   BANK_TRANSFER
   CREDIT_CARD

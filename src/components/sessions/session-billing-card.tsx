@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Check, ExternalLink, Wallet } from "lucide-react";
+import Link from "next/link";
+import { Check, ExternalLink, FilePlus, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,7 +84,10 @@ export function SessionBillingCard({
   rate,
   payment,
   morning,
+  invoiced = false,
 }: {
+  /** the meeting is already on a document (app invoice / "מסמך חדש") */
+  invoiced?: boolean;
   sessionId: string;
   rate: string | null;
   payment: {
@@ -154,6 +158,7 @@ export function SessionBillingCard({
                   defaultValue={payment.method ?? "BIT"}
                 >
                   <option value="BIT">ביט</option>
+                  <option value="PAYBOX">פייבוקס</option>
                   <option value="CASH">מזומן</option>
                   <option value="BANK_TRANSFER">העברה בנקאית</option>
                   <option value="CREDIT_CARD">כרטיס אשראי</option>
@@ -215,9 +220,17 @@ export function SessionBillingCard({
             initialUrl={morning.invoiceReceiptUrl}
           />
           <p className="text-xs text-ink-subtle">
-            מפיקים ב-morning ורושמים כאן רק את המספרים — חשבונית מס וקבלה
-            בנפרד, או חשבונית מס-קבלה מאוחדת.
+            הופק ב-morning? רושמים כאן את המספר — חשבונית מס וקבלה בנפרד, או
+            חשבונית מס-קבלה מאוחדת.
           </p>
+          {!invoiced && (
+            <Link
+              href={`/invoices/new?sessionId=${sessionId}`}
+              className="inline-flex items-center gap-1 text-sm text-sage-600 hover:text-sage-700 font-medium"
+            >
+              <FilePlus className="w-4 h-4" /> הפקת חשבונית / קבלה לפגישה
+            </Link>
+          )}
         </div>
       </CardContent>
     </Card>

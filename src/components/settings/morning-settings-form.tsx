@@ -68,9 +68,9 @@ export function MorningSettingsForm({
           </div>
         ) : (
           <p className="text-sm text-ink-muted leading-relaxed">
-            חיבור החשבון מאפשר להפיק קבלות רשמיות ב-morning ישירות מתוך חשבונית
-            באפליקציה — בלחיצת כפתור, בלי הקלדה כפולה. מגדירים פעם אחת —
-            ומכאן והלאה המערכת מתחברת לבד.
+            עם החיבור, ״מסמך חדש״ מפיק חשבונית מס, חשבונית מס/קבלה או קבלה ישירות
+            ב-morning — עם תצוגה מקדימה לפני ההפקה — והמספר והקישור נשמרים כאן,
+            בלי הקלדה כפולה. מגדירים פעם אחת, והמפתחות נשמרים מוצפנים.
           </p>
         )}
 
@@ -89,12 +89,27 @@ export function MorningSettingsForm({
                   app.greeninvoice.co.il
                 </a>
               </li>
-              <li>הגדרות ← החשבון שלי ← כלים למפתחים (Developer Tools) ← מפתחות API</li>
-              <li>לוחצים על ״הוספת מפתח״ ומעתיקים את ה-ID ואת ה-Secret לכאן</li>
+              <li>
+                אזור אישי ← כלים למפתחים ← מפתחות API (
+                <a
+                  href="https://app.greeninvoice.co.il/settings/developers/api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sage-600 hover:text-sage-700"
+                >
+                  קישור ישיר
+                </a>
+                ), ומאשרים את תנאי השימוש
+              </li>
+              <li>
+                יוצרים מפתח ומעתיקים לכאן את ה-ID ואת ה-Secret — את ה-Secret אפשר
+                להעתיק רק מיד אחרי היצירה
+              </li>
             </ol>
             <p className="text-xs text-ink-muted pt-1">
-              שימו לב: גישת API זמינה במסלולים המתקדמים של morning. אם לא רואים את
-              ״כלים למפתחים״ בתפריט — צריך לשדרג מסלול. המפתח הסודי נשמר כאן מוצפן.
+              שימו לב: גישת API זמינה ב-morning במסלול Best ומעלה. אם לא רואים את
+              ״כלים למפתחים״ — צריך לשדרג מסלול שם. המפתח הסודי נשמר כאן מוצפן ולא
+              נשלח לדפדפן.
             </p>
           </div>
         )}
@@ -127,10 +142,11 @@ export function MorningSettingsForm({
           )}
 
           <div>
-            <Label htmlFor="morningDocType">סוג המסמך שמופק ב-morning</Label>
+            <Label htmlFor="morningDocType">סוג המסמך שנבחר מראש ב״מסמך חדש״</Label>
             <Select id="morningDocType" name="morningDocType" defaultValue={String(docType)}>
               <option value="400">קבלה (מתאים לעוסק פטור)</option>
-              <option value="320">חשבונית מס-קבלה מאוחדת (מתאים לעוסק מורשה)</option>
+              <option value="320">חשבונית מס/קבלה (עוסק מורשה, כשהתשלום כבר התקבל)</option>
+              <option value="305">חשבונית מס (עוסק מורשה, התשלום יגיע אחר כך)</option>
             </Select>
           </div>
 

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import type { InvoicePDFData } from "@/components/invoices/invoice-pdf";
+import { docTypeLabel } from "@/lib/billing-docs";
 
 export type LoadedInvoice = NonNullable<Awaited<ReturnType<typeof loadInvoiceWithRelations>>>;
 
@@ -23,6 +24,7 @@ export async function loadInvoicePdfData(
   if (!invoice) return null;
 
   const data: InvoicePDFData = {
+    draftLabel: invoice.docType != null ? docTypeLabel(invoice.docType) : null,
     number: invoice.number,
     issueDate: invoice.issueDate,
     dueDate: invoice.dueDate,
