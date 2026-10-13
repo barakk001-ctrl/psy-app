@@ -1,4 +1,4 @@
-import { Home, Users, Calendar, FileText, BarChart3, Settings } from "lucide-react";
+import { Home, Users, Calendar, FileText, BarChart3, Settings, CreditCard } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
@@ -15,6 +15,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/clients", label: "לקוחות", icon: Users, primaryMobile: true },
   { href: "/invoices", label: "חשבוניות", icon: FileText, primaryMobile: true },
   { href: "/reports", label: "פילוח ודוחות", icon: BarChart3 },
+  { href: "/subscription", label: "מנוי ומסלולים", icon: CreditCard },
   { href: "/settings", label: "הגדרות", icon: Settings },
 ];
 

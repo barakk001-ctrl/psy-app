@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GoogleButton, OrDivider } from "@/components/auth/google-button";
 import { googleSignInAction, loginAction, type FormState } from "@/server/actions/auth";
+import { TRIAL_DAYS } from "@/lib/subscription";
 
 export function LoginForm({
   googleEnabled = false,
@@ -157,6 +158,13 @@ export function LoginForm({
         <Link href="/register" className="text-sage-600 hover:text-sage-700 font-medium">
           הרשמה
         </Link>
+      </p>
+
+      <p className="text-sm text-ink-muted mt-2 text-center">
+        <Link href="/pricing" className="text-sage-600 hover:text-sage-700 underline underline-offset-2">
+          מסלולים ומחירים
+        </Link>{" "}
+        · {TRIAL_DAYS} יום ניסיון חינם
       </p>
     </div>
   );

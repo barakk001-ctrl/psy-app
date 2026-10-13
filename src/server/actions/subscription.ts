@@ -8,6 +8,12 @@ import { db } from "@/lib/db";
 import { extendSubscription } from "@/lib/subscription-server";
 import { originFromHeaders } from "@/lib/request-origin";
 import { createGrowPaymentLink } from "@/lib/billing";
+import { subscriptionStateFor } from "@/lib/subscription-server";
+import { planById, planRequestMessage } from "@/lib/plans";
+import { formatDate } from "@/lib/format";
+import { rateLimit } from "@/lib/rate-limit";
+import { submitSupportRequest } from "@/lib/support-request";
+import { emailSupportRequest, recordSupportEmail } from "@/lib/support-data";
 
 /** Admin-only: the operator accounts manage everyone's subscription. */
 async function requireAdminId(): Promise<string> {
@@ -55,7 +61,65 @@ export async function startCardPaymentAction(formData: FormData) {
     origin,
   });
   if ("url" in result) redirect(result.url);
-  redirect(`/settings?payerr=${encodeURIComponent(result.error)}`);
+  redirect(`/subscription?payerr=${encodeURIComponent(result.error)}`);
+}
+
+export type PlanRequestResult = { ok: true; emailed: boolean } | { ok: false; error: string };
+
+/**
+ * "בקשה לרכישה" on /subscription while card payment (Grow) is off: sends the
+ * operator a support request naming the plan — saved first, then emailed,
+ * like every support request (Settings → פניות תמיכה shows it either way).
+ * The operator replies with payment details and extends the account.
+ */
+export async function requestPlanAction(planId: string): Promise<PlanRequestResult> {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = session.user.id;
+  const plan = planById(planId);
+  if (!plan) return { ok: false, error: "המסלול לא נמצא" };
+
+  const limit = rateLimit(`plan-request:${userId}`, { limit: 3, windowMs: 60 * 60_000 });
+  if (!limit.allowed) {
+    return { ok: false, error: "הבקשה כבר נשלחה — נחזור אלייך בהקדם." };
+  }
+
+  const me = await db.user.findUnique({
+    where: { id: userId },
+    select: { name: true, email: true, phone: true },
+  });
+  if (!me) return { ok: false, error: "החשבון לא נמצא" };
+  const state = await subscriptionStateFor(userId);
+  const { subject, message } = planRequestMessage(
+    plan,
+    state,
+    state.activeUntil ? formatDate(state.activeUntil) : null,
+  );
+
+  try {
+    const result = await submitSupportRequest({
+      save: () =>
+        db.supportRequest.create({
+          data: {
+            userId,
+            name: me.name,
+            email: me.email.toLowerCase(),
+            phone: me.phone || null,
+            subject,
+            message,
+            pagePath: "/subscription",
+          },
+          select: { id: true },
+        }),
+      send: emailSupportRequest,
+      recordEmail: recordSupportEmail,
+    });
+    revalidatePath("/settings");
+    return { ok: true, emailed: result.emailed };
+  } catch (err) {
+    console.error("Plan request could not be saved:", err);
+    return { ok: false, error: "לא הצלחנו לשלוח את הבקשה. נא לנסות שוב בעוד רגע." };
+  }
 }
 
 export async function toggleSubscriptionExemptAction(formData: FormData) {

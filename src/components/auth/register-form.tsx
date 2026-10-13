@@ -159,6 +159,11 @@ export function RegisterForm({
           התחברות
         </Link>
       </p>
+      <p className="text-sm text-ink-muted mt-2 text-center">
+        <Link href="/pricing" className="text-sage-600 hover:text-sage-700 underline underline-offset-2">
+          מסלולים ומחירים
+        </Link>
+      </p>
     </div>
   );
 }

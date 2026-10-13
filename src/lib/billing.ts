@@ -50,8 +50,8 @@ export async function createGrowPaymentLink(
   body.set("description", `${label} — מרפאה אישית`);
   body.set("chargeType", "1");
   body.set("paymentNum", "1");
-  body.set("successUrl", `${args.origin}/settings?paid=1`);
-  body.set("cancelUrl", `${args.origin}/settings?paid=0`);
+  body.set("successUrl", `${args.origin}/subscription?paid=1`);
+  body.set("cancelUrl", `${args.origin}/subscription?paid=0`);
   body.set("notifyUrl", `${args.origin}/api/billing/webhook`);
   body.set("pageField[fullName]", fullName);
   if (args.phone) body.set("pageField[phone]", args.phone.replace(/\D/g, ""));

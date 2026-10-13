@@ -20,7 +20,7 @@ import {
   type AdminSupportRow,
 } from "@/components/settings/admin-support-requests-card";
 import { SUBSCRIPTION_FIELD_SELECT, getSubscriptionState } from "@/lib/subscription";
-import { billingConfigured } from "@/lib/billing";
+import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { TwoFactorSettings } from "@/components/settings/two-factor-settings";
 import { IdleTimeoutCard } from "@/components/settings/idle-timeout-card";
@@ -32,6 +32,13 @@ export default async function SettingsPage({
   searchParams: Promise<{ paid?: string; payerr?: string }>;
 }) {
   const sp = await searchParams;
+  // Payment results used to land here; the plans page shows them now
+  if (sp.paid || sp.payerr) {
+    const q = new URLSearchParams();
+    if (sp.paid) q.set("paid", sp.paid);
+    if (sp.payerr) q.set("payerr", sp.payerr);
+    redirect(`/subscription?${q}`);
+  }
   const session = await auth();
   const userId = session!.user.id;
 
@@ -197,11 +204,7 @@ export default async function SettingsPage({
 
       <BiometricSettings userEmail={user.email} userName={user.name} />
 
-      <SubscriptionCard
-        state={subState}
-        cardPayments={billingConfigured()}
-        notice={sp.payerr ?? (sp.paid === "1" ? "paid" : sp.paid === "0" ? "cancelled" : null)}
-      />
+      <SubscriptionCard state={subState} />
 
       {user.isAdmin && <AdminSubscriptionsCard users={adminUsers} meId={userId} />}
 

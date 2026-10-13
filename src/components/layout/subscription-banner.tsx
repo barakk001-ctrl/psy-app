@@ -17,8 +17,8 @@ export function SubscriptionBanner({
         <p className="flex-1 min-w-56 text-sm text-ink-soft leading-relaxed">
           <b>המנוי הסתיים והמערכת במצב קריאה בלבד.</b> כל הנתונים שמורים
           וזמינים לצפייה ולייצוא. לחידוש —{" "}
-          <Link href="/settings" className="text-terracotta-600 font-medium underline underline-offset-2">
-            פרטי המנוי בהגדרות
+          <Link href="/subscription" className="text-terracotta-600 font-medium underline underline-offset-2">
+            למסלולים ולחידוש המנוי
           </Link>
           .
         </p>
@@ -30,8 +30,8 @@ export function SubscriptionBanner({
       <Hourglass className="w-4 h-4 text-ink-muted shrink-0" />
       <p className="flex-1 text-sm text-ink-soft">
         נותרו <b>{daysLeft}</b> ימי ניסיון.{" "}
-        <Link href="/settings" className="text-sage-600 font-medium">
-          לפרטי המנוי ←
+        <Link href="/subscription" className="text-sage-600 font-medium">
+          למסלולים ולרכישה ←
         </Link>
       </p>
     </div>

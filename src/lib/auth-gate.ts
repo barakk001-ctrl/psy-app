@@ -96,8 +96,11 @@ export function gateRequest(
   const isPending = !isLoggedIn && !!session?.twoFactorPending;
 
   // The agreement, terms and privacy policy are readable by everyone — guests during
-  // registration and signed-in users during re-acceptance.
-  if (path === "/agreement" || path === "/terms" || path === "/privacy") return { type: "allow" };
+  // registration and signed-in users during re-acceptance. So are the plans
+  // and prices (/pricing), which the login page links to.
+  if (path === "/agreement" || path === "/terms" || path === "/privacy" || path === "/pricing") {
+    return { type: "allow" };
+  }
 
   // 2FA pending: the code page and nothing else.
   if (isPending) {

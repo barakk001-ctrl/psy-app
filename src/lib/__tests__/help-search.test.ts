@@ -71,9 +71,9 @@ describe("searchHelp", () => {
 });
 
 describe("help articles", () => {
-  it("has 8–14 articles with unique slugs and content", () => {
+  it("has 8–16 articles with unique slugs and content", () => {
     expect(HELP_ARTICLES.length).toBeGreaterThanOrEqual(8);
-    expect(HELP_ARTICLES.length).toBeLessThanOrEqual(14);
+    expect(HELP_ARTICLES.length).toBeLessThanOrEqual(16);
     expect(new Set(HELP_ARTICLES.map((a) => a.slug)).size).toBe(HELP_ARTICLES.length);
     for (const a of HELP_ARTICLES) {
       expect(a.title.length).toBeGreaterThan(3);

@@ -79,4 +79,4 @@ export const SUBSCRIPTION_FIELD_SELECT = {
 
 /** Hebrew error returned by write actions when the account is read-only. */
 export const READ_ONLY_ERROR =
-  "המנוי הסתיים והמערכת במצב קריאה בלבד — הנתונים שמורים וזמינים לצפייה. לחידוש פנו למנהלת המערכת.";
+  "המנוי הסתיים והמערכת במצב קריאה בלבד — הנתונים שמורים וזמינים לצפייה. לחידוש: ״מנוי ומסלולים״ בתפריט.";
