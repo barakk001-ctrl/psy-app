@@ -1,49 +1,78 @@
 import { cn } from "@/lib/utils";
 
-// The app's mark: a soft-gold arched doorway (a calm room) with a young sprig
-// growing inside it, on a sage tile. Used in the signed-in header, on every
-// auth page, and (rendered to PNG at the same proportions) as the favicon and
-// the home-screen icons in public/ (favicon.ico, icons/*.png): if the drawing
-// changes, re-render those too. The tile's gradient is CSS, not an SVG
-// gradient, so the SVG holds no ids and any number of copies (including
-// ones inside display:none panels) render safely.
+// The app's mark: a miniature of the dashboard's clinic-room illustration
+// (components/dashboard/clinic-hero.tsx): window with a morning sun, a small
+// leaf print, a potted plant and the green sofa with its coral cushion, on a
+// light sage tile with a soft-gold hairline. Below 28 px the scene is too
+// busy, so the mark falls back to the sofa alone. Colours are the
+// illustration's own, so it reads as "the same picture".
 //
-// Drawn on a 64-unit grid; strokes are sized to stay crisp from 24 to 64 px.
+// Used in the signed-in header, on every auth page, and (rendered to PNG at
+// the same proportions) as the favicon and home-screen icons in public/
+// (favicon.ico, icons/*.png): if the drawing changes, re-render those and
+// bump the ?v= in app/layout.tsx and app/manifest.ts. The tile's gradient is
+// CSS, so the SVG holds no ids and any number of copies render safely.
 
-export const LOGO_TILE_GRADIENT = "linear-gradient(135deg, #8AA68E 0%, #4C6955 100%)";
-export const LOGO_GOLD = "#DCC08A";
-export const LOGO_CREAM = "#FDFBF7";
+export const LOGO_TILE_GRADIENT = "linear-gradient(135deg, #F7F9F3 0%, #D9E2CF 100%)";
+export const LOGO_TILE_SHADOW =
+  "inset 0 0 0 1px rgba(205,174,114,0.55), 0 2px 8px rgba(76,105,85,0.18), 0 6px 18px rgba(76,105,85,0.10)";
 
-const LEAF = "M0 0C2.6-3.2 6.8-3.2 9.4 0 6.8 3.2 2.6 3.2 0 0Z";
-const LEAF_SM = "M0 0C2.2-2.7 5.8-2.7 8 0 5.8 2.7 2.2 2.7 0 0Z";
-const LEAF_XS = "M0 0C2-2.4 5-2.4 7 0 5 2.4 2 2.4 0 0Z";
-
-/** Just the drawing (arch + sprig), for a tile or any sage background. */
-export function LogoGlyph({ className }: { className?: string }) {
+/** The sofa alone (small sizes, the 16 px favicon). 64-unit grid. */
+export function SofaGlyph({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" className={className} aria-hidden focusable="false">
-      <g fill="none" stroke={LOGO_GOLD} strokeWidth="2.4" strokeLinecap="round">
-        <path d="M19 49V29a13 13 0 0 1 26 0v20" />
-        <path d="M15 49h34" />
-      </g>
-      <path
-        d="M32 49c-.8-6 .2-11 3-16.5"
-        fill="none"
-        stroke={LOGO_CREAM}
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <g fill={LOGO_CREAM}>
-        <path d={LEAF} transform="translate(31.6 44.5) rotate(-155)" />
-        <path d={LEAF} transform="translate(32.1 40.5) rotate(-28)" />
-        <path d={LEAF_SM} transform="translate(33.2 36.6) rotate(-148)" />
-        <path d={LEAF_XS} transform="translate(34.6 33) rotate(-62)" />
-      </g>
+      <ellipse cx="32" cy="51" rx="23" ry="3" fill="#E8E2D5" />
+      <rect x="14" y="19" width="36" height="22" rx="8" fill="#5C7559" />
+      <rect x="17.5" y="22" width="29" height="13" rx="5.5" fill="#6E8A6B" />
+      <rect x="9" y="32" width="46" height="15" rx="7" fill="#4A6048" />
+      <circle cx="12.5" cy="37.5" r="5.5" fill="#5C7559" />
+      <circle cx="51.5" cy="37.5" r="5.5" fill="#5C7559" />
+      <rect x="21" y="27" width="13" height="10" rx="3.8" fill="#B5654A" transform="rotate(-8 27.5 32)" />
+      <rect x="14" y="46" width="3.2" height="5" rx="1.5" fill="#9A8E80" />
+      <rect x="46.8" y="46" width="3.2" height="5" rx="1.5" fill="#9A8E80" />
     </svg>
   );
 }
 
-/** The mark on its rounded sage tile. `size` in px. */
+/** The mini clinic scene: window, print, plant and sofa. 64-unit grid. */
+export function SceneGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" className={className} aria-hidden focusable="false">
+      <ellipse cx="34" cy="53" rx="25" ry="2.8" fill="#E8E2D5" />
+      {/* window with the morning sun */}
+      <rect x="7" y="9" width="19" height="16" rx="2.6" fill="#FAF7F1" stroke="#CFC6B2" strokeWidth="1.8" />
+      <path d="M16.5 10v14M8 17h17" stroke="#CFC6B2" strokeWidth="1.5" />
+      <circle cx="12.3" cy="13.6" r="2.6" fill="#E3B187" />
+      {/* leaf print */}
+      <rect x="38" y="9" width="9" height="11" rx="1.6" fill="#FAF7F1" stroke="#CFC6B2" strokeWidth="1.4" />
+      <path d="M42.5 17.5c-1.6-2.6-1.4-5 0-6.8 1.4 1.8 1.6 4.2 0 6.8z" fill="#A8B79C" />
+      {/* sofa with its cushion */}
+      <rect x="28" y="27" width="28" height="17" rx="6.5" fill="#5C7559" />
+      <rect x="30.6" y="29.4" width="22.8" height="10" rx="4.4" fill="#6E8A6B" />
+      <rect x="24.5" y="36.5" width="35" height="11.5" rx="5.5" fill="#4A6048" />
+      <circle cx="27.3" cy="40.7" r="4.2" fill="#5C7559" />
+      <circle cx="56.7" cy="40.7" r="4.2" fill="#5C7559" />
+      <rect x="32.8" y="32.6" width="10" height="7.6" rx="3" fill="#B5654A" transform="rotate(-8 37.8 36.4)" />
+      <rect x="29" y="47.4" width="2.6" height="4.4" rx="1.2" fill="#9A8E80" />
+      <rect x="52.4" y="47.4" width="2.6" height="4.4" rx="1.2" fill="#9A8E80" />
+      {/* potted plant */}
+      <path d="M9.5 43h11l-1.8 9.5h-7.4z" fill="#B5654A" />
+      <rect x="8.4" y="41.4" width="13.2" height="3" rx="1.5" fill="#9A553D" />
+      <path
+        d="M15 41.5c0-5-1.6-8.6-5-11.2M15 41.5c0-5.6 1.6-9 5.4-11.4M15 41.5c-.2-4.6 0-8.2 0-11"
+        stroke="#4A6048"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <ellipse cx="9.4" cy="29.6" rx="3" ry="4.8" fill="#5C7559" transform="rotate(-28 9.4 29.6)" />
+      <ellipse cx="20.8" cy="29.2" rx="3" ry="4.8" fill="#A8B79C" transform="rotate(26 20.8 29.2)" />
+      <ellipse cx="15" cy="27.4" rx="3" ry="5.2" fill="#6E8A6B" />
+    </svg>
+  );
+}
+
+/** The mark on its rounded light-sage tile. `size` in px. */
 export function LogoMark({
   size = 32,
   className,
@@ -54,6 +83,7 @@ export function LogoMark({
   /** Accessible name; omit when the wordmark sits right next to it. */
   label?: string;
 }) {
+  const Glyph = size < 28 ? SofaGlyph : SceneGlyph;
   return (
     <span
       role={label ? "img" : undefined}
@@ -65,11 +95,10 @@ export function LogoMark({
         height: size,
         borderRadius: size * 0.25,
         background: LOGO_TILE_GRADIENT,
-        boxShadow:
-          "inset 0 0 0 1px rgba(255,255,255,0.18), 0 2px 8px rgba(76,105,85,0.22), 0 6px 18px rgba(76,105,85,0.14)",
+        boxShadow: LOGO_TILE_SHADOW,
       }}
     >
-      <LogoGlyph className="w-full h-full" />
+      <Glyph className="w-full h-full" />
     </span>
   );
 }
