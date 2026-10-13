@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { extendSubscription } from "@/lib/subscription-server";
+import { originFromHeaders } from "@/lib/request-origin";
 import { createGrowPaymentLink } from "@/lib/billing";
 
 /** Admin-only: the operator accounts manage everyone's subscription. */
@@ -42,10 +43,8 @@ export async function startCardPaymentAction(formData: FormData) {
   });
   if (!me) return;
 
-  const h = await headers();
-  const origin =
-    process.env.NEXTAUTH_URL ??
-    `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
+  // Back to the address the payment started from.
+  const origin = originFromHeaders(await headers()) ?? "";
 
   const result = await createGrowPaymentLink({
     userId: session.user.id,

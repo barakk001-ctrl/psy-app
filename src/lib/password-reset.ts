@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { buildResetEmail } from "@/lib/reset-email";
+import { canonicalOrigin, originFromHeaders } from "@/lib/request-origin";
 
 /**
  * Issues a one-hour, single-use link to /reset-password/<token> and emails it.
@@ -24,9 +25,8 @@ export async function sendPasswordResetLink(user: {
     },
   });
 
-  const h = await headers();
-  const origin =
-    process.env.NEXTAUTH_URL ?? `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
+  // Links in emails go to the main address (APP_URL = https://mirpaa.app).
+  const origin = canonicalOrigin() ?? originFromHeaders(await headers());
   const { subject, html, text } = buildResetEmail({
     name: user.name,
     resetUrl: `${origin}/reset-password/${token}`,

@@ -3,6 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // next/image (the login page's photo): modern formats first
   images: { formats: ["image/avif", "image/webp"] },
+  // www.mirpaa.app → mirpaa.app (Railway serves both; the redirect is ours).
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.mirpaa.app" }],
+        destination: "https://mirpaa.app/:path*",
+        permanent: true,
+      },
+    ];
+  },
   experimental: {
     typedRoutes: false,
     serverActions: {

@@ -4,6 +4,10 @@ import { SESSION_MAX_AGE_SECONDS, freshSessionClock, refreshTokenClock } from "@
 
 export default {
   providers: [], // real providers added in auth.ts (Node runtime only)
+  // The request's host is trusted: Railway only routes our own domains here,
+  // and the middleware/auth route move every request onto a trusted origin
+  // first (src/lib/request-origin.ts). Explicit, not left to AUTH_TRUST_HOST.
+  trustHost: true,
   // Here, not in auth.ts, so the middleware re-issues the cookie with the
   // same lifetime. Every request slides it; the real idle / 12-hour limits
   // are the token's own clock, checked in the jwt callback below.
