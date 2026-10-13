@@ -139,20 +139,29 @@ export async function createClientAction(
   }
   const data = parsed.data;
 
-  const created = await db.client.create({
-    data: {
-      userId,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      idNumber: data.idNumber || null,
-      email: data.email || null,
-      phone: data.phone || null,
-      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-      address: data.address || null,
-      defaultRate: data.defaultRate ?? null,
-      generalNotes: data.generalNotes || null,
-      treatmentType: data.treatmentType,
-    },
+  // Opened from the waiting list ("הפיכה ללקוח"): the entry leaves the list
+  // in the same transaction, so it goes only once the client really exists.
+  const waitlistId = String(formData.get("waitlistId") ?? "");
+  const created = await db.$transaction(async (tx) => {
+    const client = await tx.client.create({
+      data: {
+        userId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        idNumber: data.idNumber || null,
+        email: data.email || null,
+        phone: data.phone || null,
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+        address: data.address || null,
+        defaultRate: data.defaultRate ?? null,
+        generalNotes: data.generalNotes || null,
+        treatmentType: data.treatmentType,
+      },
+    });
+    if (waitlistId) {
+      await tx.waitlistEntry.deleteMany({ where: { id: waitlistId, userId } });
+    }
+    return client;
   });
 
   revalidatePath("/clients");

@@ -35,11 +35,14 @@ export function ClientForm({
   defaults,
   nextStart,
   meetingTypes,
+  waitlistId,
 }: {
   initial?: ClientFormInitial;
-  defaults?: { firstName?: string; lastName?: string; phone?: string };
+  defaults?: { firstName?: string; lastName?: string; phone?: string; generalNotes?: string };
   nextStart?: string;
   meetingTypes: string[];
+  /** Opened from the waiting list — the entry is removed once the client is saved */
+  waitlistId?: string;
 }) {
   const typeOptions =
     initial?.treatmentType && !meetingTypes.includes(initial.treatmentType)
@@ -85,6 +88,7 @@ export function ClientForm({
       noValidate
     >
       {isEdit && <input type="hidden" name="id" value={initial!.id} />}
+      {!isEdit && waitlistId && <input type="hidden" name="waitlistId" value={waitlistId} />}
       {!isEdit && nextStart && (
         <input type="hidden" name="nextStart" value={nextStart} />
       )}
@@ -247,7 +251,7 @@ export function ClientForm({
               id="generalNotes"
               name="generalNotes"
               rows={3}
-              defaultValue={initial?.generalNotes ?? ""}
+              defaultValue={initial?.generalNotes ?? defaults?.generalNotes ?? ""}
               placeholder="הערות שאינן רפואיות — העדפות, אופן יצירת קשר וכו׳"
             />
             <p className="text-xs text-ink-subtle mt-1">

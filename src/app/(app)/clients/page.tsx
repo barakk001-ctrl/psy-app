@@ -11,6 +11,9 @@ import { DeleteClientButton, TrashRowActions } from "@/components/clients/client
 import { TRASH_DAYS, daysLeftText, trashDaysLeft } from "@/lib/client-trash";
 import { purgeExpiredClients } from "@/lib/client-trash-data";
 import { formatDate } from "@/lib/format";
+import { decryptSecret } from "@/lib/crypto";
+import { waitingText } from "@/lib/waitlist";
+import { WaitlistPanel, type WaitlistRow } from "@/components/clients/waitlist-panel";
 
 export default async function ClientsPage({
   searchParams,
@@ -22,9 +25,11 @@ export default async function ClientsPage({
   const view =
     params.view === "trash"
       ? "TRASH"
-      : params.view === "inactive" || params.view === "archived"
-        ? "INACTIVE"
-        : "ACTIVE";
+      : params.view === "waitlist"
+        ? "WAITLIST"
+        : params.view === "inactive" || params.view === "archived"
+          ? "INACTIVE"
+          : "ACTIVE";
 
   const session = await auth();
   const userId = session!.user.id;
@@ -35,8 +40,8 @@ export default async function ClientsPage({
   if (view === "TRASH") await purgeExpiredClients(now, userId);
 
   // `db` leaves clients in the recycle bin out; the bin itself reads `dbAll`
-  const [clients, activeCount, inactiveCount, trashCount] = await Promise.all([
-    view === "TRASH"
+  const [clients, activeCount, inactiveCount, trashCount, waitlistCount] = await Promise.all([
+    view === "TRASH" || view === "WAITLIST"
       ? Promise.resolve([])
       : db.client.findMany({
           where: { userId, status: view },
@@ -46,6 +51,7 @@ export default async function ClientsPage({
     db.client.count({ where: { userId, status: "ACTIVE" } }),
     db.client.count({ where: { userId, status: "INACTIVE" } }),
     dbAll.client.count({ where: { userId, deletedAt: { not: null } } }),
+    db.waitlistEntry.count({ where: { userId } }),
   ]);
   const trashed =
     view === "TRASH"
@@ -55,10 +61,37 @@ export default async function ClientsPage({
           select: { id: true, firstName: true, lastName: true, deletedAt: true },
         })
       : [];
+  // Waiting longest first
+  const waitlist: WaitlistRow[] =
+    view === "WAITLIST"
+      ? (
+          await db.waitlistEntry.findMany({
+            where: { userId },
+            orderBy: { createdAt: "asc" },
+            select: { id: true, fullName: true, phone: true, notesCiphertext: true, createdAt: true },
+          })
+        ).map((e) => {
+          let notes = "";
+          try {
+            notes = e.notesCiphertext ? decryptSecret(e.notesCiphertext) : "";
+          } catch {
+            notes = "";
+          }
+          return {
+            id: e.id,
+            fullName: e.fullName,
+            phone: e.phone,
+            notes,
+            addedOn: formatDate(e.createdAt),
+            waiting: waitingText(e.createdAt, now),
+          };
+        })
+      : [];
 
   const VIEWS = [
     { key: "ACTIVE", href: "/clients", label: `פעילים (${activeCount})` },
     { key: "INACTIVE", href: "/clients?view=inactive", label: `לא פעילים (${inactiveCount})` },
+    { key: "WAITLIST", href: "/clients?view=waitlist", label: `רשימת המתנה (${waitlistCount})` },
     ...(trashCount > 0 || view === "TRASH"
       ? [{ key: "TRASH", href: "/clients?view=trash", label: `סל מחזור (${trashCount})` }]
       : []),
@@ -82,7 +115,8 @@ export default async function ClientsPage({
       </header>
 
       {/* View filter */}
-      {activeCount + inactiveCount + trashCount > 0 && (
+      {/* Always shown: the waiting list is reachable even before the first client */}
+      {(
         <div className="inline-flex bg-cream-100 border border-cream-300 rounded-full p-1 flex-wrap">
           {VIEWS.map((v) => (
             <Link
@@ -101,7 +135,9 @@ export default async function ClientsPage({
         </div>
       )}
 
-      {view === "TRASH" ? (
+      {view === "WAITLIST" ? (
+        <WaitlistPanel entries={waitlist} />
+      ) : view === "TRASH" ? (
         <Card>
           <p className="px-5 pt-4 pb-3 text-sm text-ink-muted leading-relaxed border-b border-cream-200">
             תיקים שנמחקו נשמרים כאן {TRASH_DAYS} יום — מוסתרים מכל מקום ובלי תזכורות — ואז

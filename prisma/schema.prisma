@@ -110,6 +110,7 @@ model User {
   sessionFiles     SessionFile[]
   clientDocuments  ClientDocument[]
   supportRequests  SupportRequest[]
+  waitlistEntries  WaitlistEntry[]
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -157,6 +158,26 @@ model Client {
   @@index([userId, lastName])
   @@index([userId, status])
   @@index([deletedAt])
+}
+
+// Waiting list ("רשימת המתנה" tab on the clients page): people who asked for
+// therapy and are waiting for a slot — not clients yet. "הפיכה ללקוח" opens
+// the new-client form prefilled; the entry is deleted in the same transaction
+// that creates the client. Notes are encrypted (packed AES-256-GCM,
+// encryptSecret) since they may hold the reason for the referral.
+model WaitlistEntry {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName        String
+  phone           String?
+  notesCiphertext String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, createdAt])
 }
 
 // User-defined meeting types (סוגי מפגשים) managed in Settings
