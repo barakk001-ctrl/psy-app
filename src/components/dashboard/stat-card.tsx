@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import { fitCqi, splitZeroDecimals } from "@/lib/stat-value";
+import { desktopFitDivisor, fitCqi, splitZeroDecimals } from "@/lib/stat-value";
 
 export function StatCard({
   label,
@@ -16,10 +16,14 @@ export function StatCard({
   const text = String(value);
   const split = splitZeroDecimals(text);
   // Phones show a whole-shekel amount without its ".00", so it gets its own,
-  // usually larger, fit. See src/lib/stat-value.ts.
+  // usually larger, fit. On desktop the value may also use the start-side
+  // padding up to the accent bar (1.25rem padding − 0.25rem bar − 0.25rem gap
+  // = 0.75rem), as it always has; it shrinks only past that. See
+  // src/lib/stat-value.ts.
   const fitStyle = {
     "--stat-fit": `${fitCqi(split ? split.whole + split.suffix : text)}cqi`,
     "--stat-fit-sm": `${fitCqi(text)}cqi`,
+    "--stat-fit-lg": desktopFitDivisor(text),
   } as CSSProperties;
 
   return (
@@ -34,7 +38,7 @@ export function StatCard({
       <div className="text-xs uppercase tracking-wider text-ink-muted">{label}</div>
       <div
         style={fitStyle}
-        className="font-display text-ink mt-2 leading-none whitespace-nowrap text-[length:min(1.875rem,var(--stat-fit))] sm:text-[length:min(1.875rem,var(--stat-fit-sm))] lg:text-3xl lg:leading-none"
+        className="font-display text-ink mt-2 leading-[1.875rem] whitespace-nowrap text-[length:min(1.875rem,var(--stat-fit))] sm:text-[length:min(1.875rem,var(--stat-fit-sm))] lg:text-[length:min(1.875rem,calc((100cqi_+_0.75rem)/var(--stat-fit-lg)))]"
       >
         {split ? (
           <>

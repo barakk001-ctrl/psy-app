@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatCurrency } from "../format";
-import { estimateTextEm, fitCqi, splitZeroDecimals } from "../stat-value";
+import { desktopFitDivisor, estimateTextEm, fitCqi, splitZeroDecimals } from "../stat-value";
 
 describe("splitZeroDecimals", () => {
   it("splits a whole-shekel amount into whole part, .00 and the currency", () => {
@@ -32,7 +32,7 @@ describe("splitZeroDecimals", () => {
 
 describe("fitCqi", () => {
   it("ignores the zero-width bidi marks", () => {
-    expect(estimateTextEm("‏12‏")).toBe(estimateTextEm("12"));
+    expect(estimateTextEm("\u200f12\u200f")).toBe(estimateTextEm("12"));
   });
 
   it("gives longer amounts a smaller size", () => {
@@ -44,5 +44,23 @@ describe("fitCqi", () => {
     // size in cqi × width in em must stay under 100% of the card
     const text = formatCurrency(123450.5);
     expect(fitCqi(text) * estimateTextEm(text)).toBeLessThan(100);
+  });
+});
+
+describe("desktopFitDivisor", () => {
+  it("is a little more than the estimated width, so fitting values keep 30px", () => {
+    const text = formatCurrency(22900);
+    expect(desktopFitDivisor(text)).toBeGreaterThan(estimateTextEm(text));
+    expect(desktopFitDivisor(text)).toBeLessThan(estimateTextEm(text) * 1.02);
+  });
+
+  it("grows with the amount", () => {
+    expect(desktopFitDivisor(formatCurrency(123450))).toBeGreaterThan(
+      desktopFitDivisor(formatCurrency(22900)),
+    );
+  });
+
+  it("never divides by zero", () => {
+    expect(desktopFitDivisor("")).toBeGreaterThan(0);
   });
 });
