@@ -535,7 +535,7 @@ export function DocumentForm({
           </CardHeader>
           <CardContent className="space-y-4">
             {clientSessions.length > 0 ? (
-              <ul className="divide-y divide-cream-200 -mx-5 border-y border-cream-200">
+              <ul className="divide-y divide-cream-200 -mx-5 -mt-5 border-b border-cream-200">
                 {clientSessions.map((s) => (
                   <li key={s.id}>
                     <label className="flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-cream-100/60">
