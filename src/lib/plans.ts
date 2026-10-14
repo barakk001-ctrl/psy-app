@@ -69,6 +69,7 @@ export const PLAN_FEATURES: string[] = [
 
 /** The short rules shown under the plans (match /terms sections 4–7). */
 export const PLAN_FACTS: string[] = [
+  "המחירים כוללים מע״מ.",
   `${TRIAL_DAYS} יום ניסיון חינם מההרשמה — בלי כרטיס אשראי.`,
   "המנוי לא מתחדש אוטומטית: בסוף התקופה מחדשים רק אם רוצים.",
   "אם המנוי מסתיים לא נחסמים: כל המידע נשאר זמין לצפייה ולייצוא (מצב קריאה בלבד).",
@@ -108,7 +109,7 @@ export function planRequestMessage(
   return {
     subject: `בקשה לרכישת ${plan.title}`,
     message: [
-      `אשמח לרכוש ${plan.title} — ₪${plan.price} ${plan.per}.`,
+      `אשמח לרכוש ${plan.title} — ₪${plan.price} ${plan.per} (כולל מע״מ).`,
       `מצב החשבון כרגע: ${status}.`,
       "נשלח מעמוד ״מנוי ומסלולים״.",
     ].join("\n"),

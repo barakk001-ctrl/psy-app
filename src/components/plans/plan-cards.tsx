@@ -49,7 +49,7 @@ export function PlanCards({
               <span className="text-sm text-ink-muted">{p.per}</span>
               <span className="text-sm text-ink-subtle line-through">₪{p.regularPrice}</span>
             </div>
-            <p className="text-xs font-medium text-sage-700 mt-1">מחיר היכרות</p>
+            <p className="text-xs font-medium text-sage-700 mt-1">מחיר היכרות · כולל מע״מ</p>
             <p className="text-sm text-ink-soft mt-3 leading-relaxed flex-1">{p.note}</p>
             {renderAction && <div className="mt-4">{renderAction(p)}</div>}
           </section>
