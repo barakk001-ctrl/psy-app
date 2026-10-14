@@ -10,6 +10,30 @@ import {
   testMorningConnection,
 } from "@/lib/morning";
 import type { DocumentDraft } from "@/lib/billing-docs";
+import { credentialsFromRow } from "@/lib/morning-credentials";
+
+describe("credentialsFromRow (the credential store)", () => {
+  const row = { morningApiKeyId: "kid", morningApiSecret: "packed", morningSandbox: false, morningKeySource: "MANUAL" };
+  it("decrypts stored keys and keeps their source", () => {
+    expect(credentialsFromRow(row, (p) => `plain:${p}`)).toEqual({
+      keyId: "kid",
+      secret: "plain:packed",
+      sandbox: false,
+      source: "MANUAL",
+    });
+    expect(credentialsFromRow({ ...row, morningKeySource: "PARTNER" }, (p) => p)?.source).toBe("PARTNER");
+    expect(credentialsFromRow({ ...row, morningKeySource: null }, (p) => p)?.source).toBe("MANUAL");
+  });
+  it("is null when not connected or the secret can't be read", () => {
+    expect(credentialsFromRow(null)).toBeNull();
+    expect(credentialsFromRow({ ...row, morningApiSecret: null })).toBeNull();
+    expect(
+      credentialsFromRow(row, () => {
+        throw new Error("bad key");
+      }),
+    ).toBeNull();
+  });
+});
 
 
 const draft: DocumentDraft = {
@@ -177,7 +201,7 @@ describe("buildMorningDocumentPayload", () => {
 });
 
 describe("morning HTTP (mocked — no real calls)", () => {
-  const creds = { keyId: "key-id", secret: "s3cret", sandbox: true };
+  const creds = { keyId: "key-id", secret: "s3cret", sandbox: true, source: "MANUAL" as const };
   let calls: { url: string; init: RequestInit }[] = [];
 
   function mockFetch(handler: (url: string, init: RequestInit) => Response | Promise<Response>) {
@@ -261,6 +285,14 @@ describe("morning HTTP (mocked — no real calls)", () => {
     });
     const r = await createMorningDocument("user-4", creds, {});
     expect(r).toMatchObject({ ok: false, uncertain: true });
+  });
+
+  it("partner-delivered keys don't call morning until that flow is built", async () => {
+    mockFetch(() => json({ accessToken: "should-not-be-used" }));
+    const r = await createMorningDocument("user-6", { ...creds, source: "PARTNER" }, {});
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("תוכנית השותפים");
+    expect(calls).toHaveLength(0);
   });
 
   it("explains a failed connection test", async () => {

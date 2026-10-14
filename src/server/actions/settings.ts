@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { encryptSecret } from "@/lib/crypto";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { getMorningCredentials, testMorningConnection } from "@/lib/morning";
+import { clearMorningCredentials, saveMorningCredentials } from "@/lib/morning-credentials";
 import bcrypt from "bcryptjs";
 import { rateLimit } from "@/lib/rate-limit";
 import { logAudit } from "@/lib/audit";
@@ -351,7 +352,8 @@ export async function saveMorningSettingsAction(
   }
 
   // Verify the credentials against Morning before saving
-  const test = await testMorningConnection(userId, { keyId, secret, sandbox });
+  const creds = { keyId, secret, sandbox, source: "MANUAL" as const };
+  const test = await testMorningConnection(userId, creds);
   if (!test.ok) {
     const envHint = test.error.includes("401")
       ? sandbox
@@ -363,15 +365,7 @@ export async function saveMorningSettingsAction(
     };
   }
 
-  await db.user.update({
-    where: { id: userId },
-    data: {
-      morningApiKeyId: keyId,
-      morningApiSecret: encryptSecret(secret),
-      morningSandbox: sandbox,
-      morningDocType: docType,
-    },
-  });
+  await saveMorningCredentials(userId, creds, { morningDocType: docType });
 
   revalidatePath("/settings");
   return { saved: true, connectionOk: true };
@@ -379,10 +373,7 @@ export async function saveMorningSettingsAction(
 
 export async function disconnectMorningAction() {
   const userId = await requireUserId();
-  await db.user.update({
-    where: { id: userId },
-    data: { morningApiKeyId: null, morningApiSecret: null, morningSandbox: true },
-  });
+  await clearMorningCredentials(userId);
   revalidatePath("/settings");
 }
 

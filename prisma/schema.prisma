@@ -98,6 +98,11 @@ model User {
   morningApiSecret String?  // packed AES-256-GCM (iv:tag:ciphertext, base64)
   morningSandbox   Boolean  @default(true)
   morningDocType   Int      @default(400) // 400 = קבלה, 320 = חשבונית מס-קבלה
+  // Where the keys came from (src/lib/morning-credentials.ts): MANUAL = pasted
+  // in Settings; PARTNER = delivered by morning's partner program (not built
+  // yet). The document code never looks at this — only the credential store
+  // and the token strategy do.
+  morningKeySource String   @default("MANUAL")
 
   clients         Client[]
   sessions        Session[]

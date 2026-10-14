@@ -7,8 +7,7 @@
 // the Tax Authority's rules — which is what makes them legal tax documents.
 // The app itself never issues one (see src/lib/billing-docs.ts).
 
-import { db } from "@/lib/db";
-import { decryptSecret } from "@/lib/crypto";
+import type { MorningCredentials, MorningKeySource } from "@/lib/morning-credentials";
 import {
   DOC_KINDS,
   agorotToNumber,
@@ -72,11 +71,10 @@ const DEAL_TYPE: Record<DealType, number> = { REGULAR: 1, INSTALLMENTS: 2, CREDI
 const ITEM_VAT_ADDED = 0;
 const ITEM_VAT_INCLUDED = 1;
 
-export type MorningCredentials = {
-  keyId: string;
-  secret: string;
-  sandbox: boolean;
-};
+// Credentials come from one place (manual paste today, morning's partner
+// program later) — see morning-credentials.ts. Re-exported for callers.
+export type { MorningCredentials, MorningKeySource } from "@/lib/morning-credentials";
+export { getMorningCredentials } from "@/lib/morning-credentials";
 
 export type MorningResult<T> =
   | { ok: true; data: T }
@@ -172,22 +170,42 @@ async function requestLegacyToken(
   };
 }
 
+type TokenResult = MorningResult<{ token: string; expiresAt: number }>;
+
+/**
+ * How a token is obtained, per credential source. Adding the partner
+ * program means filling in PARTNER here (and a way to receive its keys into
+ * morning-credentials.ts); nothing that creates documents changes.
+ */
+export const TOKEN_STRATEGIES: Record<MorningKeySource, (creds: MorningCredentials) => Promise<TokenResult>> = {
+  // Keys pasted in Settings: OAuth client credentials, then the older endpoint
+  MANUAL: async (creds) => {
+    const oauth = await requestOAuthToken(creds);
+    if (oauth.ok) return oauth;
+    const legacy = await requestLegacyToken(creds).catch(
+      (err): TokenResult => ({ ok: false, error: err instanceof Error ? err.message : String(err) }),
+    );
+    return legacy.ok ? legacy : oauth;
+  },
+  // Keys delivered by morning's partner program. Not built: needs the
+  // partner authorization code, the partner docs for how a delivered key is
+  // exchanged (the public spec says the usual /oauth/token; partner calls
+  // themselves use Basic auth with the partner's id:secret), and a callback
+  // URL registered with morning to receive {id, email, key{id, secret}}
+  // (signed with X-Data-Signature, HMAC-SHA256 of the partner code).
+  PARTNER: async () => ({
+    ok: false,
+    error: "חיבור דרך תוכנית השותפים של morning עדיין לא זמין",
+  }),
+};
+
 async function getToken(owner: string, creds: MorningCredentials): Promise<MorningResult<string>> {
   const key = cacheKeyFor(owner, creds);
   const cached = tokenCache.get(key);
   if (cached && cached.expiresAt > Date.now() + 60_000) return { ok: true, data: cached.token };
 
   try {
-    let result = await requestOAuthToken(creds);
-    if (!result.ok) {
-      const legacy = await requestLegacyToken(creds).catch(
-        (err): MorningResult<{ token: string; expiresAt: number }> => ({
-          ok: false,
-          error: err instanceof Error ? err.message : String(err),
-        }),
-      );
-      if (legacy.ok) result = legacy;
-    }
+    const result = await TOKEN_STRATEGIES[creds.source ?? "MANUAL"](creds);
     if (!result.ok) return { ok: false, error: `Token request failed ${result.error}` };
     tokenCache.set(key, result.data);
     return { ok: true, data: result.data.token };
@@ -229,24 +247,6 @@ export async function morningRequest<T>(
     return { ok: true, data: (await res.json()) as T };
   } catch {
     return { ok: false, uncertain: true, error: "unreadable response" };
-  }
-}
-
-/** Loads and decrypts the user's morning credentials; null when not connected. */
-export async function getMorningCredentials(userId: string): Promise<MorningCredentials | null> {
-  const user = await db.user.findUnique({
-    where: { id: userId },
-    select: { morningApiKeyId: true, morningApiSecret: true, morningSandbox: true },
-  });
-  if (!user?.morningApiKeyId || !user.morningApiSecret) return null;
-  try {
-    return {
-      keyId: user.morningApiKeyId,
-      secret: decryptSecret(user.morningApiSecret),
-      sandbox: user.morningSandbox,
-    };
-  } catch {
-    return null;
   }
 }
 
