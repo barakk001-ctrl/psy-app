@@ -21,7 +21,7 @@ export default async function PricingPage() {
 
   return (
     <div className="min-h-screen bg-cream-50">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <header className="flex items-center justify-between gap-4 mb-10">
           <Link href={signedIn ? "/dashboard" : "/login"} className="flex items-center gap-3">
             <LogoMark size={40} />
@@ -38,12 +38,20 @@ export default async function PricingPage() {
         <div className="text-center mb-8">
           <h1 className="font-display text-3xl sm:text-4xl text-ink">מסלולים ומחירים</h1>
           <p className="text-ink-muted mt-3 leading-relaxed max-w-xl mx-auto text-balance">
-            מתחילים ב-{TRIAL_DAYS} יום ניסיון חינם, בלי כרטיס אשראי. בסוף הניסיון בוחרים מנוי
-            חודשי או שנתי — ואפשר לרכוש אותו מתוך המערכת, בעמוד ״מנוי ומסלולים״.
+            מתחילים במנוי היכרות חינם, וממשיכים במסלול שמתאים לך. הרכישה נעשית מתוך המערכת,
+            בעמוד ״מנוי ומסלולים״.
           </p>
         </div>
 
-        <PlanCards />
+        <PlanCards
+          trial={{
+            action: signedIn ? null : (
+              <Link href="/register" className={`${CTA_PRIMARY} w-full`}>
+                התחלת {TRIAL_DAYS} יום חינם
+              </Link>
+            ),
+          }}
+        />
 
         <div className="mt-8 rounded-2xl border border-sage-100 bg-sage-50/60 px-5 py-5 text-center">
           {signedIn ? (

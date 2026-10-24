@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PlanCards } from "@/components/plans/plan-cards";
 import { PlanRequestButton } from "@/components/plans/plan-request-button";
 import { subscriptionStateFor } from "@/lib/subscription-server";
-import { subscriptionHeadline } from "@/lib/plans";
+import { subscriptionHeadline, trialDaysLeftText } from "@/lib/plans";
 import { billingConfigured } from "@/lib/billing";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,7 @@ export default async function SubscriptionPage({
   const renewing = state.status === "active";
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       <header>
         <h1 className="font-display text-3xl text-ink">מנוי ומסלולים</h1>
         <p className="text-ink-muted text-sm mt-1">
@@ -84,6 +84,13 @@ export default async function SubscriptionPage({
 
       <PlanCards
         currentPlan={state.status === "active" ? state.plan : null}
+        // The trial card only while the account is in it; after the trial
+        // (paid, expired) or for exempt accounts it is not a choice, so it's left out.
+        trial={
+          state.status === "trial"
+            ? { current: true, status: trialDaysLeftText(state.daysLeft) }
+            : null
+        }
         renderAction={
           canBuy
             ? (p) =>

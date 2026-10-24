@@ -47,6 +47,26 @@ export const PLAN_OPTIONS: PlanOption[] = [
   },
 ];
 
+/**
+ * The free trial ("מנוי היכרות"), shown as the first card beside the paid
+ * plans. It is not something you buy — every account starts in it on
+ * registration — so it is not a PlanOption and has no purchase button.
+ * The rules it states are the ones in PLAN_FACTS / /terms; don't add new ones.
+ */
+export const TRIAL_PLAN = {
+  title: "מנוי היכרות",
+  price: 0,
+  per: `ל-${TRIAL_DAYS} יום`,
+  subtitle: "ללא תשלום · בלי כרטיס אשראי",
+  note: `כל המערכת פתוחה ל-${TRIAL_DAYS} יום. בסוף בוחרים מנוי חודשי או שנתי — אין חיוב אוטומטי, ובלי מנוי המידע נשאר זמין לצפייה.`,
+} as const;
+
+/** Days left, on the trial card of an account that is in its trial. */
+export function trialDaysLeftText(daysLeft: number | null): string {
+  const n = daysLeft ?? 0;
+  return n <= 1 ? "נותר יום אחד" : `נותרו ${n} ימים`;
+}
+
 export function planById(id: string | null | undefined): PlanOption | undefined {
   return PLAN_OPTIONS.find((p) => p.id === id);
 }
