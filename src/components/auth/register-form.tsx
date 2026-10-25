@@ -104,7 +104,9 @@ export function RegisterForm({
             <Link
               href="/agreement"
               target="_blank"
-              className="text-sage-600 hover:text-sage-700 font-medium"
+              // Bold + underlined so it reads as a link; the padding (offset by
+              // the negative margin) gives a finger-sized tap target on phones
+              className="inline-block -my-2.5 py-2.5 px-0.5 font-bold text-sage-700 underline underline-offset-4 decoration-2 decoration-sage-500 hover:text-sage-800"
             >
               הסכם החזקת המידע
             </Link>{" "}

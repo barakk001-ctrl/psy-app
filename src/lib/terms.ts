@@ -3,14 +3,14 @@
 // Clinical information is governed by the data-holding agreement
 // (src/lib/agreement.ts), which prevails on that subject.
 
-export const TERMS_VERSION = "draft-2026-09";
+export const TERMS_VERSION = "draft-2026-10";
 
 export type TermsSection = { title: string; items: string[] };
 
 export const TERMS_TITLE = "תנאי שימוש";
 export const TERMS_SUBTITLE =
   "תנאים אלה חלים על השימוש במערכת לניהול קליניקה ״מרפאה אישית״ (״המערכת״). ההרשמה למערכת והשימוש בה מהווים הסכמה לתנאים. לגבי המידע שהמשתמש/ת מזין/ה למערכת — פרטי מטופלים ורשומות טיפוליות — חל גם הסכם החזקה ועיבוד של מידע, והוא גובר בכל הנוגע למידע זה.";
-export const TERMS_DRAFT_NOTE = "נוסח טיוטה (גרסה draft-2026-09) — כפוף לבדיקת עורך/ת דין.";
+export const TERMS_DRAFT_NOTE = "נוסח טיוטה (גרסה draft-2026-10) — כפוף לבדיקת עורך/ת דין.";
 
 export const TERMS_SECTIONS: TermsSection[] = [
   {
@@ -41,6 +41,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
     title: "4. תקופת ניסיון",
     items: [
       "משתמש/ת חדש/ה זכאי/ת לתקופת ניסיון של 30 יום מיום ההרשמה, ללא חיוב וללא צורך במסירת פרטי אשראי. תקופת ניסיון אחת לכל אדם או עסק.",
+      "בתקופת הניסיון ניתן לקבוע פגישות ביומן עד 30 יום קדימה (טווח מתגלגל). לאחר רכישת מנוי ההגבלה מוסרת.",
       "בתום תקופת הניסיון, ללא רכישת מנוי, החשבון עובר למצב קריאה בלבד כמפורט בסעיף 7.",
     ],
   },

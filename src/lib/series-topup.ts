@@ -1,6 +1,11 @@
 // Keeps open-ended (קבוע) recurring series rolling: when a series has less
 // than ~2 months of future instances left, more are appended automatically.
-// Called from the reminders cron.
+// Called from the hourly maintenance (and the reminders cron).
+//
+// What an account gets depends on its subscription (scheduling-window.ts):
+// paid and exempt accounts as usual; a free-trial account only up to its
+// rolling 30-day window (so its series grow a day at a time, and normally once
+// it subscribes); an expired account nothing at all until it is renewed.
 
 import { db } from "@/lib/db";
 import {
@@ -10,6 +15,8 @@ import {
   shouldTopUpSeries,
 } from "@/lib/recurrence";
 import { scheduleSessionReminders } from "@/lib/reminders";
+import { schedulingWindow, slotsInWindow, topUpPolicy } from "@/lib/scheduling-window";
+import { SUBSCRIPTION_FIELD_SELECT, getSubscriptionState } from "@/lib/subscription";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
 
 const EXTEND_BY = 18; // instances appended per extension
@@ -36,12 +43,17 @@ export async function topUpOpenEndedSeries(): Promise<number> {
       rate: true,
       treatmentType: true,
       client: { select: { status: true } },
+      user: { select: SUBSCRIPTION_FIELD_SELECT },
     },
   });
 
   let created = 0;
   for (const p of parents) {
     if (!isOpenEndedRule(p.recurrenceRule)) continue;
+
+    const sub = getSubscriptionState(p.user, now);
+    const policy = topUpPolicy(sub);
+    if (policy === "none") continue;
 
     const seriesFilter = { OR: [{ id: p.id }, { parentSessionId: p.id }] };
 
@@ -72,12 +84,13 @@ export async function topUpOpenEndedSeries(): Promise<number> {
     const durationMs = p.endsAt.getTime() - p.startsAt.getTime();
 
     // Continue the cadence from the last instance, wall-clock stable
-    const slots = seriesSlots(
+    const next = seriesSlots(
       toZonedDateTimeLocal(last.startsAt),
       durationMs,
       interval,
       EXTEND_BY + 1,
     ).slice(1);
+    const slots = policy === "window" ? slotsInWindow(next, schedulingWindow(sub, now)) : next;
 
     for (const slot of slots) {
       const s = await db.session.create({

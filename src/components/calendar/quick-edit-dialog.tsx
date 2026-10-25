@@ -14,6 +14,7 @@ import { ApplyScopeChoice } from "@/components/sessions/apply-scope-choice";
 import { DeleteSessionChoice } from "@/components/sessions/delete-session-choice";
 import { CancelScopeChoice } from "@/components/sessions/cancel-scope-choice";
 import { followingTotal } from "@/lib/cancel-following";
+import { pickerMax, type WindowUi } from "@/lib/scheduling-window";
 import {
   quickEditSessionAction,
   sessionScopeInfoAction,
@@ -37,6 +38,7 @@ export function QuickEditDialog({
   clients,
   meetingTypes,
   defaultMinutes = DEFAULT_SESSION_MINUTES,
+  scheduleWindow,
   onClose,
 }: {
   data: QuickEditData;
@@ -44,6 +46,8 @@ export function QuickEditDialog({
   meetingTypes: string[];
   /** The practitioner's default meeting length, from settings. */
   defaultMinutes?: number;
+  /** Free trial: how far ahead meetings may be booked (null = no limit). */
+  scheduleWindow?: WindowUi | null;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -201,6 +205,7 @@ export function QuickEditDialog({
                 name="date"
                 type="date"
                 defaultValue={data.date}
+                max={pickerMax(scheduleWindow, "date", data.date)}
                 onChange={(e) => setDate(e.target.value)}
                 required
               />

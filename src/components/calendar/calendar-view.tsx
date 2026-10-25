@@ -11,6 +11,7 @@ import type { EventInput } from "@fullcalendar/core";
 import { rescheduleSessionAction } from "@/server/actions/sessions";
 import { setShowHolidaysAction } from "@/server/actions/settings";
 import type { HolidayMap } from "@/lib/holidays";
+import type { WindowUi } from "@/lib/scheduling-window";
 import {
   QuickEditDialog,
   type QuickEditData,
@@ -26,6 +27,8 @@ type Props = {
   holidays?: HolidayMap;
   showHolidays?: boolean;
   defaultMinutes?: number;
+  /** Free trial: how far ahead meetings may be booked (null = no limit). */
+  scheduleWindow?: WindowUi | null;
 };
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -59,6 +62,7 @@ export function CalendarView({
   holidays = {},
   showHolidays: showHolidaysInitial = false,
   defaultMinutes,
+  scheduleWindow,
 }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -283,6 +287,7 @@ export function CalendarView({
           clients={clients}
           meetingTypes={meetingTypes}
           defaultMinutes={defaultMinutes}
+          scheduleWindow={scheduleWindow}
           onClose={() => setQuickEdit(null)}
         />
       )}

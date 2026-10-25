@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { schedulingWindow, windowUi, type WindowUi } from "@/lib/scheduling-window";
 import {
   SUBSCRIPTION_FIELD_SELECT,
   getSubscriptionState,
@@ -44,4 +45,9 @@ export async function extendSubscription(
     data: { subscriptionPlan: plan, subscriptionEndsAt: next },
   });
   return next;
+}
+
+/** The trial's scheduling limit for the date pickers, or null (no limit). */
+export async function schedulingWindowUiFor(userId: string): Promise<WindowUi | null> {
+  return windowUi(schedulingWindow(await subscriptionStateFor(userId)));
 }

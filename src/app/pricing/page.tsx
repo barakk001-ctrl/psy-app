@@ -88,6 +88,10 @@ export default async function PricingPage() {
             <Link href="/privacy" className="underline underline-offset-2">
               מדיניות פרטיות
             </Link>
+            {" · "}
+            <Link href="/agreement" className="underline underline-offset-2">
+              הסכם החזקת מידע
+            </Link>
           </p>
           <p>
             © כל הזכויות שמורות למרפאה אישית <span dir="ltr">{copyrightYears()}</span>

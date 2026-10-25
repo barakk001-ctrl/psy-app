@@ -4,9 +4,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { subscriptionReadOnly } from "@/lib/subscription-server";
+import { subscriptionStateFor } from "@/lib/subscription-server";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { DEFAULT_SESSION_MINUTES } from "@/lib/session-duration";
+import {
+  FOLLOWER_GRACE_DAYS,
+  beyondWindow,
+  followersWindowError,
+  schedulingWindow,
+  seriesWindowError,
+  slotsInWindow,
+  windowError,
+} from "@/lib/scheduling-window";
 
 import {
   cancelSessionReminders,
@@ -255,7 +264,10 @@ export async function createSessionAction(
   formData: FormData,
 ): Promise<SessionFormState> {
   const userId = await requireUserId();
-  if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
+  const sub = await subscriptionStateFor(userId);
+  if (!sub.writable) return { error: READ_ONLY_ERROR };
+  // Free trial: meetings only up to TRIAL_SCHEDULING_DAYS ahead
+  const win = schedulingWindow(sub);
 
   // The form always sends a duration; this covers paths that do not, and it
   // should follow the practitioner's setting rather than a number frozen here.
@@ -299,7 +311,20 @@ export async function createSessionAction(
   const count =
     data.recurrence === "NONE" ? 1 : openEnded ? OPEN_ENDED_BATCH : data.occurrences!;
   // data.startsAt is a datetime-local string — interpreted as clinic wall-clock
-  const slots = seriesSlots(data.startsAt, durationMs, intervalWeeks, count);
+  let slots = seriesSlots(data.startsAt, durationMs, intervalWeeks, count);
+
+  if (win) {
+    if (beyondWindow(slots[0].startsAt, win)) {
+      return { error: windowError(win), fieldErrors: { startsAt: [windowError(win)] } };
+    }
+    const inWindow = slotsInWindow(slots, win);
+    if (inWindow.length < slots.length) {
+      // A fixed-length series would lose meetings: say so instead. An
+      // open-ended one is booked inside the window and grows with it (top-up).
+      if (!openEnded) return { error: seriesWindowError(win, inWindow.length) };
+      slots = inWindow;
+    }
+  }
 
   if (!data.allowOverlap) {
     const overlaps = await findOverlaps(userId, slots);
@@ -411,6 +436,14 @@ export async function updateSessionAction(
   const startsAt = fromZonedDateTimeLocal(data.startsAt);
   const endsAt = new Date(startsAt.getTime() + data.durationMinutes * 60 * 1000);
 
+  // Free trial: a meeting can be moved only inside the scheduling window
+  // (an unchanged time is never refused — e.g. editing the rate)
+  const win = schedulingWindow(await subscriptionStateFor(userId));
+  const moved = startsAt.getTime() !== existing.startsAt.getTime();
+  if (moved && beyondWindow(startsAt, win)) {
+    return { error: windowError(win!), fieldErrors: { startsAt: [windowError(win!)] } };
+  }
+
   // "All of this client's following meetings": the client's later scheduled
   // meetings in the same standing slot move with this one — same day offset,
   // the new start time and length (e.g. Monday 18:00 → Wednesday 17:00).
@@ -418,6 +451,9 @@ export async function updateSessionAction(
     formData.get("applyScope") === "future"
       ? await followerMoves(userId, existing, data.startsAt, data.durationMinutes)
       : [];
+  if (moves.some((m) => beyondWindow(m.startsAt, win, FOLLOWER_GRACE_DAYS))) {
+    return { error: followersWindowError(win!) };
+  }
 
   if (!data.allowOverlap) {
     const overlaps = await findOverlaps(
@@ -507,6 +543,19 @@ export async function rescheduleSessionAction(input: {
     return { ok: false, error: "תאריך לא תקין" };
   }
 
+  // Free trial: dragging a meeting past the scheduling window is refused
+  const win = schedulingWindow(await subscriptionStateFor(userId));
+  if (win) {
+    const current = await db.session.findFirst({
+      where: { id: input.id, userId },
+      select: { startsAt: true },
+    });
+    if (!current) return { ok: false, error: "פגישה לא נמצאה" };
+    if (current.startsAt.getTime() !== startsAt.getTime() && beyondWindow(startsAt, win)) {
+      return { ok: false, error: windowError(win) };
+    }
+  }
+
   const overlaps = await findOverlaps(userId, [{ startsAt, endsAt }], [input.id]);
   if (overlaps.length > 0) {
     const state = overlapError(overlaps);
@@ -588,7 +637,9 @@ export async function quickEditSessionAction(
   formData: FormData,
 ): Promise<QuickEditState> {
   const userId = await requireUserId();
-  if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
+  const sub = await subscriptionStateFor(userId);
+  if (!sub.writable) return { error: READ_ONLY_ERROR };
+  const win = schedulingWindow(sub);
   const id = String(formData.get("id") ?? "");
   const clientId = String(formData.get("clientId") ?? "");
   const date = String(formData.get("date") ?? "");
@@ -629,6 +680,11 @@ export async function quickEditSessionAction(
   const startsAt = fromZonedDateTimeLocal(`${date}T${startTime}`);
   const endsAt = fromZonedDateTimeLocal(`${date}T${endTime}`);
 
+  // Free trial: a meeting can be moved only inside the scheduling window
+  if (startsAt.getTime() !== existing.startsAt.getTime() && beyondWindow(startsAt, win)) {
+    return { error: windowError(win!) };
+  }
+
   // The meeting page's "all future meetings of [client]" rules, started after
   // this meeting (lib/cancel-following.ts). Planned from where the meeting is
   // now, which is what the popup counted.
@@ -667,6 +723,9 @@ export async function quickEditSessionAction(
           Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000),
         )
       : [];
+  if (futureUpdates.some((u) => beyondWindow(u.startsAt, win, FOLLOWER_GRACE_DAYS))) {
+    return { error: followersWindowError(win!) };
+  }
 
   if (!allowOverlap) {
     const slots = [

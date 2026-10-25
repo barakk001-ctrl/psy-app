@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
 import { SessionForm } from "@/components/sessions/session-form";
+import { schedulingWindowUiFor } from "@/lib/subscription-server";
 import { sessionScopeInfoAction } from "@/server/actions/sessions";
 
 export default async function EditSessionPage({
@@ -82,6 +83,7 @@ export default async function EditSessionPage({
         clients={clientOptions}
         defaultMinutes={me?.defaultSessionMinutes}
         scope={scope ?? undefined}
+        scheduleWindow={await schedulingWindowUiFor(userId)}
         initial={{
           id: sess.id,
           clientId: sess.clientId,

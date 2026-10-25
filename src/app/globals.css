@@ -23,6 +23,19 @@
     overflow-x: hidden;
   }
 
+  /* The public legal pages (/agreement, /terms, /privacy — components/legal):
+     overflow-x: hidden on both html and body makes <body> a scroll container
+     of its own, so their sticky title bar never sticks, and iOS Safari was
+     seen not to scroll such a page back up to its title. `clip` cuts sideways
+     overflow the same way without creating a scroll container. Scoped to
+     these pages so the app's own layout is untouched. */
+  @supports (overflow: clip) {
+    html:has(.legal-page),
+    body:has(.legal-page) {
+      overflow-x: clip;
+    }
+  }
+
   body {
     font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "ss01", "kern";

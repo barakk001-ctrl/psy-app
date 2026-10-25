@@ -7,6 +7,7 @@ import { toZonedDateTimeLocal } from "@/lib/timezone";
 import { fetchHolidays } from "@/lib/holidays";
 import { Button } from "@/components/ui/button";
 import { CalendarView } from "@/components/calendar/calendar-view";
+import { schedulingWindowUiFor } from "@/lib/subscription-server";
 import type { EventInput } from "@fullcalendar/core";
 
 export const dynamic = "force-dynamic";
@@ -98,6 +99,7 @@ export default async function CalendarPage() {
         holidays={holidays}
         showHolidays={me?.showHolidays ?? false}
         defaultMinutes={me?.defaultSessionMinutes}
+        scheduleWindow={await schedulingWindowUiFor(userId)}
       />
     </div>
   );

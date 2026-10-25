@@ -20,6 +20,7 @@ import {
 } from "@/server/actions/sessions";
 import { addMinutesLocal, useOverlapWarning } from "./use-overlap-warning";
 import { ApplyScopeChoice } from "./apply-scope-choice";
+import { pickerMax, type WindowUi } from "@/lib/scheduling-window";
 
 type ClientOption = {
   id: string;
@@ -47,6 +48,7 @@ export function SessionForm({
   meetingTypes,
   defaultMinutes = DEFAULT_SESSION_MINUTES,
   scope,
+  scheduleWindow,
 }: {
   clients: ClientOption[];
   defaults?: { startsAt?: string; clientId?: string };
@@ -57,6 +59,8 @@ export function SessionForm({
   /** Edit only: the client's following meetings in the same standing slot,
    *  offered "all of them" when the date/time changes. */
   scope?: { clientName: string; slotLabel: string; followers: number };
+  /** Free trial: how far ahead meetings may be booked (null = no limit). */
+  scheduleWindow?: WindowUi | null;
 }) {
   const isEdit = !!initial;
   const action = isEdit ? updateSessionAction : createSessionAction;
@@ -179,6 +183,7 @@ export function SessionForm({
                 type="datetime-local"
                 required
                 defaultValue={startsAtDefault}
+                max={pickerMax(scheduleWindow, "datetime-local", initial?.startsAt)}
                 invalid={!!fieldErr.startsAt}
                 // Moving an existing meeting puts it back on the default length;
                 // the duration stays editable right beside it.
@@ -187,8 +192,12 @@ export function SessionForm({
                   if (isEdit) setDuration(String(defaultMinutes));
                 }}
               />
-              {fieldErr.startsAt && (
+              {fieldErr.startsAt ? (
                 <p className="text-xs text-terracotta-600 mt-1">{fieldErr.startsAt[0]}</p>
+              ) : (
+                scheduleWindow && (
+                  <p className="text-xs text-ink-muted mt-1">{scheduleWindow.hint}</p>
+                )
               )}
             </div>
             <div>
@@ -315,8 +324,10 @@ export function SessionForm({
             <>
               <input type="hidden" name="openEnded" value="on" />
               <p className="text-xs text-ink-muted -mt-2">
-                הפגישות ייקבעו חצי שנה קדימה, והיומן יתארך אוטומטית כל עוד הסדרה
-                פעילה. אפשר לסיים בכל שלב עם ״מחיקת הסדרה מכאן והלאה״.
+                {scheduleWindow
+                  ? "בתקופת הניסיון הפגישות ייקבעו עד 30 יום קדימה, והיומן יתארך מעצמו מדי יום כל עוד הסדרה פעילה (אחרי רכישת מנוי — חצי שנה קדימה)."
+                  : "הפגישות ייקבעו חצי שנה קדימה, והיומן יתארך אוטומטית כל עוד הסדרה פעילה."}{" "}
+                אפשר לסיים בכל שלב עם ״מחיקת הסדרה מכאן והלאה״.
               </p>
             </>
           )}

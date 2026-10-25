@@ -3,6 +3,7 @@
 // PRICING (src/lib/subscription.ts); keep /terms section 5 in step with them.
 
 import { PRICING, TRIAL_DAYS, type SubscriptionState } from "@/lib/subscription";
+import { TRIAL_SCHEDULING_DAYS } from "@/lib/scheduling-window";
 
 export type PlanId = "MONTHLY" | "YEARLY";
 
@@ -65,7 +66,7 @@ export const TRIAL_PLAN = {
   price: 0,
   per: `ל-${TRIAL_DAYS} יום`,
   subtitle: "ללא תשלום · בלי כרטיס אשראי",
-  note: `כל המערכת פתוחה ל-${TRIAL_DAYS} יום. בסוף בוחרים מנוי חודשי או שנתי — אין חיוב אוטומטי, ובלי מנוי המידע נשאר זמין לצפייה.`,
+  note: `כל המערכת פתוחה ל-${TRIAL_DAYS} יום, ופגישות נקבעות עד ${TRIAL_SCHEDULING_DAYS} יום קדימה. בסוף בוחרים מנוי חודשי או שנתי — אין חיוב אוטומטי, ובלי מנוי המידע נשאר זמין לצפייה.`,
 } as const;
 
 /** Days left, on the trial card of an account that is in its trial. */
@@ -98,6 +99,7 @@ export const PLAN_FEATURES: string[] = [
 export const PLAN_FACTS: string[] = [
   "המחירים כוללים מע״מ.",
   `${TRIAL_DAYS} יום ניסיון חינם מההרשמה — בלי כרטיס אשראי.`,
+  `בתקופת הניסיון אפשר לקבוע פגישות עד ${TRIAL_SCHEDULING_DAYS} יום קדימה; במנוי חודשי או שנתי — בלי הגבלה.`,
   "המנוי לא מתחדש אוטומטית: בסוף התקופה מחדשים רק אם רוצים.",
   "אם המנוי מסתיים לא נחסמים: כל המידע נשאר זמין לצפייה ולייצוא (מצב קריאה בלבד).",
   "מחיר ההיכרות נשמר לכל התקופה שנרכשה בו.",

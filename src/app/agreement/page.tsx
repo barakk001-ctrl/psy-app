@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { LegalPage } from "@/components/legal/legal-page";
 import {
   AGREEMENT_DRAFT_NOTE,
   AGREEMENT_SECTIONS,
@@ -6,35 +8,31 @@ import {
   AGREEMENT_VERSION,
 } from "@/lib/agreement";
 
-// Public page — linked from the registration checkbox, so it must be
-// reachable without a session (listed in auth.config PUBLIC_PATHS).
+// Public page — linked from the registration checkbox (opened in a new tab, so
+// the half-filled form stays), so it must be reachable without a session.
 export const metadata = { title: `${AGREEMENT_TITLE} — מרפאה` };
 
 export default function AgreementPage() {
   return (
-    <div className="min-h-screen bg-cream-50">
-      <div className="max-w-2xl mx-auto px-5 py-10">
-        <header className="mb-8">
-          <h1 className="font-display text-3xl text-ink">{AGREEMENT_TITLE}</h1>
-          <p className="text-ink-muted mt-2 text-sm leading-relaxed">{AGREEMENT_SUBTITLE}</p>
-          <p className="text-terracotta-600 text-xs mt-2">{AGREEMENT_DRAFT_NOTE}</p>
-        </header>
-
-        <div className="space-y-6">
-          {AGREEMENT_SECTIONS.map((s) => (
-            <section key={s.title}>
-              <h2 className="font-display text-lg text-ink mb-2">{s.title}</h2>
-              <ul className="space-y-1.5 text-sm text-ink-soft leading-relaxed list-disc ps-5">
-                {s.items.map((item, i) => (
-                  <li key={i}>{item}</li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-
-        <p className="text-xs text-ink-subtle mt-10">גרסה: {AGREEMENT_VERSION}</p>
-      </div>
-    </div>
+    <LegalPage
+      title={AGREEMENT_TITLE}
+      barTitle="הסכם החזקת מידע"
+      subtitle={AGREEMENT_SUBTITLE}
+      draftNote={AGREEMENT_DRAFT_NOTE}
+      sections={AGREEMENT_SECTIONS}
+      version={AGREEMENT_VERSION}
+      footer={
+        <p className="text-sm text-ink-soft mt-8">
+          ראו גם:{" "}
+          <Link href="/terms" className="underline underline-offset-2">
+            תנאי שימוש
+          </Link>
+          {" · "}
+          <Link href="/privacy" className="underline underline-offset-2">
+            מדיניות פרטיות
+          </Link>
+        </p>
+      }
+    />
   );
 }

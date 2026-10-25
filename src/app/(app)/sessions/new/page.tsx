@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { SessionForm } from "@/components/sessions/session-form";
+import { schedulingWindowUiFor } from "@/lib/subscription-server";
 
 export default async function NewSessionPage({
   searchParams,
@@ -29,6 +30,7 @@ export default async function NewSessionPage({
     where: { id: userId },
     select: { defaultSessionMinutes: true },
   });
+  const scheduleWindow = await schedulingWindowUiFor(userId);
 
   // Serialize Decimal → string for client
   const clientOptions = clients.map((c) => ({
@@ -59,6 +61,7 @@ export default async function NewSessionPage({
         clients={clientOptions}
         defaults={{ startsAt: params.start, clientId: params.clientId }}
         defaultMinutes={me?.defaultSessionMinutes}
+        scheduleWindow={scheduleWindow}
       />
     </div>
   );
