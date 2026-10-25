@@ -3,6 +3,7 @@ import { PRICING, TRIAL_DAYS } from "@/lib/subscription";
 import {
   PLAN_OPTIONS,
   TRIAL_PLAN,
+  monthsInHebrew,
   trialDaysLeftText,
   planById,
   planLabel,
@@ -24,8 +25,14 @@ describe("plan options", () => {
   });
 
   it("states the yearly saving in whole months", () => {
-    // 12 × 25 = 300 vs 250 → two months
-    expect(planById("YEARLY")!.note).toContain("2 חודשים מתנה");
+    // 12 × 25 = 300 vs 250 → two months, in the dual form
+    expect(planById("YEARLY")!.note).toBe("תשלום אחד לשנה — חודשיים מתנה לעומת החודשי.");
+  });
+
+  it("words a number of months", () => {
+    expect(monthsInHebrew(1)).toBe("חודש");
+    expect(monthsInHebrew(2)).toBe("חודשיים");
+    expect(monthsInHebrew(3)).toBe("3 חודשים");
   });
 
   it("labels plans", () => {

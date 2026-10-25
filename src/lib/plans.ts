@@ -26,6 +26,13 @@ function monthsFree(): number {
   return Math.round((yearOfMonthly - PRICING.yearlyIntro) / PRICING.monthlyIntro);
 }
 
+/** "חודש" / "חודשיים" / "3 חודשים" — Hebrew has a dual for two. */
+export function monthsInHebrew(n: number): string {
+  if (n === 1) return "חודש";
+  if (n === 2) return "חודשיים";
+  return `${n} חודשים`;
+}
+
 export const PLAN_OPTIONS: PlanOption[] = [
   {
     id: "MONTHLY",
@@ -42,7 +49,7 @@ export const PLAN_OPTIONS: PlanOption[] = [
     price: PRICING.yearlyIntro,
     regularPrice: PRICING.yearlyRegular,
     per: "לשנה",
-    note: `תשלום אחד לשנה — ${monthsFree()} חודשים מתנה לעומת החודשי.`,
+    note: `תשלום אחד לשנה — ${monthsInHebrew(monthsFree())} מתנה לעומת החודשי.`,
     highlight: true,
   },
 ];
