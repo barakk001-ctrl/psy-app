@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -12,6 +12,7 @@ import { rescheduleSessionAction } from "@/server/actions/sessions";
 import { setShowHolidaysAction } from "@/server/actions/settings";
 import type { HolidayMap } from "@/lib/holidays";
 import type { WindowUi } from "@/lib/scheduling-window";
+import { hourRange, minutesOfDay, slotTime } from "@/lib/calendar-hours";
 import {
   QuickEditDialog,
   type QuickEditData,
@@ -68,6 +69,9 @@ export function CalendarView({
   const [, startTransition] = useTransition();
   const isMobile = useIsMobile();
   const [quickEdit, setQuickEdit] = useState<QuickEditData | null>(null);
+  // The days on screen (FullCalendar's datesSet) — the week and day views show
+  // only the hours that hold meetings in them, so the grid fits without scrolling
+  const [visible, setVisible] = useState<{ start: number; end: number } | null>(null);
   // Optimistic: the box flips at once and the choice is saved to the account
   const [showHolidays, setShowHolidays] = useState(showHolidaysInitial);
   const holidayOn = (d: Date) => (showHolidays ? holidays[dayKey(d)] : undefined);
@@ -82,6 +86,20 @@ export function CalendarView({
       }
     });
   };
+
+  const hours = useMemo(() => {
+    if (!visible) return hourRange([]);
+    const inView = events.flatMap((e) => {
+      const start = new Date(e.start as string);
+      const end = new Date((e.end ?? e.start) as string);
+      if (end.getTime() <= visible.start || start.getTime() >= visible.end) return [];
+      return [{ start: minutesOfDay(start), end: minutesOfDay(end) }];
+    });
+    return hourRange(inView);
+  }, [events, visible]);
+  // Long days (a meeting at dawn and one late at night) get hour rows, so the
+  // labels still fit; otherwise half-hour rows
+  const longDay = hours.last - hours.first > 15;
 
   const styledEvents: EventInput[] = events.map((e) => {
     const status = (e.extendedProps?.status as string) ?? "SCHEDULED";
@@ -149,10 +167,25 @@ export function CalendarView({
           week: "שבוע",
           day: "יום",
         }}
-        slotMinTime="07:00:00"
-        slotMaxTime="22:00:00"
-        slotDuration="00:30:00"
+        // Week/day: only the hours in use, every row stretched to fill the
+        // shell (expandRows) and no all-day row (meetings always have times)
+        // — the whole grid fits on screen like the month view
+        slotMinTime={slotTime(hours.first)}
+        slotMaxTime={slotTime(hours.last)}
+        slotDuration={longDay ? "01:00:00" : "00:30:00"}
         slotLabelInterval="01:00"
+        expandRows
+        allDaySlot={false}
+        datesSet={(arg) => {
+          const next = { start: arg.start.getTime(), end: arg.end.getTime() };
+          setVisible((prev) =>
+            prev && prev.start === next.start && prev.end === next.end ? prev : next,
+          );
+        }}
+        views={{
+          // Start time only in the week view — the columns are narrow
+          timeGridWeek: { displayEventEnd: false },
+        }}
         // Month view: solid pills showing "HH:MM name" instead of dot+time
         eventDisplay="block"
         eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
@@ -165,7 +198,13 @@ export function CalendarView({
               </div>
             );
           }
-          return true;
+          // Week/day: time and client name, compact enough for short rows
+          return (
+            <div className="fc-tg-event">
+              <span className="fc-tg-time">{arg.timeText}</span>{" "}
+              <span className="fc-tg-name">{arg.event.title}</span>
+            </div>
+          );
         }}
         // Show only the weeks the month has (5 more often than 6) and let each
         // day hold what fits, with "+N נוספים" for the rest. A fixed 3 per day
@@ -422,6 +461,45 @@ export function CalendarView({
         .calendar-shell .fc-timegrid-event-harness > .fc-timegrid-event {
           box-shadow: none;
         }
+        /* Week/day views fit the shell: rows may shrink to a few pixels and
+           expandRows stretches them to fill it, so the grid never scrolls */
+        .calendar-shell .fc .fc-timegrid-slot {
+          height: 6px;
+          /* an empty cell still keeps a line's height unless the font is 0;
+             the hour labels set their own size below */
+          font-size: 0;
+          line-height: 0;
+        }
+        /* The hour label hangs from the top of its row instead of setting
+           the row's height, so even a small phone fits the whole day */
+        .calendar-shell .fc .fc-timegrid-slot-label-frame {
+          height: 0;
+          overflow: visible;
+        }
+        .calendar-shell .fc .fc-timegrid-slot-label-cushion {
+          line-height: 1;
+          padding-top: 2px;
+        }
+        .calendar-shell .fc .fc-timegrid-slot-label-cushion {
+          padding-block: 0;
+        }
+        .calendar-shell .fc-timegrid-event {
+          padding: 0 3px;
+        }
+        .calendar-shell .fc-tg-event {
+          overflow: hidden;
+          height: 100%;
+          font-size: 0.72rem;
+          line-height: 1.2;
+          direction: rtl;
+        }
+        .calendar-shell .fc-tg-time {
+          font-weight: 600;
+          font-variant-numeric: tabular-nums;
+        }
+        .calendar-shell .fc-tg-name {
+          font-weight: 500;
+        }
 
         /* Mobile-only adjustments */
         @media (max-width: 767px) {
@@ -465,6 +543,28 @@ export function CalendarView({
           }
           .calendar-shell .fc .fc-timegrid-slot-label-cushion {
             font-size: 0.65rem;
+          }
+          /* Phone week: seven ~40px columns — time on one line, the name
+             under it, small, broken at any letter rather than cut off */
+          /* The name comes first: in a short row it is what stays visible
+             (the row itself already shows the hour) */
+          .calendar-shell .fc-timeGridWeek-view .fc-tg-event {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.56rem;
+            line-height: 1.05;
+          }
+          .calendar-shell .fc-timeGridWeek-view .fc-tg-name {
+            order: -1;
+            font-weight: 600;
+            overflow-wrap: anywhere;
+          }
+          .calendar-shell .fc-timeGridWeek-view .fc-tg-time {
+            font-weight: 400;
+            opacity: 0.9;
+          }
+          .calendar-shell .fc-timeGridWeek-view .fc-timegrid-event {
+            padding: 0 2px;
           }
           .calendar-shell .fc .fc-col-header-cell-cushion {
             font-size: 0.7rem;
