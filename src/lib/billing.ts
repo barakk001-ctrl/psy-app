@@ -33,7 +33,7 @@ export async function createGrowPaymentLink(
   args: CreateLinkArgs,
 ): Promise<{ url: string; processId: string; processToken: string | null; sum: number } | { error: string }> {
   if (!billingConfigured()) {
-    return { error: "תשלום בכרטיס עדיין לא הופעל — פנו למנהלת המערכת" };
+    return { error: "תשלום בכרטיס עדיין לא הופעל — אפשר לפנות לתמיכה" };
   }
 
   const sum = planAmount(args.plan);
@@ -77,7 +77,7 @@ export async function createGrowPaymentLink(
     // couldn't trust any callback, so don't send the customer to pay
     if (!url || !processId) {
       console.error("Grow createPaymentProcess failed:", JSON.stringify(json).slice(0, 500));
-      return { error: "יצירת דף התשלום נכשלה — נסו שוב או פנו למנהלת המערכת" };
+      return { error: "יצירת דף התשלום נכשלה — נסו שוב או פנו לתמיכה" };
     }
     return { url, processId, processToken: json?.data?.processToken ?? null, sum };
   } catch (err) {

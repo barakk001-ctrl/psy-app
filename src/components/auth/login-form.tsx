@@ -37,8 +37,8 @@ export function LoginForm({
   return (
     <div>
       <div className="mb-8">
-        <h1 className="font-display text-3xl text-ink">ברוך שובך</h1>
-        <p className="text-ink-muted mt-2">היכנס לחשבון שלך כדי להמשיך</p>
+        <h1 className="font-display text-3xl text-ink">שמחים לראות אותך שוב</h1>
+        <p className="text-ink-muted mt-2">נכנסים לחשבון כדי להמשיך</p>
       </div>
 
       {info && !state && (

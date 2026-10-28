@@ -324,7 +324,7 @@ export default async function InvoiceDetailPage({
                     <button
                       type="submit"
                       className="text-ink-muted hover:text-terracotta-500 p-1"
-                      aria-label="מחק תשלום"
+                      aria-label="מחיקת תשלום"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

@@ -101,7 +101,7 @@ export default async function ReportsPage({
         <CardHeader>
           <CardTitle>צפוי מול התקבל</CardTitle>
           <p className="text-xs text-ink-muted mt-1">
-            כמה הייתה אמורה להכניס כל חודש לפי הפגישות ביומן, וכמה התקבל בפועל.
+            כמה היה צפוי להיכנס כל חודש לפי הפגישות ביומן, וכמה התקבל בפועל.
           </p>
         </CardHeader>
         <CardContent>

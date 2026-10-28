@@ -161,6 +161,6 @@ export const MAX_EMAIL_ATTEMPTS = 6;
 /** …and only for requests younger than this. */
 export const EMAIL_RETRY_WINDOW_MS = 3 * 24 * 60 * 60_000;
 
-export const SUPPORT_SUCCESS_MESSAGE = "הפנייה נשלחה, נחזור אלייך בהקדם";
+export const SUPPORT_SUCCESS_MESSAGE = "הפנייה נשלחה — נחזור עם תשובה בהקדם";
 export const SUPPORT_SAVED_NOT_EMAILED_MESSAGE =
-  "הפנייה נשמרה אצלנו, אבל שליחת ההודעה במייל לתמיכה נכשלה כרגע. היא לא אבדה — ננסה לשלוח אותה שוב באופן אוטומטי ונחזור אלייך בהקדם.";
+  "הפנייה נשמרה אצלנו, אבל שליחת ההודעה במייל לתמיכה נכשלה כרגע. היא לא אבדה — ננסה לשלוח אותה שוב באופן אוטומטי, והתשובה תגיע בהקדם.";

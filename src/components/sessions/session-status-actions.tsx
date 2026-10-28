@@ -15,7 +15,7 @@ export function SessionStatusActions({
           <input type="hidden" name="id" value={sessionId} />
           <input type="hidden" name="status" value="COMPLETED" />
           <Button type="submit" size="sm" variant="secondary">
-            סמן כהתקיימה
+            סימון כהתקיימה
           </Button>
         </form>
       )}
@@ -24,7 +24,7 @@ export function SessionStatusActions({
           <input type="hidden" name="id" value={sessionId} />
           <input type="hidden" name="status" value="NO_SHOW" />
           <Button type="submit" size="sm" variant="ghost">
-            סמן כלא התקיימה
+            סימון כלא התקיימה
           </Button>
         </form>
       )}
@@ -42,7 +42,7 @@ export function SessionStatusActions({
           <input type="hidden" name="id" value={sessionId} />
           <input type="hidden" name="status" value="SCHEDULED" />
           <Button type="submit" size="sm" variant="ghost">
-            החזר למתוכננת
+            החזרה למתוכננת
           </Button>
         </form>
       )}

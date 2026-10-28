@@ -25,7 +25,7 @@ export default function AppError({
       {error.digest ? (
         <p className="text-xs text-ink-subtle">קוד שגיאה: {error.digest}</p>
       ) : null}
-      <Button onClick={reset}>נסה שוב</Button>
+      <Button onClick={reset}>נסו שוב</Button>
     </div>
   );
 }

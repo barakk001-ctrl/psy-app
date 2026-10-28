@@ -29,7 +29,7 @@ export function RegisterForm({
     <div>
       <div className="mb-8">
         <h1 className="font-display text-3xl text-ink">יצירת חשבון</h1>
-        <p className="text-ink-muted mt-2">הקלינקה שלך, מסודרת במקום אחד</p>
+        <p className="text-ink-muted mt-2">הקליניקה שלך, מסודרת במקום אחד</p>
       </div>
 
       <form action={formAction} className="space-y-4" noValidate>

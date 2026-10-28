@@ -310,7 +310,7 @@ export function HelpWidget({ user }: { user: SupportUser }) {
                 {/* Kept mounted so switching tabs doesn't lose what was typed */}
                 <div className="p-4" hidden={tab !== "contact"}>
                   <p className="text-sm text-ink-muted mb-4">
-                    משהו לא עובד, או שיש לך שאלה או רעיון? כתבי לנו ונחזור אלייך במייל.
+                    משהו לא עובד, או שיש לך שאלה או רעיון? כתבו לנו, והתשובה תגיע במייל.
                   </p>
                   <SupportForm
                     key={formKey}
@@ -439,7 +439,7 @@ function ContactPrompt({ onContact }: { onContact: () => void }) {
       <MessageCircle className="w-6 h-6 text-sage-600 shrink-0" aria-hidden />
       <div className="flex-1">
         <p className="text-sm font-medium text-ink">לא מצאת תשובה?</p>
-        <p className="text-xs text-ink-muted">שלחי לנו פנייה ונחזור אלייך.</p>
+        <p className="text-xs text-ink-muted">שלחו לנו פנייה, והתשובה תגיע במייל.</p>
       </div>
       <button
         type="button"

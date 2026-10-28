@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-"מרפאה" — a Next.js 15 (App Router) practice-management app for solo psychologists: clients, calendar sessions, encrypted clinical notes, per-meeting payments, invoices, PDF receipts, email reminders, reports, message import, PWA. **Hebrew-first, RTL everywhere.** All UI strings, form errors, and emails are Hebrew; locale is hard-coded `he-IL`, timezone `Asia/Jerusalem`, currency ILS. Multi-tenant by design: each user is an isolated practice owner (the app is being prepared for use by several psychologists under one deployment).
+"מרפאה" — a Next.js 15 (App Router) practice-management app for solo therapists (psychologists and other therapists): clients, calendar sessions, encrypted clinical notes, per-meeting payments, invoices, PDF receipts, email reminders, reports, message import, PWA. **Hebrew-first, RTL everywhere.** All UI strings, form errors, and emails are Hebrew; locale is hard-coded `he-IL`, timezone `Asia/Jerusalem`, currency ILS. Multi-tenant by design: each user is an isolated practice owner (the app is being prepared for use by many therapists under one deployment).
+
+**UI copy addresses any therapist, not one person** (since 2026-10-29): never feminine-only second person (ברוכה הבאה, כתבי/שלחי, אלייך, את יכולה, הייתה אמורה) and never masculine-only (נסה שוב, היכנס, סמן, ברוך שובך). Use the app's existing neutral styles — impersonal present plural for instructions (״לוחצים״, ״ממלאים״), plural imperative for short prompts (״נסו שוב״, ״כתבו לנו״), nouns for buttons (״שמירה״, ״סימון כהתקיימה״, ״החזרה למתוכננת״), spellings that read either way (״שלך״, ״לך״, ״אותך״), and slashes only where the app already uses them (״לקוח/ה״, ״את/ה״, the legal pages' ״המטפל/ת״). No names or practice-specific examples in UI text (the first user's name appears only in her own data). Error messages point to ״תמיכה״, not to a person.
 
 ## Commands
 
