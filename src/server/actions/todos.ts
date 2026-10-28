@@ -1,5 +1,6 @@
 "use server";
 
+import { requireWritable } from "@/lib/subscription-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -13,6 +14,7 @@ async function requireUserId(): Promise<string> {
 
 export async function addTodoAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const text = String(formData.get("text") ?? "").trim().slice(0, 300);
   if (!text) return;
 
@@ -22,6 +24,7 @@ export async function addTodoAction(formData: FormData) {
 
 export async function toggleTodoAction(id: string) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const todo = await db.todo.findFirst({
     where: { id, userId },
     select: { id: true, done: true },
@@ -34,6 +37,7 @@ export async function toggleTodoAction(id: string) {
 
 export async function deleteTodoAction(id: string) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   await db.todo.deleteMany({ where: { id, userId } });
   revalidatePath("/dashboard");
 }

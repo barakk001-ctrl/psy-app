@@ -1,5 +1,7 @@
 "use server";
 
+import { READ_ONLY_ERROR } from "@/lib/subscription";
+import { isReadOnly, requireWritable } from "@/lib/subscription-server";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -23,6 +25,7 @@ export async function recordPaymentAction(
   formData: FormData,
 ): Promise<PaymentFormState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
   const parsed = recordPaymentSchema.safeParse({
     invoiceId: formData.get("invoiceId"),
@@ -94,6 +97,7 @@ export async function recordPaymentAction(
 
 export async function deletePaymentAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { subscriptionReadOnly } from "@/lib/subscription-server";
+import { isReadOnly, subscriptionReadOnly } from "@/lib/subscription-server";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { computeInvoiceStatus } from "@/lib/invoice-status";
 import {
@@ -278,6 +278,7 @@ export async function previewDraftInMorningAction(
   json: string,
 ): Promise<{ pdfBase64?: string; error?: string; problems?: string[] }> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const creds = await getMorningCredentials(userId);
   if (!creds) return { error: "חשבון morning לא מחובר." };
   const p = await parseDraft(userId, json);
@@ -296,6 +297,7 @@ export async function previewStoredInMorningAction(
   invoiceId: string,
 ): Promise<{ pdfBase64?: string; error?: string }> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const res = await previewStoredDocument(userId, invoiceId);
   return res.ok ? { pdfBase64: res.pdfBase64 } : { error: res.error };
 }

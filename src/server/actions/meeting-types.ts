@@ -1,5 +1,6 @@
 "use server";
 
+import { requireWritable } from "@/lib/subscription-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -14,6 +15,7 @@ async function requireUserId(): Promise<string> {
 
 export async function addMeetingTypeAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const name = String(formData.get("name") ?? "").trim().slice(0, 60);
   if (!name) return;
 
@@ -42,6 +44,7 @@ export async function addMeetingTypeAction(formData: FormData) {
 
 export async function setMeetingTypeColorAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const id = String(formData.get("id") ?? "");
   const raw = String(formData.get("color") ?? "");
   // Empty clears back to the default calendar color
@@ -55,6 +58,7 @@ export async function setMeetingTypeColorAction(formData: FormData) {
 
 export async function deleteMeetingTypeAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 

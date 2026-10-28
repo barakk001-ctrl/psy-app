@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { buildIcs, type CalendarNameMode } from "@/lib/ics";
+import { isReadOnly } from "@/lib/subscription-server";
 
 // Private ICS feed: the long random token in the URL is the entire
 // authorization (like the inbox token). Google Calendar polls this endpoint.
@@ -22,8 +23,14 @@ export async function GET(
   // Recent past + all future; cancelled events are included as CANCELLED so
   // Google removes them from views instead of leaving stale entries.
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  // An expired (read-only) account's feed keeps its recent past but no longer
+  // serves upcoming meetings — the calendar can't be run from it for free
+  const readOnly = await isReadOnly(user.id);
   const sessions = await db.session.findMany({
-    where: { userId: user.id, startsAt: { gte: since } },
+    where: {
+      userId: user.id,
+      startsAt: readOnly ? { gte: since, lt: new Date() } : { gte: since },
+    },
     orderBy: { startsAt: "asc" },
     take: 1000,
     select: {

@@ -1,5 +1,7 @@
 "use server";
 
+import { READ_ONLY_ERROR } from "@/lib/subscription";
+import { isReadOnly, requireWritable } from "@/lib/subscription-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -24,6 +26,7 @@ async function requireUserId(): Promise<string> {
 
 export async function markInvoiceSentAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
@@ -37,6 +40,7 @@ export async function markInvoiceSentAction(formData: FormData) {
 
 export async function cancelInvoiceAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
@@ -88,6 +92,7 @@ export async function sendInvoiceEmailAction(
   formData: FormData,
 ): Promise<SendInvoiceEmailState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "מזהה חשבונית חסר" };
 
@@ -161,6 +166,7 @@ export async function issueMorningReceiptAction(
   formData: FormData,
 ): Promise<MorningReceiptState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "מזהה חשבונית חסר" };
 

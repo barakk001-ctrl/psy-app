@@ -1,5 +1,7 @@
 "use server";
 
+import { READ_ONLY_ERROR } from "@/lib/subscription";
+import { isReadOnly, requireWritable } from "@/lib/subscription-server";
 import { canCreateAccount } from "@/lib/signup-policy";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -37,6 +39,7 @@ export type SettingsFormState = {
 /** Enables (or rotates) the private ICS calendar-feed token. */
 export async function calendarFeedEnableAction() {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const { randomBytes } = await import("node:crypto");
   await db.user.update({
     where: { id: userId },
@@ -56,6 +59,7 @@ const CALENDAR_NAME_MODES = ["FIRST", "FULL", "NONE"] as const;
 
 export async function calendarFeedModeAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const mode = String(formData.get("mode") ?? "");
   if (!(CALENDAR_NAME_MODES as readonly string[]).includes(mode)) return;
   await db.user.update({ where: { id: userId }, data: { calendarNameMode: mode } });
@@ -77,6 +81,7 @@ export async function updateBusinessInfoAction(
   formData: FormData,
 ): Promise<SettingsFormState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
   const parsed = businessInfoSchema.safeParse({
     businessName: formData.get("businessName") ?? "",
@@ -120,6 +125,7 @@ export async function updateSessionDefaultsAction(
   formData: FormData,
 ): Promise<SettingsFormState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
   const parsed = sessionDefaultsSchema.safeParse({
     defaultSessionMinutes: formData.get("defaultSessionMinutes") ?? "",
@@ -148,6 +154,7 @@ export async function updateBrandingAction(
   formData: FormData,
 ): Promise<SettingsFormState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
   const parsed = brandingSchema.safeParse({
     brandName: formData.get("brandName") ?? "",
@@ -184,6 +191,7 @@ export async function updatePersonalDetailsAction(
   formData: FormData,
 ): Promise<SettingsFormState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
   const parsed = personalDetailsSchema.safeParse({
     name: formData.get("name"),
@@ -314,6 +322,7 @@ export async function saveMorningSettingsAction(
   formData: FormData,
 ): Promise<MorningSettingsState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
   const keyId = String(formData.get("morningApiKeyId") ?? "").trim();
   const secret = String(formData.get("morningApiSecret") ?? "").trim();

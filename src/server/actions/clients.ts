@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db, dbAll } from "@/lib/db";
-import { subscriptionReadOnly } from "@/lib/subscription-server";
+import { isReadOnly, requireWritable, subscriptionReadOnly } from "@/lib/subscription-server";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { logAudit } from "@/lib/audit";
 import { cancelSessionReminders, scheduleSessionReminders } from "@/lib/reminders";
@@ -181,6 +181,7 @@ export async function updateClientAction(
   formData: FormData,
 ): Promise<ClientFormState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "מזהה לקוח חסר" };
 
@@ -247,6 +248,7 @@ export type ClientStatusResult =
  *  Reactivating changes nothing on the calendar — she books again. */
 export async function setClientStatusAction(formData: FormData): Promise<ClientStatusResult> {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const id = String(formData.get("id") ?? "");
   const parsed = clientStatusSchema.safeParse(formData.get("status"));
   if (!id || !parsed.success) return;
@@ -372,6 +374,7 @@ export async function trashClientAction(formData: FormData): Promise<TrashResult
  *  future scheduled meetings set up again. */
 export async function restoreClientAction(formData: FormData): Promise<TrashResult> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "מזהה לקוח חסר" };
 
@@ -395,6 +398,7 @@ export async function restoreClientAction(formData: FormData): Promise<TrashResu
 /** "מחיקה לצמיתות עכשיו" from the recycle bin — no waiting for the 30 days. */
 export async function purgeClientNowAction(formData: FormData): Promise<TrashResult> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "מזהה לקוח חסר" };
   if (!(await purgeClient(userId, id))) return { error: "הלקוח/ה כבר לא בסל המחזור" };

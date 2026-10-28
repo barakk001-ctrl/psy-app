@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { schedulingWindow, windowUi, type WindowUi } from "@/lib/scheduling-window";
 import {
@@ -50,4 +51,29 @@ export async function extendSubscription(
 /** The trial's scheduling limit for the date pickers, or null (no limit). */
 export async function schedulingWindowUiFor(userId: string): Promise<WindowUi | null> {
   return windowUi(schedulingWindow(await subscriptionStateFor(userId)));
+}
+
+/** Where a blocked void action (a plain <form action>, a button) sends the user:
+ *  "מנוי ומסלולים" with the read-only notice (READ_ONLY_ERROR) on top. */
+export const READ_ONLY_PATH = "/subscription?readonly=1";
+
+/**
+ * The one write lock for expired accounts (read-only, never locked out).
+ * Every mutating server action calls it right after resolving the user —
+ * enforced by write-lock.test.ts, which fails for any exported action that is
+ * neither gated nor on its allowlist (sign-in, security, export, purchase
+ * request, support…). Active trial/paid accounts and exempt accounts are
+ * always writable, so for them this is one cheap lookup and nothing else.
+ *
+ * - `isReadOnly(userId)` → for actions that return a state with `error`:
+ *     `if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };`
+ * - `requireWritable(userId)` → for actions with nothing to return: redirects
+ *     to READ_ONLY_PATH, where the same message is shown.
+ */
+export async function isReadOnly(userId: string): Promise<boolean> {
+  return subscriptionReadOnly(userId);
+}
+
+export async function requireWritable(userId: string): Promise<void> {
+  if (await subscriptionReadOnly(userId)) redirect(READ_ONLY_PATH);
 }

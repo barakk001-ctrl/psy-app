@@ -6,6 +6,7 @@ import { PlanCards } from "@/components/plans/plan-cards";
 import { PlanRequestButton } from "@/components/plans/plan-request-button";
 import { subscriptionStateFor } from "@/lib/subscription-server";
 import { subscriptionHeadline, trialDaysLeftText } from "@/lib/plans";
+import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { billingConfigured } from "@/lib/billing";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,7 @@ import { startCardPaymentAction } from "@/server/actions/subscription";
 export default async function SubscriptionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ paid?: string; payerr?: string }>;
+  searchParams: Promise<{ paid?: string; payerr?: string; readonly?: string }>;
 }) {
   const sp = await searchParams;
   const session = await auth();
@@ -37,6 +38,12 @@ export default async function SubscriptionPage({
         </p>
       </header>
 
+      {sp.readonly === "1" && state.status === "expired" && (
+        // A blocked action (central write lock) lands here
+        <div className="rounded-xl border border-terracotta-500/30 bg-terracotta-500/10 px-4 py-3 text-sm text-terracotta-600">
+          {READ_ONLY_ERROR}
+        </div>
+      )}
       {sp.paid === "1" && (
         <div className="rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700">
           התשלום התקבל — תודה! המנוי יתעדכן כאן תוך דקות ספורות.

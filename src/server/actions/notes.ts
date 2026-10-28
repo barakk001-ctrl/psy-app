@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { subscriptionReadOnly } from "@/lib/subscription-server";
+import { isReadOnly, subscriptionReadOnly } from "@/lib/subscription-server";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 
 import { decryptNote, encryptNote } from "@/lib/crypto";
@@ -82,6 +82,7 @@ export async function appendNoteToSessionAction(
   text: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { ok: false, error: READ_ONLY_ERROR };
   const content = text.trim().slice(0, 20000);
   if (!content) return { ok: false, error: "אין תוכן לשמירה" };
 

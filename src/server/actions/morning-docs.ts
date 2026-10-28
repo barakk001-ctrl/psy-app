@@ -1,5 +1,7 @@
 "use server";
 
+import { READ_ONLY_ERROR } from "@/lib/subscription";
+import { isReadOnly, requireWritable } from "@/lib/subscription-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -30,6 +32,7 @@ export async function syncMorningDocumentsAction(
   __: FormData,
 ): Promise<MorningSyncState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
   const creds = await getMorningCredentials(userId);
   if (!creds) return { error: "חשבון morning לא מחובר" };
@@ -93,6 +96,7 @@ export async function attachMorningNumberToSessionAction(
   formData: FormData,
 ): Promise<AttachNumberState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const sessionId = String(formData.get("sessionId") ?? "");
   const number = String(formData.get("number") ?? "").trim().slice(0, 30);
   // "invoice" = חשבונית מס, "receipt" = קבלה, "invoiceReceipt" = חשבונית
@@ -161,6 +165,7 @@ export async function attachMorningNumberToSessionAction(
 
 export async function assignMorningDocumentAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const docId = String(formData.get("docId") ?? "");
   const clientId = String(formData.get("clientId") ?? "");
   if (!docId || !clientId) return;

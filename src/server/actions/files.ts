@@ -1,5 +1,7 @@
 "use server";
 
+import { READ_ONLY_ERROR } from "@/lib/subscription";
+import { isReadOnly, requireWritable } from "@/lib/subscription-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -25,6 +27,7 @@ export async function uploadSessionFileAction(
   formData: FormData,
 ): Promise<FileUploadState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const sessionId = String(formData.get("sessionId") ?? "");
   const file = formData.get("file");
 
@@ -67,6 +70,7 @@ export async function uploadSessionFileAction(
 
 export async function deleteSessionFileAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 

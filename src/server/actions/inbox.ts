@@ -1,5 +1,6 @@
 "use server";
 
+import { isReadOnly, requireWritable } from "@/lib/subscription-server";
 import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -16,6 +17,7 @@ async function requireUserId(): Promise<string> {
 
 export async function generateInboxTokenAction() {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const token = crypto.randomBytes(18).toString("base64url");
   await db.user.update({ where: { id: userId }, data: { inboxToken: token } });
   revalidatePath("/settings");
@@ -29,6 +31,7 @@ export async function revokeInboxTokenAction() {
 
 export async function processInboxMessageAction(id: string): Promise<string | null> {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const msg = await db.inboxMessage.findFirst({
     where: { id, userId },
     select: { id: true, text: true },
@@ -41,6 +44,7 @@ export async function processInboxMessageAction(id: string): Promise<string | nu
 
 export async function deleteInboxMessageAction(id: string) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   await db.inboxMessage.deleteMany({ where: { id, userId } });
   revalidatePath("/import");
 }
@@ -75,6 +79,10 @@ export async function submitAppointmentRequestAction(
     select: { id: true },
   });
   if (!user) return { error: "קישור לא תקין" };
+  // The practice's subscription has ended (read-only): no new requests
+  if (await isReadOnly(user.id)) {
+    return { error: "לא ניתן לשלוח בקשה דרך הטופס כרגע — אפשר לפנות ישירות למטפל/ת." };
+  }
 
   const text = [
     `בקשת פגישה מ${name}`,

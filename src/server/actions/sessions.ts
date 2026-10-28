@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { subscriptionStateFor } from "@/lib/subscription-server";
+import { isReadOnly, requireWritable, subscriptionStateFor } from "@/lib/subscription-server";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { DEFAULT_SESSION_MINUTES } from "@/lib/session-duration";
 import {
@@ -396,6 +396,7 @@ export async function updateSessionAction(
   formData: FormData,
 ): Promise<SessionFormState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
   const fallbackMinutes = await defaultSessionMinutes(userId);
 
@@ -507,6 +508,7 @@ export async function updateSessionAction(
 
 export async function updateSessionStatusAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const parsed = sessionStatusSchema.safeParse({
     id: formData.get("id"),
     status: formData.get("status"),
@@ -537,6 +539,7 @@ export async function rescheduleSessionAction(input: {
   endsAt: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { ok: false, error: READ_ONLY_ERROR };
   const startsAt = new Date(input.startsAt);
   const endsAt = new Date(input.endsAt);
   if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
@@ -577,6 +580,7 @@ export async function rescheduleSessionAction(input: {
 // Delete this session and all future SCHEDULED sessions in the same recurring series
 export async function deleteFutureSessionsAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const id = formData.get("id");
   if (typeof id !== "string") return;
 
@@ -842,6 +846,7 @@ export async function saveSessionPaymentAction(
   formData: FormData,
 ): Promise<SessionPaymentState> {
   const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const sessionId = String(formData.get("sessionId") ?? "");
   const statusRaw = String(formData.get("paymentStatus") ?? "");
   const methodRaw = String(formData.get("paymentMethod") ?? "");
@@ -887,6 +892,7 @@ export async function saveSessionPaymentAction(
 // meeting in the client's record; deletion erases it (and its note) entirely.
 export async function deleteSessionAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const id = formData.get("id");
   if (typeof id !== "string") return;
 
@@ -921,6 +927,7 @@ export async function deleteSessionAction(formData: FormData) {
  */
 export async function deleteClientFutureSessionsAction(formData: FormData) {
   const userId = await requireUserId();
+  await requireWritable(userId);
   const clientId = formData.get("clientId");
   if (typeof clientId !== "string" || !clientId) return;
 
