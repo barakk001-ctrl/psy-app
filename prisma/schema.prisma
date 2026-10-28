@@ -547,7 +547,12 @@ model InboxMessage {
 // Documents issued directly in Morning (outside the app's schedule) — synced
 // into a general inbox and manually assigned to a client afterwards.
 model MorningDocument {
-  id                String    @id // Morning document id
+  // Our row id. Rows synced before 2026-10-29 kept morning's id here (the
+  // migration copied it into morningId); new rows get a cuid.
+  id                String    @id @default(cuid())
+  /// morning's document id — unique per account, not globally: two practices
+  /// may sync the same morning document without touching each other's row
+  morningId         String
   userId            String
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -564,6 +569,7 @@ model MorningDocument {
 
   createdAt         DateTime  @default(now())
 
+  @@unique([userId, morningId])
   @@index([userId, clientId])
 }
 

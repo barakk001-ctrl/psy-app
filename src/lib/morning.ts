@@ -523,3 +523,25 @@ export async function searchMorningDocuments(
   if (!res.ok) return res;
   return { ok: true, data: res.data.items ?? [] };
 }
+
+/**
+ * The upsert for one synced morning document, scoped to its account: found by
+ * (userId, morningId), created for this user only, and an update never moves
+ * a row between accounts or touches the manual client assignment.
+ */
+export function morningDocUpsert(userId: string, mapped: ReturnType<typeof mapMorningSearchItem>) {
+  const { id: morningId, ...fields } = mapped;
+  return {
+    where: { userId_morningId: { userId, morningId } },
+    create: { ...fields, morningId, userId },
+    update: {
+      number: fields.number,
+      docType: fields.docType,
+      docDate: fields.docDate,
+      amount: fields.amount,
+      description: fields.description,
+      morningClientName: fields.morningClientName,
+      url: fields.url,
+    },
+  };
+}

@@ -8,7 +8,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import {
   getMorningCredentials,
-  mapMorningSearchItem,
+  mapMorningSearchItem, morningDocUpsert,
   searchMorningDocuments,
 } from "@/lib/morning";
 
@@ -59,20 +59,8 @@ export async function syncMorningDocumentsAction(
   for (const item of result.data) {
     if (!item.id || linkedIds.has(item.id)) continue;
     const mapped = mapMorningSearchItem(item);
-    await db.morningDocument.upsert({
-      where: { id: mapped.id },
-      create: { ...mapped, userId },
-      // Refresh Morning-side fields but never touch the manual assignment
-      update: {
-        number: mapped.number,
-        docType: mapped.docType,
-        docDate: mapped.docDate,
-        amount: mapped.amount,
-        description: mapped.description,
-        morningClientName: mapped.morningClientName,
-        url: mapped.url,
-      },
-    });
+    // Scoped to this account (userId + morning id) — see morningDocUpsert
+    await db.morningDocument.upsert(morningDocUpsert(userId, mapped));
     synced++;
   }
 
