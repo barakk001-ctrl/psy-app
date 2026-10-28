@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { renderToStream, type DocumentProps } from "@react-pdf/renderer";
-import { ensureFontsRegistered } from "@/components/invoices/invoice-pdf";
+import { renderPdf } from "@/components/invoices/invoice-pdf";
 
 /** Renders a react-pdf document to a streamed, private, inline PDF response. */
 export async function pdfResponse(
@@ -9,8 +9,7 @@ export async function pdfResponse(
 ): Promise<Response> {
   let nodeStream;
   try {
-    ensureFontsRegistered();
-    nodeStream = await renderToStream(doc);
+    nodeStream = await renderPdf(() => renderToStream(doc));
   } catch (err) {
     console.error("PDF render failed:", err);
     return new Response("PDF render failed", { status: 500 });

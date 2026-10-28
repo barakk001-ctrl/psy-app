@@ -44,22 +44,62 @@ function asDataUri(buf: Buffer): string {
   return `data:font/ttf;base64,${buf.toString("base64")}`;
 }
 
-// Lazy registration: only run when the PDF is actually being rendered,
-// not at module-load time. This prevents `next build` from failing if the
-// fonts are missing during build (e.g. during "Collecting page data").
-let fontsRegistered = false;
+// Lazy: the font files are read only when a PDF is actually rendered, not at
+// module-load time, so `next build` can't fail on them ("Collecting page data").
+let heeboUris: { 400: string; 500: string; 700: string } | null = null;
+function heebo() {
+  heeboUris ??= {
+    400: asDataUri(loadFont("heebo-400.ttf")),
+    500: asDataUri(loadFont("heebo-500.ttf")),
+    700: asDataUri(loadFont("heebo-700.ttf")),
+  };
+  return heeboUris;
+}
+
+/**
+ * Registers Heebo afresh — new font objects — for the next document.
+ *
+ * Why not once per process: fontkit caches one Glyph object per glyph id for
+ * the font's lifetime, and keeps the code points it was first created with.
+ * Laying out a summaries PDF creates some glyphs (e.g. ".") with no code
+ * points; every later document's right-to-left reordering then maps string
+ * positions to glyphs wrongly and fails ("Cannot read properties of undefined
+ * (reading 'id')" in @react-pdf/textkit) — the income report, whose amounts
+ * are RTL lines with numbers, failed after any summaries PDF until the
+ * process restarted. Fresh fonts per document give every render a clean
+ * glyph cache. (`Font.reset()` doesn't help: it keeps the cached load promise.)
+ * Call through `renderPdf`, which also keeps renders from overlapping.
+ */
 export function ensureFontsRegistered(): void {
-  if (fontsRegistered) return;
+  const src = heebo();
+  // Drop only our family — Font.clear() would also drop the built-in
+  // standard fonts (Helvetica…) that react-pdf falls back on
+  delete (Font.getRegisteredFonts() as Record<string, unknown>)["Heebo"];
   Font.register({
     family: "Heebo",
     fonts: [
-      { src: asDataUri(loadFont("heebo-400.ttf")), fontWeight: 400 },
-      { src: asDataUri(loadFont("heebo-500.ttf")), fontWeight: 500 },
-      { src: asDataUri(loadFont("heebo-700.ttf")), fontWeight: 700 },
+      { src: src[400], fontWeight: 400 },
+      { src: src[500], fontWeight: 500 },
+      { src: src[700], fontWeight: 700 },
     ],
   });
   Font.registerHyphenationCallback((word) => [word]);
-  fontsRegistered = true;
+}
+
+let pdfQueue: Promise<unknown> = Promise.resolve();
+
+/**
+ * Renders one PDF at a time, each with freshly registered fonts — re-registering
+ * while another document is mid-layout would hand it a different font object.
+ * PDFs are rendered rarely (a click), so queueing them costs nothing noticeable.
+ */
+export function renderPdf<T>(render: () => Promise<T>): Promise<T> {
+  const run = pdfQueue.then(() => {
+    ensureFontsRegistered();
+    return render();
+  });
+  pdfQueue = run.catch(() => undefined);
+  return run;
 }
 
 const COLORS = {

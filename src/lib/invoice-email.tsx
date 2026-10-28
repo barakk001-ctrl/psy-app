@@ -1,13 +1,12 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import {
   InvoicePDF,
-  ensureFontsRegistered,
+  renderPdf,
   type InvoicePDFData,
 } from "@/components/invoices/invoice-pdf";
 
 export async function renderInvoicePdfBuffer(data: InvoicePDFData): Promise<Buffer> {
-  ensureFontsRegistered();
-  return Buffer.from(await renderToBuffer(<InvoicePDF data={data} />));
+  return Buffer.from(await renderPdf(() => renderToBuffer(<InvoicePDF data={data} />)));
 }
 
 const currency = new Intl.NumberFormat("he-IL", {

@@ -1,7 +1,7 @@
 import { renderToStream } from "@react-pdf/renderer";
 import { auth } from "@/auth";
 import { loadInvoicePdfData } from "@/lib/invoice-pdf-data";
-import { InvoicePDF, ensureFontsRegistered } from "@/components/invoices/invoice-pdf";
+import { InvoicePDF, renderPdf } from "@/components/invoices/invoice-pdf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,8 +23,7 @@ export async function GET(
 
   let nodeStream;
   try {
-    ensureFontsRegistered();
-    nodeStream = await renderToStream(<InvoicePDF data={data} />);
+    nodeStream = await renderPdf(() => renderToStream(<InvoicePDF data={data} />));
   } catch (err) {
     console.error("PDF render failed:", err);
     return new Response(
