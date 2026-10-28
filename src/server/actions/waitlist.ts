@@ -42,7 +42,7 @@ export async function addWaitlistEntryAction(
   if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const parsed = parse(formData);
   if (!parsed.success) {
-    return { error: "אנא תקן את השגיאות בטופס", fieldErrors: parsed.error.flatten().fieldErrors };
+    return { error: "אנא תקנו את השגיאות בטופס", fieldErrors: parsed.error.flatten().fieldErrors };
   }
   const { fullName, phone, notes } = parsed.data;
   await db.waitlistEntry.create({
@@ -68,7 +68,7 @@ export async function updateWaitlistEntryAction(
   if (!id) return { error: "הרשומה לא נמצאה" };
   const parsed = parse(formData);
   if (!parsed.success) {
-    return { error: "אנא תקן את השגיאות בטופס", fieldErrors: parsed.error.flatten().fieldErrors };
+    return { error: "אנא תקנו את השגיאות בטופס", fieldErrors: parsed.error.flatten().fieldErrors };
   }
   const { fullName, phone, notes } = parsed.data;
   const res = await db.waitlistEntry.updateMany({

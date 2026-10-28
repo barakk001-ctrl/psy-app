@@ -93,7 +93,7 @@ export async function updateBusinessInfoAction(
 
   if (!parsed.success) {
     return {
-      error: "אנא תקן את השגיאות בטופס",
+      error: "אנא תקנו את השגיאות בטופס",
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
@@ -132,7 +132,7 @@ export async function updateSessionDefaultsAction(
   });
   if (!parsed.success) {
     return {
-      error: "אנא תקן את השגיאות בטופס",
+      error: "אנא תקנו את השגיאות בטופס",
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
@@ -162,7 +162,7 @@ export async function updateBrandingAction(
   });
   if (!parsed.success) {
     const fieldErrors = parsed.error.flatten().fieldErrors;
-    return { error: fieldErrors.logo?.[0] ?? "אנא תקן את השגיאות בטופס", fieldErrors };
+    return { error: fieldErrors.logo?.[0] ?? "אנא תקנו את השגיאות בטופס", fieldErrors };
   }
 
   const { brandName, logo } = parsed.data;
@@ -200,7 +200,7 @@ export async function updatePersonalDetailsAction(
   });
   if (!parsed.success) {
     return {
-      error: "אנא תקן את השגיאות בטופס",
+      error: "אנא תקנו את השגיאות בטופס",
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }

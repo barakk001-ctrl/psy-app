@@ -38,7 +38,7 @@ export async function recordPaymentAction(
 
   if (!parsed.success) {
     return {
-      error: "אנא תקן את השגיאות בטופס",
+      error: "אנא תקנו את השגיאות בטופס",
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }

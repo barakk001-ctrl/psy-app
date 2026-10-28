@@ -133,7 +133,7 @@ export async function createClientAction(
 
   if (!parsed.success) {
     return {
-      error: "אנא תקן את השגיאות בטופס",
+      error: "אנא תקנו את השגיאות בטופס",
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
@@ -188,7 +188,7 @@ export async function updateClientAction(
   const parsed = parseClientForm(formData);
   if (!parsed.success) {
     return {
-      error: "אנא תקן את השגיאות בטופס",
+      error: "אנא תקנו את השגיאות בטופס",
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }

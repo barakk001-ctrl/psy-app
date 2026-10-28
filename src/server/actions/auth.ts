@@ -73,7 +73,7 @@ export async function loginAction(_: FormState, formData: FormData): Promise<For
   const byEmail = rateLimit(`login:email:${email}`, { limit: 8, windowMs: 15 * 60_000 });
   const byIp = rateLimit(`login:ip:${ip}`, { limit: 25, windowMs: 15 * 60_000 });
   if (!byEmail.allowed || !byIp.allowed) {
-    return { error: "יותר מדי ניסיונות התחברות. נסה שוב בעוד מספר דקות." };
+    return { error: "יותר מדי ניסיונות התחברות. נסו שוב בעוד מספר דקות." };
   }
 
   const user = await db.user.findUnique({
@@ -151,7 +151,7 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
   const ip = await clientIp();
   const byIp = rateLimit(`register:ip:${ip}`, { limit: 5, windowMs: 60 * 60_000 });
   if (!byIp.allowed) {
-    return { error: "יותר מדי ניסיונות הרשמה. נסה שוב מאוחר יותר." };
+    return { error: "יותר מדי ניסיונות הרשמה. נסו שוב מאוחר יותר." };
   }
 
   // By invitation while SIGNUP_OPEN is off (signup-policy.ts); an address
@@ -314,7 +314,7 @@ export async function verifyTwoFactorAction(
     if (err instanceof AuthError) {
       if (err.type === "CredentialsSignin") {
         if ((err as AuthError & { code?: string }).code === "rate_limited") {
-          return { error: "יותר מדי ניסיונות התחברות. נסה שוב בעוד מספר דקות." };
+          return { error: "יותר מדי ניסיונות התחברות. נסו שוב בעוד מספר דקות." };
         }
         // The pending window may have lapsed while typing
         const still = await auth();
@@ -403,7 +403,7 @@ export async function verifyLoginCodeAction(
     if (err instanceof AuthError) {
       if (err.type === "CredentialsSignin") {
         if ((err as AuthError & { code?: string }).code === "rate_limited") {
-          return { sent: true, email, error: "יותר מדי ניסיונות התחברות. נסה שוב בעוד מספר דקות." };
+          return { sent: true, email, error: "יותר מדי ניסיונות התחברות. נסו שוב בעוד מספר דקות." };
         }
         return {
           sent: true,

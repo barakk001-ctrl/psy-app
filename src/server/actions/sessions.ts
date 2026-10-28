@@ -290,7 +290,7 @@ export async function createSessionAction(
 
   if (!parsed.success) {
     return {
-      error: "אנא תקן את השגיאות בטופס",
+      error: "אנא תקנו את השגיאות בטופס",
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
@@ -414,7 +414,7 @@ export async function updateSessionAction(
 
   if (!parsed.success) {
     return {
-      error: "אנא תקן את השגיאות בטופס",
+      error: "אנא תקנו את השגיאות בטופס",
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
