@@ -4,6 +4,7 @@ import { LogoMark, Wordmark } from "@/components/brand/logo-mark";
 import { PlanCards } from "@/components/plans/plan-cards";
 import { TRIAL_DAYS } from "@/lib/subscription";
 import { copyrightYears } from "@/lib/copyright";
+import { OPERATOR_EMAIL, OPERATOR_FOOTER } from "@/lib/operator";
 
 // Public, like /terms (auth-gate lets everyone through). Linked from the login
 // and register pages; signed-in users are pointed to their own /subscription.
@@ -95,6 +96,12 @@ export default async function PricingPage() {
           </p>
           <p>
             © כל הזכויות שמורות למרפאה אישית <span dir="ltr">{copyrightYears()}</span>
+          </p>
+          <p>
+            {OPERATOR_FOOTER} ·{" "}
+            <a href={`mailto:${OPERATOR_EMAIL}`} className="underline underline-offset-2">
+              <span dir="ltr">{OPERATOR_EMAIL}</span>
+            </a>
           </p>
         </footer>
       </div>

@@ -1,17 +1,20 @@
-// Who operates the service — the party named in /terms, /privacy and the
-// data-holding agreement. Barak is registered as an עוסק פטור (sole
-// proprietor, no VAT) trading as מרום טכנולוגיות; he issues receipts (קבלה),
-// not tax invoices, for subscriptions. Fill in the blanks when he sends them.
+// Who operates the service — the party named in /terms, /privacy, the
+// data-holding agreement and the /pricing footer. The operator is an עוסק
+// פטור (no VAT) trading as מרום טכנולוגיות, and issues receipts (קבלה), not
+// tax invoices, for subscriptions. Only the business name is shown publicly —
+// never a personal name. Fill in the address when it arrives.
 
-export const OPERATOR_NAME = "ברק קישנר";
 export const OPERATOR_TRADE_NAME = "מרום טכנולוגיות";
-export const OPERATOR_EMAIL = "barak@mirpaa.app";
-/** Still to come from Barak — shown as marked blanks until then. */
-export const OPERATOR_BUSINESS_NUMBER = "[להשלמה]";
+export const OPERATOR_BUSINESS_NUMBER = "305110520";
+/** Still to come — shown as a marked blank until then. */
 export const OPERATOR_ADDRESS = "[להשלמה]";
+export const OPERATOR_EMAIL = "barak@mirpaa.app";
 
-/** "ברק קישנר, עוסק פטור (שם העסק: מרום טכנולוגיות), מס׳ עוסק: …, כתובת: …, דוא״ל: …" */
-export const OPERATOR_LINE = `${OPERATOR_NAME}, עוסק פטור (שם העסק: ${OPERATOR_TRADE_NAME}), מס׳ עוסק: ${OPERATOR_BUSINESS_NUMBER}, כתובת: ${OPERATOR_ADDRESS}, דוא״ל: ${OPERATOR_EMAIL}`;
+/** "מרום טכנולוגיות (עוסק פטור), מס׳ עוסק: …, כתובת: …, דוא״ל: …" */
+export const OPERATOR_LINE = `${OPERATOR_TRADE_NAME} (עוסק פטור), מס׳ עוסק: ${OPERATOR_BUSINESS_NUMBER}, כתובת: ${OPERATOR_ADDRESS}, דוא״ל: ${OPERATOR_EMAIL}`;
+
+/** Short form for page footers. */
+export const OPERATOR_FOOTER = `${OPERATOR_TRADE_NAME} · עוסק פטור מס׳ ${OPERATOR_BUSINESS_NUMBER}`;
 
 /** Under every subscription price: an עוסק פטור charges no VAT. */
 export const PRICE_VAT_NOTE = "המחיר הסופי לתשלום · עוסק פטור (ללא מע״מ)";
