@@ -4,6 +4,8 @@
 // regions, service providers, cookies, backups). Clinical information is
 // governed by the data-holding agreement (src/lib/agreement.ts).
 
+import { OPERATOR_EMAIL, OPERATOR_LINE } from "@/lib/operator";
+
 export const PRIVACY_VERSION = "draft-2026-09";
 
 export type PrivacySection = { title: string; items: string[] };
@@ -17,10 +19,10 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
   {
     title: "1. מי אחראי/ת למידע",
     items: [
-      "המערכת מופעלת על ידי [להשלמה: שם המפעיל/ה, מספר עוסק/ח.פ., כתובת] (״המפעיל/ה״).",
+      `המערכת מופעלת על ידי ${OPERATOR_LINE} (״המפעיל/ה״).`,
       "לגבי המידע על המשתמש/ת עצמו/ה (פרטי החשבון והמנוי) — המפעיל/ה הוא/היא בעל/ת המידע.",
       "לגבי המידע על מטופלים — המטפל/ת הוא/היא בעל/ת מאגר המידע והמפעיל/ה משמש/ת כ״מחזיק״ בלבד, כמפורט בהסכם החזקה ועיבוד של מידע. פניות של מטופלים בנוגע למידע עליהם יופנו למטפל/ת.",
-      "פניות בנושאי פרטיות: [להשלמה: כתובת דוא״ל].",
+      `פניות בנושאי פרטיות: ${OPERATOR_EMAIL}.`,
     ],
   },
   {

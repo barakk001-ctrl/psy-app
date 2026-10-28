@@ -83,7 +83,8 @@ describe("planRequestMessage", () => {
       "19.10.26",
     );
     expect(r.subject).toBe("בקשה לרכישת מנוי שנתי");
-    expect(r.message).toContain(`₪${PRICING.yearlyIntro} לשנה (כולל מע״מ)`);
+    expect(r.message).toContain(`₪${PRICING.yearlyIntro} לשנה (מחיר סופי, ללא מע״מ — עוסק פטור)`);
+    expect(r.message).not.toContain("כולל מע״מ");
     expect(r.message).toContain("בתקופת ניסיון (עד 19.10.26)");
     expect(r.message).not.toMatch(/undefined|null/);
   });

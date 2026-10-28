@@ -3,6 +3,8 @@
 // user on an older version see the re-acceptance banner on the dashboard.
 // Source document (editable, for the lawyer): הסכם החזקת מידע - תבנית.docx.
 
+import { OPERATOR_LINE } from "@/lib/operator";
+
 export const AGREEMENT_VERSION = "draft-2026-10";
 
 export type AgreementSection = { title: string; items: string[] };
@@ -19,7 +21,7 @@ export const AGREEMENT_SECTIONS: AgreementSection[] = [
     items: [
       "\"המידע\" — כל מידע שהמטפל/ת מזין/ה למערכת, לרבות פרטי מטופלים, מועדי פגישות, רשומות טיפוליות, מסמכים ותיעוד תשלומים.",
       "המטפל/ת הינו/ה \"בעל/ת מאגר המידע\" כמשמעותו בחוק הגנת הפרטיות, התשמ\"א-1981, והמידע הינו קניינו/ה הבלעדי. מפעיל/ת המערכת משמש/ת כ\"מחזיק\" בלבד, לצורך מתן שירות אחסון והפעלה של המערכת.",
-      "מפעיל/ת המערכת: מרום טכנולוגיות [להשלמה: בהליכי רישום — מספר ח.פ./עוסק, כתובת, כתובת דוא״ל לפניות].",
+      `מפעיל/ת המערכת (״המחזיק״): ${OPERATOR_LINE}.`,
       "אין בהסכם זה כדי להעביר למפעיל/ה זכות כלשהי במידע.",
     ],
   },
