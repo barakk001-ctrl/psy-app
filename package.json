@@ -24,6 +24,7 @@
     "@hookform/resolvers": "^3.9.1",
     "@prisma/client": "^6.1.0",
     "@react-pdf/renderer": "^4.1.5",
+    "@sentry/nextjs": "10.76.2",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
