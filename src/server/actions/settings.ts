@@ -1,5 +1,6 @@
 "use server";
 
+import { canCreateAccount } from "@/lib/signup-policy";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth, unstable_update } from "@/auth";
@@ -204,11 +205,8 @@ export async function updatePersonalDetailsAction(
   if (!me) return { error: "משתמש לא נמצא" };
 
   if (email !== me.email) {
-    const allowed = process.env.ALLOWED_EMAILS;
-    const inAllowlist = allowed
-      ? allowed.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean).includes(email)
-      : process.env.NODE_ENV !== "production";
-    if (!inAllowlist) {
+    // The same rule as opening a new account (signup-policy.ts)
+    if (!canCreateAccount(email)) {
       return {
         error: "כתובת האימייל החדשה אינה מאושרת במערכת — פנו למנהל המערכת",
         fieldErrors: { email: ["כתובת לא מאושרת"] },

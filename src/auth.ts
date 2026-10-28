@@ -11,6 +11,7 @@ import { logAudit } from "@/lib/audit";
 import { LOGIN_CODE_LIMITS, loginCodeRateKeys } from "@/lib/login-code";
 import { consumeLoginCode } from "@/lib/login-code-store";
 import { createPracticeUser } from "@/lib/practice-user";
+import { canCreateAccount } from "@/lib/signup-policy";
 import {
   GOOGLE_AGREEMENT_COOKIE,
   decideGoogleSignIn,
@@ -176,13 +177,17 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         googleName: profile?.name,
         existingUserId: existing?.id ?? null,
         agreementAccepted: agreementCookie === AGREEMENT_VERSION,
+        // The invitation list applies only to creating an account
+        creationAllowed: !!email && canCreateAccount(email),
       });
 
       switch (decision.type) {
         case "reject":
           return "/login?error=google_unverified";
         case "need-agreement":
-          return "/register?google=agreement";
+          return "/register?invite=1&google=agreement";
+        case "not-invited":
+          return "/register?google=not-invited";
         case "link":
           return true;
         case "create": {

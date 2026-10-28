@@ -8,6 +8,7 @@ import {
 import { resolveAuthState } from "@/lib/auth-gate";
 
 const base = {
+  creationAllowed: true,
   email: "Keren@Example.com",
   emailVerified: true,
   googleName: "קרן כהן",

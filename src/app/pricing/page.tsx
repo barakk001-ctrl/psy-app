@@ -5,6 +5,7 @@ import { PlanCards } from "@/components/plans/plan-cards";
 import { TRIAL_DAYS } from "@/lib/subscription";
 import { copyrightYears } from "@/lib/copyright";
 import { OPERATOR_EMAIL, OPERATOR_FOOTER } from "@/lib/operator";
+import { inviteOnly } from "@/lib/signup-policy";
 
 // Public, like /terms (auth-gate lets everyone through). Linked from the login
 // and register pages; signed-in users are pointed to their own /subscription.
@@ -19,6 +20,9 @@ const CTA_SECONDARY =
 export default async function PricingPage() {
   const session = await auth();
   const signedIn = !!session?.user?.id;
+  // While sign-up is by invitation the buttons ask to join instead of
+  // promising a free start (signup-policy.ts; /register explains)
+  const byInvite = inviteOnly();
 
   return (
     <div className="min-h-screen bg-cream-50">
@@ -48,7 +52,7 @@ export default async function PricingPage() {
           trial={{
             action: signedIn ? null : (
               <Link href="/register" className={`${CTA_PRIMARY} w-full`}>
-                התחלת {TRIAL_DAYS} יום חינם
+                {byInvite ? "בקשת הצטרפות" : `התחלת ${TRIAL_DAYS} יום חינם`}
               </Link>
             ),
           }}
@@ -65,12 +69,13 @@ export default async function PricingPage() {
           ) : (
             <>
               <p className="text-ink-soft text-sm">
-                איך קונים? נרשמים, עובדים חודש בחינם, ואז בוחרים מסלול בעמוד ״מנוי ומסלולים״
-                שבתפריט.
+                {byInvite
+                  ? "ההרשמה כרגע בהזמנה בלבד. אחרי ההצטרפות עובדים חודש בחינם, ואז בוחרים מסלול בעמוד ״מנוי ומסלולים״ שבתפריט."
+                  : "איך קונים? נרשמים, עובדים חודש בחינם, ואז בוחרים מסלול בעמוד ״מנוי ומסלולים״ שבתפריט."}
               </p>
               <div className="mt-3 flex flex-wrap justify-center gap-2">
                 <Link href="/register" className={CTA_PRIMARY}>
-                  התחלת ניסיון חינם
+                  {byInvite ? "בקשת הצטרפות" : "התחלת ניסיון חינם"}
                 </Link>
                 <Link href="/login" className={CTA_SECONDARY}>
                   כבר יש לי חשבון — כניסה

@@ -26,13 +26,16 @@ export type GoogleSignInDecision =
   | { type: "reject"; reason: "unverified" | "no-email" }
   | { type: "link"; userId: string }
   | { type: "create"; email: string; name: string }
-  | { type: "need-agreement" };
+  | { type: "need-agreement" }
+  /** a new address while sign-up is by invitation (signup-policy.ts) */
+  | { type: "not-invited" };
 
 /**
  * What to do with a Google identity. An existing user with that email is
  * always the one signed in (Google proved the address), so an email never
- * gets a second account; a new email becomes a new practice only after the
- * agreement was accepted.
+ * gets a second account — and is never blocked by the invitation list. A new
+ * email becomes a new practice only if sign-up allows it (`creationAllowed`,
+ * from canCreateAccount) and after the agreement was accepted.
  */
 export function decideGoogleSignIn(input: {
   email: string | null | undefined;
@@ -40,12 +43,14 @@ export function decideGoogleSignIn(input: {
   googleName: string | null | undefined;
   existingUserId: string | null;
   agreementAccepted: boolean;
+  creationAllowed: boolean;
 }): GoogleSignInDecision {
   const email = input.email ? normalizeEmail(input.email) : "";
   if (!email || !email.includes("@")) return { type: "reject", reason: "no-email" };
   // Google sends a boolean; be strict — anything but `true` is unverified
   if (input.emailVerified !== true) return { type: "reject", reason: "unverified" };
   if (input.existingUserId) return { type: "link", userId: input.existingUserId };
+  if (!input.creationAllowed) return { type: "not-invited" };
   if (!input.agreementAccepted) return { type: "need-agreement" };
   return { type: "create", email, name: displayNameFor(input.googleName, email) };
 }

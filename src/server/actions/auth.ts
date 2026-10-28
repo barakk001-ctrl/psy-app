@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { db } from "@/lib/db";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
+import { INVITE_ONLY_MESSAGE, canCreateAccount } from "@/lib/signup-policy";
 import { rateLimit } from "@/lib/rate-limit";
 import { createPracticeUser } from "@/lib/practice-user";
 import { sendPasswordResetLink } from "@/lib/password-reset";
@@ -31,19 +32,6 @@ import {
 async function clientIp(): Promise<string> {
   const h = await headers();
   return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-}
-
-function registrationAllowed(email: string): boolean {
-  const allowed = process.env.ALLOWED_EMAILS;
-  if (allowed) {
-    return allowed
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean)
-      .includes(email);
-  }
-  // No allowlist configured: open in dev, closed in production.
-  return process.env.NODE_ENV !== "production";
 }
 
 export type FormState = {
@@ -166,8 +154,11 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
     return { error: "יותר מדי ניסיונות הרשמה. נסה שוב מאוחר יותר." };
   }
 
-  if (!registrationAllowed(email)) {
-    return { error: "ההרשמה סגורה. פנה למנהל המערכת." };
+  // By invitation while SIGNUP_OPEN is off (signup-policy.ts); an address
+  // that already has an account gets the "already registered" answer below
+  const existingUser = await db.user.findUnique({ where: { email }, select: { id: true } });
+  if (!existingUser && !canCreateAccount(email)) {
+    return { error: INVITE_ONLY_MESSAGE };
   }
 
   const existing = await db.user.findUnique({ where: { email } });
