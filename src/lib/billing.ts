@@ -31,7 +31,7 @@ type CreateLinkArgs = {
  *  redirect URL, or an error string (Hebrew) for the UI. */
 export async function createGrowPaymentLink(
   args: CreateLinkArgs,
-): Promise<{ url: string } | { error: string }> {
+): Promise<{ url: string; processId: string; processToken: string | null; sum: number } | { error: string }> {
   if (!billingConfigured()) {
     return { error: "תשלום בכרטיס עדיין לא הופעל — פנו למנהלת המערכת" };
   }
@@ -72,11 +72,14 @@ export async function createGrowPaymentLink(
       err?: { message?: string };
     };
     const url = json?.data?.url;
-    if (!url) {
+    const processId = json?.data?.processId != null ? String(json.data.processId) : "";
+    // The callback is matched to this checkout by processId — without one we
+    // couldn't trust any callback, so don't send the customer to pay
+    if (!url || !processId) {
       console.error("Grow createPaymentProcess failed:", JSON.stringify(json).slice(0, 500));
       return { error: "יצירת דף התשלום נכשלה — נסו שוב או פנו למנהלת המערכת" };
     }
-    return { url };
+    return { url, processId, processToken: json?.data?.processToken ?? null, sum };
   } catch (err) {
     console.error("Grow createPaymentProcess error:", err);
     return { error: "שירות התשלומים לא זמין כרגע — נסו שוב מאוחר יותר" };
@@ -93,6 +96,8 @@ export async function approveGrowTransaction(fields: {
   processToken?: string;
   sum?: string;
 }): Promise<boolean> {
+  // Called with the checkout WE stored (processId/processToken/sum) and the
+  // callback's transaction fields — see src/lib/grow-callback.ts
   if (!billingConfigured()) return false;
   const body = new URLSearchParams();
   body.set("userId", process.env.GROW_USER_ID!);

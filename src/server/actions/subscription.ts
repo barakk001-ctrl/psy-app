@@ -60,7 +60,19 @@ export async function startCardPaymentAction(formData: FormData) {
     phone: me.phone,
     origin,
   });
-  if ("url" in result) redirect(result.url);
+  if ("url" in result) {
+    // The callback is believed only for a checkout stored here (grow-callback.ts)
+    await db.growCheckout.create({
+      data: {
+        userId: session.user.id,
+        plan,
+        sum: result.sum,
+        processId: result.processId,
+        processToken: result.processToken,
+      },
+    });
+    redirect(result.url);
+  }
   redirect(`/subscription?payerr=${encodeURIComponent(result.error)}`);
 }
 
