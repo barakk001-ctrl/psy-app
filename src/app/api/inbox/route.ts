@@ -10,7 +10,10 @@ export const dynamic = "force-dynamic";
 
 // Inbound message API: iOS Shortcuts, automations, and email webhooks POST
 // free text here; it lands in the user's inbox for processing on /import.
-// Auth: personal token (Settings) via Authorization: Bearer or ?token=.
+// Auth: the private API token (Settings, `inboxApiToken`) via Authorization:
+// Bearer or ?token=. Never the public appointment-request link's token — that
+// one is shared with clients, and the request form (5/hour per IP) is the only
+// way in with it.
 
 // GET without ?message= = connectivity/token check (open in a browser).
 // GET with ?message= = ingestion fallback for clients whose POST is flaky
@@ -22,7 +25,7 @@ export async function GET(req: Request) {
     return Response.json({ ok: false, error: "Missing token" }, { status: 401 });
   }
   const user = await db.user.findUnique({
-    where: { inboxToken: token },
+    where: { inboxApiToken: token },
     select: { id: true },
   });
   if (!user) {
@@ -55,7 +58,7 @@ export async function POST(req: Request) {
   if (!token) return Response.json({ ok: false, error: "Missing token" }, { status: 401 });
 
   const user = await db.user.findUnique({
-    where: { inboxToken: token },
+    where: { inboxApiToken: token },
     select: { id: true },
   });
   if (!user) return Response.json({ ok: false, error: "Invalid token" }, { status: 401 });

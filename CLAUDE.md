@@ -147,7 +147,7 @@ A round "?" button (`components/help/help-widget.tsx`, in the (app) layout only 
 
 ### Message import & inbox
 
-`/import` parses pasted WhatsApp-style messages into clients/sessions (`src/lib/message-parse.ts`); `/api/inbox` ingests external messages by token (configured in Settings). Imported text can be appended to a session's encrypted note.
+`/import` parses pasted WhatsApp-style messages into clients/sessions (`src/lib/message-parse.ts`); `/api/inbox` ingests external messages by token (configured in Settings). Imported text can be appended to a session's encrypted note. **Two separate keys** (since 2026-10-29, migration `20261029100000_inbox_api_token`, test `inbox-tokens.test.ts`): `User.inboxToken` is the public appointment-request link `/request/<token>` (shared with clients; the form allows 5/hour per IP) and `User.inboxApiToken` is the private API key for `/api/inbox` (shortcuts/automations, 60/hour per account). Neither works in the other's place — before, anyone with a shared request link could post to the API directly. The migration kept every request link and gave each account a fresh API key, so **an existing iPhone Shortcut must be updated with the new API address from Settings → קליטת הודעות מבחוץ**. Generating fills in only missing keys; "ביטול המפתח" clears both.
 
 ### Money, dates, RTL
 

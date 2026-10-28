@@ -38,7 +38,15 @@ function CopyRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function InboxSettings({ token }: { token: string | null }) {
+export function InboxSettings({
+  token,
+  apiToken,
+}: {
+  /** the public appointment-request link — shared with clients */
+  token: string | null;
+  /** the private API key for shortcuts/automations — never shared */
+  apiToken: string | null;
+}) {
   const [origin, setOrigin] = useState("");
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -71,10 +79,18 @@ export function InboxSettings({ token }: { token: string | null }) {
                   label="טופס בקשת פגישה ללקוחות (אפשר לשלוח את הקישור)"
                   value={`${origin}/request/${token}`}
                 />
-                <CopyRow
-                  label="כתובת ה-API (לקיצור דרך / אוטומציות)"
-                  value={`${origin}/api/inbox?token=${token}`}
-                />
+                {apiToken ? (
+                  <CopyRow
+                    label="כתובת ה-API (לקיצור דרך / אוטומציות — לא לשתף)"
+                    value={`${origin}/api/inbox?token=${apiToken}`}
+                  />
+                ) : (
+                  <form action={generateInboxTokenAction}>
+                    <Button type="submit" variant="secondary" size="sm">
+                      יצירת כתובת API לקיצור דרך
+                    </Button>
+                  </form>
+                )}
               </div>
             )}
 

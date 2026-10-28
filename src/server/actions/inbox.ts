@@ -18,14 +18,24 @@ async function requireUserId(): Promise<string> {
 export async function generateInboxTokenAction() {
   const userId = await requireUserId();
   await requireWritable(userId);
-  const token = crypto.randomBytes(18).toString("base64url");
-  await db.user.update({ where: { id: userId }, data: { inboxToken: token } });
+  // Two separate keys: the public request link (shared with clients) and the
+  // private API address (shortcuts/automations). Only missing ones are made, so
+  // a link already shared keeps working.
+  const me = await db.user.findUnique({ where: { id: userId }, select: { inboxToken: true, inboxApiToken: true } });
+  const newToken = () => crypto.randomBytes(18).toString("base64url");
+  await db.user.update({
+    where: { id: userId },
+    data: {
+      inboxToken: me?.inboxToken ?? newToken(),
+      inboxApiToken: me?.inboxApiToken ?? newToken(),
+    },
+  });
   revalidatePath("/settings");
 }
 
 export async function revokeInboxTokenAction() {
   const userId = await requireUserId();
-  await db.user.update({ where: { id: userId }, data: { inboxToken: null } });
+  await db.user.update({ where: { id: userId }, data: { inboxToken: null, inboxApiToken: null } });
   revalidatePath("/settings");
 }
 

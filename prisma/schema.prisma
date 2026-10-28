@@ -66,7 +66,10 @@ model User {
   isAdmin            Boolean   @default(false)
 
   // Token for the inbound message API (/api/inbox) — iOS Shortcuts etc.
+  /// The public appointment-request link (/request/<token>) — shared with clients
   inboxToken       String?   @unique
+  /// The private inbox API (/api/inbox) for shortcuts/automations — never the same as inboxToken
+  inboxApiToken    String?   @unique
 
   // Automatic sign-out after this many minutes without activity (15/30/60,
   // Settings → ניתוק אוטומטי; rules in src/lib/idle-timeout.ts)

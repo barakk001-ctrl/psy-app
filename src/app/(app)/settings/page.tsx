@@ -57,6 +57,7 @@ export default async function SettingsPage({
       vatLiable: true,
       defaultSessionMinutes: true,
       inboxToken: true,
+      inboxApiToken: true,
       totpEnabled: true,
       totpBackupCodes: true,
       hashedPassword: true,
@@ -189,7 +190,7 @@ export default async function SettingsPage({
         })()}
       />
 
-      <InboxSettings token={user.inboxToken} />
+      <InboxSettings token={user.inboxToken} apiToken={user.inboxApiToken} />
 
       <ChangePasswordCard hasPassword={!!user.hashedPassword} email={user.email} />
 
