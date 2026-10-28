@@ -139,7 +139,7 @@ export function planRequestMessage(
   return {
     subject: `בקשה לרכישת ${plan.title}`,
     message: [
-      `אשמח לרכוש ${plan.title} — ₪${plan.price} ${plan.per} (מחיר סופי, ללא מע״מ — עוסק פטור).`,
+      `אשמח לרכוש ${plan.title} — ₪${plan.price} ${plan.per} (מחיר סופי).`,
       `מצב החשבון כרגע: ${status}.`,
       "נשלח מעמוד ״מנוי ומסלולים״.",
     ].join("\n"),

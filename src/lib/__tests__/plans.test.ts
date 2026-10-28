@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PRICING, TRIAL_DAYS } from "@/lib/subscription";
 import {
+  PLAN_FACTS,
   PLAN_OPTIONS,
   TRIAL_PLAN,
   monthsInHebrew,
@@ -39,6 +40,14 @@ describe("plan options", () => {
     expect(planLabel("YEARLY")).toBe("מנוי שנתי");
     expect(planLabel(null)).toBe("מנוי");
     expect(planById("WEEKLY")).toBeUndefined();
+  });
+});
+
+describe("public price wording", () => {
+  it("states final prices without naming the operator's VAT status", () => {
+    expect(PLAN_FACTS).toContain("המחירים סופיים, ולא יתווסף להם מע״מ.");
+    expect(PLAN_FACTS.join(" ")).not.toContain("עוסק פטור");
+    expect(PLAN_FACTS.join(" ")).not.toContain("כולל מע״מ");
   });
 });
 
@@ -83,7 +92,8 @@ describe("planRequestMessage", () => {
       "19.10.26",
     );
     expect(r.subject).toBe("בקשה לרכישת מנוי שנתי");
-    expect(r.message).toContain(`₪${PRICING.yearlyIntro} לשנה (מחיר סופי, ללא מע״מ — עוסק פטור)`);
+    expect(r.message).toContain(`₪${PRICING.yearlyIntro} לשנה (מחיר סופי).`);
+    expect(r.message).not.toContain("עוסק פטור");
     expect(r.message).not.toContain("כולל מע״מ");
     expect(r.message).toContain("בתקופת ניסיון (עד 19.10.26)");
     expect(r.message).not.toMatch(/undefined|null/);
