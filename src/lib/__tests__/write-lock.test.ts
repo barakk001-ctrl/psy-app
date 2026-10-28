@@ -59,6 +59,7 @@ const API_ALLOWED: Record<string, string> = {
   "auth/[...nextauth]": "sign-in",
   "cron/reminders": "system job (CRON_SECRET)",
   "billing/webhook": "payment provider callback — renews the account",
+  "csp-report": "browser CSP reports — logged, nothing stored",
 };
 
 function exportedActions(): { key: string; body: string }[] {

@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
+import { securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
+  // No "X-Powered-By: Next.js" — nothing to gain from advertising the stack.
+  poweredByHeader: false,
   // next/image (the login page's photo): modern formats first
   images: { formats: ["image/avif", "image/webp"] },
   // www.mirpaa.app → mirpaa.app (Railway serves both; the redirect is ours).
@@ -11,6 +14,16 @@ const nextConfig: NextConfig = {
         has: [{ type: "host", value: "www.mirpaa.app" }],
         destination: "https://mirpaa.app/:path*",
         permanent: true,
+      },
+    ];
+  },
+  // HSTS, no framing, nosniff, referrer, permissions, and a report-only CSP —
+  // the policy and what it allows (and why) is in src/lib/security-headers.ts.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: securityHeaders({ dev: process.env.NODE_ENV === "development" }),
       },
     ];
   },
