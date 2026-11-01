@@ -29,6 +29,12 @@ export type SubscriptionState = {
   writable: boolean;
 };
 
+/** When the free trial ends. Pre-feature accounts without a stamped trial fall
+ *  back to createdAt + 30 days. */
+export function trialEndOf(u: Pick<SubscriptionFields, "createdAt" | "trialEndsAt">): Date {
+  return u.trialEndsAt ?? new Date(u.createdAt.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+}
+
 export function getSubscriptionState(
   u: SubscriptionFields,
   now: Date = new Date(),
@@ -48,9 +54,7 @@ export function getSubscriptionState(
     };
   }
 
-  // Pre-feature accounts without a stamped trial fall back to createdAt + 30d
-  const trialEnd =
-    u.trialEndsAt ?? new Date(u.createdAt.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  const trialEnd = trialEndOf(u);
   if (trialEnd > now) {
     return {
       status: "trial",

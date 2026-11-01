@@ -137,9 +137,25 @@ model User {
   clientDocuments  ClientDocument[]
   supportRequests  SupportRequest[]
   waitlistEntries  WaitlistEntry[]
+  subscriptionNotices SubscriptionNotice[]
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+}
+
+// One row per trial/subscription email to an account: taken before sending, so
+// nothing is sent twice (src/lib/subscription-notices.ts). periodEnd is the end
+// the email was about, so a renewed period gets its own notices.
+model SubscriptionNotice {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stage     String    // DAYS_7 | DAY_1 | ENDED
+  periodEnd DateTime
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, stage, periodEnd])
 }
 
 // ─────────────────────────────────────────────────────────────

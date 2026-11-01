@@ -7,6 +7,7 @@
 import { purgeExpiredClients } from "@/lib/client-trash-data";
 import { purgeExpiredRateLimits } from "@/lib/rate-limit";
 import { topUpOpenEndedSeries } from "@/lib/series-topup";
+import { sendSubscriptionNotices } from "@/lib/subscription-notices-data";
 import { retryFailedSupportEmails } from "@/lib/support-data";
 
 const FIRST_RUN_MS = 60 * 1000; // a minute after boot
@@ -16,10 +17,16 @@ const globalForMaintenance = globalThis as unknown as { psyMaintenance?: boolean
 
 export async function runMaintenance(
   now = new Date(),
-): Promise<{ clientsPurged: number; seriesExtended: number; supportEmailsSent: number }> {
+): Promise<{
+  clientsPurged: number;
+  seriesExtended: number;
+  supportEmailsSent: number;
+  subscriptionNoticesSent: number;
+}> {
   let clientsPurged = 0;
   let seriesExtended = 0;
   let supportEmailsSent = 0;
+  let subscriptionNoticesSent = 0;
   try {
     // Clients 30 days in the recycle bin are deleted for good
     clientsPurged = await purgeExpiredClients(now);
@@ -48,7 +55,16 @@ export async function runMaintenance(
   } catch (err) {
     console.error("Maintenance: rate-limit purge failed:", err);
   }
-  return { clientsPurged, seriesExtended, supportEmailsSent };
+  try {
+    // Trial/subscription ending emails to account owners (never their clients)
+    subscriptionNoticesSent = await sendSubscriptionNotices(now);
+    if (subscriptionNoticesSent > 0) {
+      console.log(`Maintenance: sent ${subscriptionNoticesSent} subscription notice(s)`);
+    }
+  } catch (err) {
+    console.error("Maintenance: subscription notices failed:", err);
+  }
+  return { clientsPurged, seriesExtended, supportEmailsSent, subscriptionNoticesSent };
 }
 
 export function startMaintenance(): void {
