@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PlayCircle, X } from "lucide-react";
 
-/** "How it works" — opens the narrated explainer video in a lightbox. */
+/** "How it works" — opens the silent, captioned explainer video in a lightbox. */
 export function ExplainerVideo({
   label = "איך זה עובד? צפו בהדגמה קצרה",
   className = "mx-auto flex items-center gap-2 text-sm text-sage-600 hover:text-sage-700 font-medium",
