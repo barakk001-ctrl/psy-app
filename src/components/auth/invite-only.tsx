@@ -1,12 +1,20 @@
 import Link from "next/link";
 import { JOIN_REQUEST_EMAIL } from "@/lib/signup-policy";
+import { INVITE_INVALID_MESSAGE } from "@/lib/invite-codes";
 
 /**
  * /register while sign-up is by invitation (signup-policy.ts): how to ask to
  * join, instead of a form that would only refuse. Invited people continue to
  * the form; existing users go to sign in.
  */
-export function InviteOnly({ googleNotInvited = false }: { googleNotInvited?: boolean }) {
+export function InviteOnly({
+  googleNotInvited = false,
+  inviteInvalid = false,
+}: {
+  googleNotInvited?: boolean;
+  /** An invitation link whose code can't be used */
+  inviteInvalid?: boolean;
+}) {
   return (
     <div>
       <div className="mb-8">
@@ -17,6 +25,12 @@ export function InviteOnly({ googleNotInvited = false }: { googleNotInvited?: bo
       {googleNotInvited && (
         <p className="mb-4 rounded-xl border border-cream-300 bg-cream-100 px-4 py-3 text-sm text-ink-soft leading-relaxed">
           לחשבון ה-Google שבחרת עדיין אין הזמנה להצטרפות.
+        </p>
+      )}
+
+      {inviteInvalid && (
+        <p className="mb-4 rounded-xl border border-cream-300 bg-cream-100 px-4 py-3 text-sm text-ink-soft leading-relaxed">
+          {INVITE_INVALID_MESSAGE}
         </p>
       )}
 

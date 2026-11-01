@@ -9,6 +9,8 @@
 //     /register shows the "ההרשמה כרגע בהזמנה בלבד" page, and /pricing's
 //     buttons become "בקשת הצטרפות".
 //   - SIGNUP_OPEN=true: anyone may sign up (ALLOWED_EMAILS no longer matters).
+// Invite codes (invite-codes.ts) are the other way in while it is closed; they
+// are checked by the callers, on top of this rule.
 // Existing users are never affected: signing in matches the User row first,
 // so the allowlist only ever applies to *creating* an account.
 // In development with no ALLOWED_EMAILS, sign-up stays open (local testing).

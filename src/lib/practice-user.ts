@@ -1,6 +1,10 @@
 import { db } from "@/lib/db";
+import { claimInvite } from "@/lib/invite-store";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { TRIAL_DAYS } from "@/lib/subscription";
+
+/** The invite code ran out between the check and the sign-up. */
+export class InviteUnavailable extends Error {}
 
 /**
  * Creates a new practice owner — the one place users are created, for both
@@ -16,18 +20,26 @@ export async function createPracticeUser(input: {
   name: string;
   hashedPassword: string | null;
   emailVerified?: boolean;
+  /** Uses this code up in the same transaction; refused with InviteUnavailable. */
+  inviteCode?: string;
 }) {
   const now = Date.now();
-  return db.user.create({
-    data: {
-      email: input.email.trim().toLowerCase(),
-      name: input.name,
-      hashedPassword: input.hashedPassword,
-      emailVerifiedAt: input.emailVerified ? new Date(now) : null,
-      agreementVersion: AGREEMENT_VERSION,
-      agreementAcceptedAt: new Date(now),
-      trialEndsAt: new Date(now + TRIAL_DAYS * 24 * 60 * 60 * 1000),
-    },
-    select: { id: true, email: true, name: true },
+  const { inviteCode } = input;
+  return db.$transaction(async (tx) => {
+    const inviteCodeId = inviteCode ? await claimInvite(tx, inviteCode) : null;
+    if (inviteCode && !inviteCodeId) throw new InviteUnavailable();
+    return tx.user.create({
+      data: {
+        inviteCodeId,
+        email: input.email.trim().toLowerCase(),
+        name: input.name,
+        hashedPassword: input.hashedPassword,
+        emailVerifiedAt: input.emailVerified ? new Date(now) : null,
+        agreementVersion: AGREEMENT_VERSION,
+        agreementAcceptedAt: new Date(now),
+        trialEndsAt: new Date(now + TRIAL_DAYS * 24 * 60 * 60 * 1000),
+      },
+      select: { id: true, email: true, name: true },
+    });
   });
 }

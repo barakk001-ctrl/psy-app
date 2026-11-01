@@ -57,6 +57,8 @@ const ALLOWED: Record<string, string> = {
   "subscription.startCardPaymentAction": "buying a plan",
   "subscription.extendSubscriptionAction": "admin (admins are exempt)",
   "subscription.toggleSubscriptionExemptAction": "admin (admins are exempt)",
+  "invites.createInviteCodeAction": "admin (admins are exempt)",
+  "invites.revokeInviteCodeAction": "admin (admins are exempt)",
   "support.submitSupportRequestAction": "support message",
   "support.setSupportRequestStatusAction": "admin, support inbox",
 };

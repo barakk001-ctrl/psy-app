@@ -20,6 +20,8 @@ import {
   AdminSupportRequestsCard,
   type AdminSupportRow,
 } from "@/components/settings/admin-support-requests-card";
+import { AdminInvitesCard, type AdminInviteRow } from "@/components/settings/admin-invites-card";
+import { canonicalOrigin, originFromHeaders } from "@/lib/request-origin";
 import { SUBSCRIPTION_FIELD_SELECT, getSubscriptionState } from "@/lib/subscription";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
@@ -130,6 +132,10 @@ export default async function SettingsPage({
         select: { id: true, name: true, email: true, ...SUBSCRIPTION_FIELD_SELECT },
       })
     : [];
+  const adminInvites: AdminInviteRow[] = user.isAdmin
+    ? await db.inviteCode.findMany({ orderBy: { createdAt: "desc" }, take: 50 })
+    : [];
+  const inviteOrigin = canonicalOrigin() ?? originFromHeaders(await headers()) ?? "";
   const supportRequests: AdminSupportRow[] = user.isAdmin
     ? (
         await db.supportRequest.findMany({
@@ -238,6 +244,8 @@ export default async function SettingsPage({
       <AccountClosureCard method={reauthMethod(user)} email={user.email} isAdmin={user.isAdmin} />
 
       {user.isAdmin && <AdminSubscriptionsCard users={adminUsers} meId={userId} />}
+
+      {user.isAdmin && <AdminInvitesCard invites={adminInvites} origin={inviteOrigin} />}
 
       {user.isAdmin && <AdminSupportRequestsCard requests={supportRequests} />}
 

@@ -79,6 +79,7 @@ export async function purgeAccount(userId: string, now = new Date()): Promise<bo
       await tx.invoice.deleteMany({ where: { userId } });
       await tx.auditLog.deleteMany({ where: { userId } });
       await tx.growCheckout.deleteMany({ where: { userId } });
+      await tx.inviteCode.deleteMany({ where: { createdById: userId } });
       await tx.billingEvent.updateMany({ where: { userId }, data: { userId: null, raw: null } });
       await tx.user.delete({ where: { id: userId } });
       await tx.auditLog.create({ data: { userId, action: "ACCOUNT_PURGE" } });

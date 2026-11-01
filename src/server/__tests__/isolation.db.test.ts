@@ -76,6 +76,7 @@ const ACTION_MODULES: Record<string, () => Promise<Record<string, unknown>>> = {
   todos: () => import("@/server/actions/todos"),
   "meeting-types": () => import("@/server/actions/meeting-types"),
   waitlist: () => import("@/server/actions/waitlist"),
+  invites: () => import("@/server/actions/invites"),
   subscription: () => import("@/server/actions/subscription"),
   support: () => import("@/server/actions/support"),
 };

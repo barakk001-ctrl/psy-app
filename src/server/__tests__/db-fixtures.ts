@@ -28,6 +28,7 @@ export type Practice = {
   waitlistId: string;
   morningDocId: string;
   supportId: string;
+  inviteId: string;
   calendarToken: string;
   inboxToken: string;
   inboxApiToken: string;
@@ -214,6 +215,9 @@ export async function seedPractice(
       url: "https://example.test/doc",
     },
   });
+  const invite = await db.inviteCode.create({
+    data: { code: `TEST${tag}ABCDEFG`.slice(0, 12), createdById: userId },
+  });
   const support = await db.supportRequest.create({
     data: {
       userId,
@@ -269,6 +273,7 @@ export async function seedPractice(
     waitlistId: waitlist.id,
     morningDocId: morningDoc.id,
     supportId: support.id,
+    inviteId: invite.id,
     calendarToken: user.calendarToken!,
     inboxToken: user.inboxToken!,
     inboxApiToken: user.inboxApiToken!,
@@ -311,6 +316,7 @@ export async function fingerprint(db: PrismaClient, userId: string): Promise<str
     morning,
     reminders,
     support,
+    invites,
     waitlist,
     types,
     audit,
@@ -332,6 +338,7 @@ export async function fingerprint(db: PrismaClient, userId: string): Promise<str
     db.morningDocument.findMany({ where: mine }),
     db.reminderJob.findMany({ where: mine }),
     db.supportRequest.findMany({ where: mine }),
+    db.inviteCode.findMany({ where: { createdById: userId } }),
     db.waitlistEntry.findMany({ where: mine }),
     db.meetingType.findMany({ where: mine }),
     db.auditLog.findMany({ where: mine }),
@@ -354,6 +361,7 @@ export async function fingerprint(db: PrismaClient, userId: string): Promise<str
     morning: sorted(morning),
     reminders: sorted(reminders),
     support: sorted(support),
+    invites: sorted(invites),
     waitlist: sorted(waitlist),
     types: sorted(types),
     audit: sorted(audit),

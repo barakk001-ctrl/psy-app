@@ -14,6 +14,8 @@ export function RegisterForm({
   googleEnabled = false,
   notice,
   turnstileKey,
+  inviteCode,
+  askInviteCode = false,
 }: {
   /** Show "המשך עם Google" — only when the Google keys are configured */
   googleEnabled?: boolean;
@@ -21,6 +23,10 @@ export function RegisterForm({
   notice?: string;
   /** Set only while Turnstile is on (src/lib/turnstile.ts) */
   turnstileKey?: string | null;
+  /** From an invitation link: sent along, checked again on the server */
+  inviteCode?: string | null;
+  /** Sign-up is closed and no link was used: the form offers a field for a code */
+  askInviteCode?: boolean;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     registerAction,
@@ -39,6 +45,12 @@ export function RegisterForm({
         <p className="text-ink-muted mt-2">הקליניקה שלך, מסודרת במקום אחד</p>
       </div>
 
+      {inviteCode && (
+        <p role="status" className="mb-4 rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700">
+          קיבלת הזמנה להצטרף. אפשר להירשם.
+        </p>
+      )}
+
       <form
         action={formAction}
         className="space-y-4"
@@ -53,6 +65,8 @@ export function RegisterForm({
           startTransition(() => formAction(fd));
         }}
       >
+        {inviteCode && <input type="hidden" name="inviteCode" value={inviteCode} />}
+
         <div>
           <Label htmlFor="name">שם מלא</Label>
           <Input
@@ -106,6 +120,14 @@ export function RegisterForm({
             </p>
           )}
         </div>
+
+        {askInviteCode && (
+          <div>
+            <Label htmlFor="inviteCode">קוד הזמנה</Label>
+            <Input id="inviteCode" name="inviteCode" autoComplete="off" dir="ltr" />
+            <p className="text-xs text-ink-subtle mt-1">אם קיבלת קוד. אם נוספת לרשימת המוזמנים, אפשר להשאיר ריק.</p>
+          </div>
+        )}
 
         <label className="flex items-start gap-2.5 rounded-xl border border-cream-300 bg-white/60 px-3.5 py-3 cursor-pointer">
           <input

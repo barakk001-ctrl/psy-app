@@ -4,22 +4,18 @@ import Google from "next-auth/providers/google";
 import { cookies, headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
-import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { rateLimit } from "@/lib/rate-limit";
 import { clientIpFrom } from "@/lib/client-ip";
 import { LOGIN_LIMITS } from "@/lib/login-lockout";
 import { clearLoginFailures, isLoginLocked, recordLoginFailure } from "@/lib/login-lockout-store";
 import { verifySecondFactor } from "@/lib/second-factor";
 import { logAudit } from "@/lib/audit";
-import { googleVerifiedUpdate } from "@/lib/email-verification";
 import { LOGIN_CODE_LIMITS, loginCodeRateKeys } from "@/lib/login-code";
 import { consumeLoginCode } from "@/lib/login-code-store";
-import { createPracticeUser } from "@/lib/practice-user";
-import { canCreateAccount } from "@/lib/signup-policy";
+import { GOOGLE_INVITE_COOKIE } from "@/lib/invite-codes";
+import { googleSignIn } from "@/lib/google-sign-in";
 import {
   GOOGLE_AGREEMENT_COOKIE,
-  decideGoogleSignIn,
-  displayNameFor,
   isGoogleConfigured,
   normalizeEmail,
   tokenForGoogleUser,
@@ -200,61 +196,13 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
     async signIn({ account, profile }) {
       if (account?.provider !== "google") return true;
-
-      const email = profile?.email ? normalizeEmail(profile.email) : null;
-      const existing = email
-        ? await db.user.findUnique({ where: { email }, select: { id: true, emailVerifiedAt: true } })
-        : null;
-      const agreementCookie = (await cookies()).get(GOOGLE_AGREEMENT_COOKIE)?.value;
-
-      const decision = decideGoogleSignIn({
-        email,
-        emailVerified: profile?.email_verified,
-        googleName: profile?.name,
-        existingUserId: existing?.id ?? null,
-        agreementAccepted: agreementCookie === AGREEMENT_VERSION,
-        // The invitation list applies only to creating an account
-        creationAllowed: !!email && canCreateAccount(email),
+      const jar = await cookies();
+      return googleSignIn({
+        profile,
+        agreement: jar.get(GOOGLE_AGREEMENT_COOKIE)?.value,
+        invite: jar.get(GOOGLE_INVITE_COOKIE)?.value,
+        headers: await headers(),
       });
-
-      switch (decision.type) {
-        case "reject":
-          return "/login?error=google_unverified";
-        case "need-agreement":
-          return "/register?invite=1&google=agreement";
-        case "not-invited":
-          return "/register?google=not-invited";
-        case "link":
-          // A sign-up still waiting for its link: Google has now proven the address
-          if (!existing?.emailVerifiedAt) {
-            await db.user.update({
-              where: { id: decision.userId },
-              data: googleVerifiedUpdate(new Date(), displayNameFor(profile?.name, email ?? "")),
-            });
-          }
-          if (email) await clearLoginFailures(email);
-          return true;
-        case "create": {
-          const ip = clientIpFrom(await headers());
-          if (!(await rateLimit(`register:ip:${ip}`, { limit: 5, windowMs: 60 * 60_000 })).allowed) {
-            return "/register?error=rate";
-          }
-          try {
-            await createPracticeUser({
-              email: decision.email,
-              name: decision.name,
-              hashedPassword: null,
-              emailVerified: true,
-            });
-          } catch (err) {
-            // Two tabs racing: the email is unique, so the other one won — sign
-            // in to that account rather than failing.
-            const raced = await db.user.findUnique({ where: { email: decision.email }, select: { id: true } });
-            if (!raced) throw err;
-          }
-          return true;
-        }
-      }
     },
 
     async jwt(params) {

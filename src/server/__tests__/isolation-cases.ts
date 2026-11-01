@@ -416,6 +416,11 @@ export const CASES: Record<string, Case> = {
   },
 
   // ── operator actions: a practice can never reach them ────────────────────
+  "invites.revokeInviteCodeAction": {
+    admin: true,
+    run: ({ call, target }) => call("invites.revokeInviteCodeAction", form({ id: target.inviteId })),
+    control: "writes",
+  },
   "subscription.extendSubscriptionAction": {
     admin: true,
     run: ({ call, target }) =>
@@ -543,6 +548,7 @@ export const NO_ID_INPUT: Record<string, string> = {
   "settings.saveMorningSettingsAction": "own account",
   "settings.disconnectMorningAction": "own account",
   "settings.updateIdleTimeoutAction": "own account",
+  "invites.createInviteCodeAction": "admin only; creates a code, reads no id",
   "subscription.startCardPaymentAction": "own account; the plan is the only input",
   "subscription.requestPlanAction": "own account; the plan is the only input",
   "support.submitSupportRequestAction": "creates under the signed-in user",

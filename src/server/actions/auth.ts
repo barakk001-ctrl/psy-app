@@ -8,12 +8,14 @@ import { AuthError } from "next-auth";
 import { db } from "@/lib/db";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { INVITE_ONLY_MESSAGE, canCreateAccount } from "@/lib/signup-policy";
+import { GOOGLE_INVITE_COOKIE, INVITE_INVALID_MESSAGE, normalizeInviteCode } from "@/lib/invite-codes";
+import { isInviteUsable } from "@/lib/invite-store";
 import { allAllowed, rateLimit } from "@/lib/rate-limit";
 import { clientIpFrom } from "@/lib/client-ip";
 import { LOGIN_LIMITS, LOGIN_LOCKED_MESSAGE } from "@/lib/login-lockout";
 import { clearLoginFailures, isLoginLocked } from "@/lib/login-lockout-store";
 import { TURNSTILE_ERROR, passesTurnstile } from "@/lib/turnstile";
-import { createPracticeUser } from "@/lib/practice-user";
+import { InviteUnavailable, createPracticeUser } from "@/lib/practice-user";
 import { EMAIL_VERIFY_LIMITS, emailVerifyRateKeys, registrationStep } from "@/lib/email-verification";
 import {
   consumeVerifyToken,
@@ -178,8 +180,12 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
   // From here on the answer must not depend on whether the address has an
   // account: the refusal doesn't look at it, the hash is always computed, and
   // no email is waited for. Details in src/lib/email-verification.ts.
-  const allowed = canCreateAccount(email);
-  if (!allowed) return { error: INVITE_ONLY_MESSAGE };
+  const onList = canCreateAccount(email);
+  const typedInvite = String(formData.get("inviteCode") ?? "").trim();
+  // A code matters only while this address couldn't sign up without one
+  const inviteCode = onList ? null : normalizeInviteCode(typedInvite);
+  const allowed = onList || (!!inviteCode && (await isInviteUsable(inviteCode)));
+  if (!allowed) return { error: typedInvite ? INVITE_INVALID_MESSAGE : INVITE_ONLY_MESSAGE };
 
   const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
   let existing = await db.user.findUnique({
@@ -190,10 +196,16 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
   if (step === "create") {
     try {
       existing = {
-        ...(await createPracticeUser({ email, name: parsed.data.name, hashedPassword })),
+        ...(await createPracticeUser({
+          email,
+          name: parsed.data.name,
+          hashedPassword,
+          inviteCode: inviteCode ?? undefined,
+        })),
         emailVerifiedAt: null,
       };
     } catch (err) {
+      if (err instanceof InviteUnavailable) return { error: INVITE_INVALID_MESSAGE };
       // Two tabs racing: the email is unique, so the other one created it
       existing = await db.user.findUnique({
         where: { email },
@@ -412,15 +424,22 @@ export async function googleSignInAction() {
  */
 export async function googleRegisterAction(formData: FormData) {
   if (!isGoogleConfigured()) redirect("/register");
-  if (formData.get("agreement") !== "on") redirect("/register?google=agreement");
+  const inviteCode = normalizeInviteCode(formData.get("inviteCode"));
+  if (formData.get("agreement") !== "on") {
+    redirect(`/register?google=agreement${inviteCode ? `&invite=${inviteCode}` : ""}`);
+  }
 
-  (await cookies()).set(GOOGLE_AGREEMENT_COOKIE, AGREEMENT_VERSION, {
+  const options = {
     httpOnly: true,
     sameSite: "lax", // must survive the top-level redirect back from Google
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: GOOGLE_AGREEMENT_COOKIE_MAX_AGE_S,
-  });
+  } as const;
+  const jar = await cookies();
+  jar.set(GOOGLE_AGREEMENT_COOKIE, AGREEMENT_VERSION, options);
+  // Only carries the code across Google's redirect: auth.ts still checks it
+  if (inviteCode) jar.set(GOOGLE_INVITE_COOKIE, inviteCode, options);
   await signIn("google", { redirectTo: "/dashboard" });
 }
 
