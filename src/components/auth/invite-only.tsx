@@ -29,7 +29,7 @@ export function InviteOnly({
       )}
 
       {inviteInvalid && (
-        <p className="mb-4 rounded-xl border border-cream-300 bg-cream-100 px-4 py-3 text-sm text-ink-soft leading-relaxed">
+        <p role="alert" className="mb-4 rounded-xl border border-cream-300 bg-cream-100 px-4 py-3 text-sm text-ink-soft leading-relaxed">
           {INVITE_INVALID_MESSAGE}
         </p>
       )}

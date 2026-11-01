@@ -9,7 +9,7 @@ import { confirmEmailAction, type ConfirmEmailState } from "@/server/actions/aut
 
 export function LinkExpired() {
   return (
-    <div className="text-center space-y-4">
+    <div role="alert" className="text-center space-y-4">
       <h1 className="font-display text-2xl text-ink">הקישור אינו תקף</h1>
       <p className="text-ink-muted text-sm max-w-sm mx-auto leading-relaxed">
         ייתכן שפג תוקפו, שכבר השתמשו בו או שנשלח קישור חדש אחריו. התחברות עם האימייל והסיסמה תאפשר
@@ -63,7 +63,7 @@ export function ConfirmEmailForm({ token }: { token: string }) {
         </div>
 
         {state?.error && (
-          <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
+          <div role="alert" className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
             {state.error}
           </div>
         )}

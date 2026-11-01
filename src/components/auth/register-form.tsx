@@ -78,7 +78,7 @@ export function RegisterForm({
             invalid={!!state?.fieldErrors?.name}
           />
           {state?.fieldErrors?.name && (
-            <p className="text-xs text-terracotta-600 mt-1">
+            <p role="alert" className="text-xs text-terracotta-600 mt-1">
               {state.fieldErrors.name[0]}
             </p>
           )}
@@ -95,7 +95,7 @@ export function RegisterForm({
             invalid={!!state?.fieldErrors?.email}
           />
           {state?.fieldErrors?.email && (
-            <p className="text-xs text-terracotta-600 mt-1">
+            <p role="alert" className="text-xs text-terracotta-600 mt-1">
               {state.fieldErrors.email[0]}
             </p>
           )}
@@ -115,7 +115,7 @@ export function RegisterForm({
             לפחות 8 תווים, עם אות אחת וספרה אחת
           </p>
           {state?.fieldErrors?.password && (
-            <p className="text-xs text-terracotta-600 mt-1">
+            <p role="alert" className="text-xs text-terracotta-600 mt-1">
               {state.fieldErrors.password[0]}
             </p>
           )}
@@ -156,13 +156,13 @@ export function RegisterForm({
           </span>
         </label>
         {state?.fieldErrors?.agreement && (
-          <p className="text-xs text-terracotta-600 -mt-2">
+          <p role="alert" className="text-xs text-terracotta-600 -mt-2">
             {state.fieldErrors.agreement[0]}
           </p>
         )}
 
         {googleHint && (
-          <p className="text-xs text-terracotta-600 -mt-2">
+          <p role="alert" className="text-xs text-terracotta-600 -mt-2">
             כדי להמשיך עם Google יש לסמן קודם את אישור ההסכם
           </p>
         )}
@@ -170,7 +170,7 @@ export function RegisterForm({
         <TurnstileWidget siteKey={turnstileKey} resetKey={state} />
 
         {(state?.error ?? (state ? undefined : notice)) && (
-          <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
+          <div role="alert" className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
             {state?.error ?? notice}
           </div>
         )}
