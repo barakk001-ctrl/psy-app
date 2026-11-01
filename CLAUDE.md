@@ -17,10 +17,11 @@ npm run lint             # eslint
 npm run db:migrate       # create + apply a migration in dev (migrations are committed in prisma/migrations/)
 npm run db:studio        # Prisma Studio
 npm run db:generate      # regenerate Prisma client after schema changes
-npm test                 # Vitest — pure-logic tests in src/**/__tests__ (no DB needed)
+npm test                 # Vitest — pure-logic tests in src/**/__tests__ (no DB needed; *.db.test.ts skip without TEST_DATABASE_URL)
+npm run test:db          # the real-Postgres suites (needs TEST_DATABASE_URL, see scripts/test-db/README.md)
 ```
 
-CI (`.github/workflows/ci.yml`) runs lint, tsc, tests, and build on pushes/PRs to main. Testable logic lives in `src/lib` as pure functions — server actions import them; put new business rules there, not inline in actions.
+CI (`.github/workflows/ci.yml`) runs lint, tsc, tests (with a Postgres service, so the `*.db.test.ts` suites run too), and build on pushes/PRs to main. Testable logic lives in `src/lib` as pure functions — server actions import them; put new business rules there, not inline in actions.
 
 Requires a `.env` (copy from `.env.example`): `DATABASE_URL` (Postgres), `AUTH_SECRET`, and `NOTES_ENCRYPTION_KEY` (base64, exactly 32 bytes — crypto.ts throws otherwise). `RESEND_API_KEY`/`EMAIL_FROM`/`CRON_SECRET` are optional (reminders degrade gracefully). `SUPPORT_EMAIL` (optional) is where help-widget support requests are emailed; unset → `barakk001@gmail.com`. Creating an account (email/password **or** Google) is by invitation: only addresses in `ALLOWED_EMAILS` unless `SIGNUP_OPEN=true` (see **Registration** below); `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (optional) turn on Google sign-in.
 
@@ -38,6 +39,8 @@ Every action follows the same pattern — copy it for new actions:
 3. On validation failure, return `{ error: "<Hebrew message>", fieldErrors }` (state object consumed by `useActionState` forms)
 4. Every DB query is scoped by `userId` — this is the entire authorization model (no roles; each user is an isolated practice owner)
 5. `revalidatePath(...)` then usually `redirect(...)`
+
+**Tenant isolation is tested on a real Postgres** (since 2026-11-01; `src/server/__tests__/`, how to run: `scripts/test-db/README.md`). `isolation.db.test.ts` seeds two made-up practices and runs every case in `isolation-cases.ts` three ways: B on A's ids (A's whole data fingerprint unchanged, no cross-practice row anywhere, nothing of A's in the result, no email or morning call), a guest the same, and A on A's own ids as a control (it must really work, so a typo can't "pass" by being refused). Each suite refuses any database that isn't local with "test" in its name and never reads `DATABASE_URL`. **`isolation-coverage.test.ts` runs in every `npm test`, no database needed: a new exported action or API route fails it until it has a case (or an entry in `NO_ID_INPUT`/`NO_ID_ROUTES` with the reason; an action that reads an id can't be declared as taking none).** Copy `write-lock.test.ts`'s habit: add the case with the action.
 
 ### Auth & security
 
