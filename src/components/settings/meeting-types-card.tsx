@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X, Tags, Check, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,9 +24,16 @@ const DEFAULT_COLOR = MEETING_TYPE_COLORS[0];
 export function MeetingTypesCard({
   types,
   defaultMinutes,
+  formId,
+  onSaved,
+  hideSave = false,
 }: {
   types: { id: string; name: string; color: string | null }[];
   defaultMinutes: number;
+  /** the setup wizard submits the meeting-length form from its own "הבא" */
+  formId?: string;
+  onSaved?: () => void;
+  hideSave?: boolean;
 }) {
   const router = useRouter();
   const [durationState, durationAction, durationPending] = useActionState<
@@ -38,6 +45,18 @@ export function MeetingTypesCard({
   const [, startTransition] = useTransition();
 
   const editing = types.find((t) => t.id === editingId) ?? null;
+
+  // Wizard: after the length is saved, a type still sitting in the box counts too
+  useEffect(() => {
+    if (!durationState?.saved || !onSaved) return;
+    const fd = new FormData(formRef.current!);
+    const typed = String(fd.get("name") ?? "").trim();
+    (async () => {
+      if (typed) await addMeetingTypeAction(fd);
+      onSaved();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per save
+  }, [durationState]);
 
   const pickColor = (id: string, color: string) => {
     const fd = new FormData();
@@ -60,6 +79,7 @@ export function MeetingTypesCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <form
+          id={formId}
           action={durationAction}
           className="rounded-xl border border-cream-200 bg-cream-50/60 p-3 space-y-2"
           noValidate
@@ -85,9 +105,11 @@ export function MeetingTypesCard({
                 </option>
               ))}
             </Select>
-            <Button type="submit" disabled={durationPending}>
-              {durationPending ? "שומר…" : "שמירה"}
-            </Button>
+            {!hideSave && (
+              <Button type="submit" disabled={durationPending}>
+                {durationPending ? "שומר…" : "שמירה"}
+              </Button>
+            )}
             {durationState?.saved && (
               <span className="inline-flex items-center gap-1 text-xs text-sage-600">
                 <Check className="w-3.5 h-3.5" />
@@ -105,7 +127,7 @@ export function MeetingTypesCard({
           לחיצה על העיגול הצבעוני בוחרת צבע לפגישות מהסוג הזה ביומן.
         </p>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-x-3 gap-y-3">
           {types.map((t) => (
             <span
               key={t.id}
@@ -116,7 +138,7 @@ export function MeetingTypesCard({
                 aria-label={`בחירת צבע עבור ${t.name}`}
                 title="בחירת צבע ליומן"
                 onClick={() => setEditingId(editingId === t.id ? null : t.id)}
-                className="w-5 h-5 rounded-full border-2 border-white shadow-sm shrink-0 transition-transform hover:scale-110"
+                className="relative w-5 h-5 rounded-full border-2 border-white shadow-sm shrink-0 transition-transform hover:scale-110 after:absolute after:-inset-3 after:content-['']"
                 style={{ backgroundColor: t.color ?? DEFAULT_COLOR }}
               />
               {t.name}
@@ -130,7 +152,7 @@ export function MeetingTypesCard({
                 <button
                   type="submit"
                   aria-label={`הסרת ${t.name}`}
-                  className="w-5 h-5 grid place-items-center rounded-full text-sage-600 hover:bg-sage-100"
+                  className="relative w-5 h-5 grid place-items-center rounded-full text-sage-600 hover:bg-sage-100 after:absolute after:-inset-3 after:content-['']"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -158,7 +180,7 @@ export function MeetingTypesCard({
                     type="button"
                     aria-label={`צבע ${c}`}
                     onClick={() => pickColor(editing.id, c)}
-                    className="w-8 h-8 rounded-full grid place-items-center border-2 border-white shadow-sm transition-transform hover:scale-110"
+                    className="relative w-8 h-8 rounded-full grid place-items-center border-2 border-white shadow-sm transition-transform hover:scale-110 after:absolute after:-inset-1.5 after:content-['']"
                     style={{ backgroundColor: c }}
                   >
                     {selected && <Check className="w-4 h-4 text-white" />}

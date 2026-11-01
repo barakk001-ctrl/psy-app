@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState, useEffect } from "react";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,15 +20,34 @@ type Props = {
     defaultRate: string | null;
     vatLiable: boolean;
   };
+  /** the setup wizard submits this form from its own "הבא" button */
+  formId?: string;
+  onSaved?: () => void;
+  hideSave?: boolean;
 };
 
-export function BusinessInfoForm({ initial }: Props) {
+export function BusinessInfoForm({ initial, formId, onSaved, hideSave = false }: Props) {
   const [state, formAction, pending] = useActionState<SettingsFormState, FormData>(
     updateBusinessInfoAction,
     null,
   );
+  useEffect(() => {
+    if (state?.saved) onSaved?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per save
+  }, [state]);
+
   return (
-    <form action={formAction} className="space-y-6" noValidate>
+    <form
+      id={formId}
+      className="space-y-6"
+      noValidate
+      // By hand, so a refused save keeps what was typed (see CLAUDE.md)
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        startTransition(() => formAction(fd));
+      }}
+    >
       <Card>
         <CardContent className="space-y-5">
           <h2 className="font-display text-xl text-ink">פרטי העסק</h2>
@@ -101,7 +120,7 @@ export function BusinessInfoForm({ initial }: Props) {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className={hideSave ? "hidden" : "flex items-center justify-between"}>
         <div className="text-xs">
           {state?.saved && (
             <span className="inline-flex items-center gap-1 text-sage-600">

@@ -46,6 +46,12 @@ model User {
   // For sequential invoice numbering
   nextInvoiceNumber Int     @default(1)
 
+  // First-run setup wizard (/setup, src/lib/onboarding.ts). Null completedAt =
+  // not finished; pausedAt = chose "לסיים מאוחר יותר" (no forced redirect).
+  onboardingStep        Int       @default(0)
+  onboardingCompletedAt DateTime?
+  onboardingPausedAt    DateTime?
+
   // Data-holding agreement click-acceptance (version from src/lib/agreement.ts;
   // a version bump triggers the re-acceptance banner on the dashboard)
   agreementVersion    String?

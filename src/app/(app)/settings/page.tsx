@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth } from "@/auth";
 import { db, dbAll } from "@/lib/db";
 import { BusinessInfoForm } from "@/components/settings/business-info-form";
@@ -157,6 +158,19 @@ export default async function SettingsPage({
           אבטחה ויומן הגישה לרשומות.
         </p>
       </header>
+
+      <Link
+        href="/setup?step=1"
+        className="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700"
+      >
+        <span>
+          <span className="font-medium">הגדרה ראשונית</span>
+          <span className="block text-xs text-sage-700/80">
+            מעבר צעד אחר צעד על השם, פרטי העסק, סוגי המפגשים וחיבור ל-<span dir="ltr">morning</span>
+          </span>
+        </span>
+        <span aria-hidden>←</span>
+      </Link>
 
       <PersonalDetailsForm
         initial={{ name: user.name, email: user.email, phone: user.phone }}

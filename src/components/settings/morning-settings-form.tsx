@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { CheckCircle2, KeyRound } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,11 +18,16 @@ export function MorningSettingsForm({
   keyIdMasked,
   sandbox,
   docType,
+  formId,
+  onSaved,
 }: {
   connected: boolean;
   keyIdMasked: string | null;
   sandbox: boolean;
   docType: number;
+  /** the setup wizard saves typed keys from its own "הבא" */
+  formId?: string;
+  onSaved?: () => void;
 }) {
   const [state, formAction, pending] = useActionState<MorningSettingsState, FormData>(
     saveMorningSettingsAction,
@@ -31,6 +36,10 @@ export function MorningSettingsForm({
   // When connected, the key-entry form stays hidden unless replacing the key.
   const [replacingKey, setReplacingKey] = useState(false);
   const showSetup = !connected || replacingKey;
+  useEffect(() => {
+    if (state?.saved) onSaved?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per save
+  }, [state]);
 
   return (
     <Card>
@@ -114,7 +123,7 @@ export function MorningSettingsForm({
           </div>
         )}
 
-        <form action={formAction} className="space-y-4">
+        <form id={formId} action={formAction} className="space-y-4">
           {showSetup && (
             <div className="grid sm:grid-cols-2 gap-4">
               <div>

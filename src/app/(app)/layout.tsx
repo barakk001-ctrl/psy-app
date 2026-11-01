@@ -7,6 +7,7 @@ import { BiometricLockOverlay } from "@/components/security/biometric-lock-overl
 import { IdleGuard } from "@/components/security/idle-guard";
 import { HelpWidget } from "@/components/help/help-widget";
 import { normalizeIdleTimeout } from "@/lib/idle-timeout";
+import { shouldEnterSetup } from "@/lib/onboarding";
 import { ClinicBanner } from "@/components/layout/clinic-banner";
 import { SubscriptionBanner } from "@/components/layout/subscription-banner";
 import { subscriptionStateFor } from "@/lib/subscription-server";
@@ -31,9 +32,13 @@ export default async function AppLayout({
         name: true,
         email: true,
         phone: true,
+        onboardingCompletedAt: true,
+        onboardingPausedAt: true,
       },
     }),
   ]);
+  // A new account starts in the setup wizard (existing ones are marked done)
+  if (branding && shouldEnterSetup(branding, sub.status)) redirect("/setup");
   const brand = branding ? { brandName: branding.brandName, logoUrl: branding.logoUrl } : undefined;
   const showBanner =
     sub.status === "expired" ||

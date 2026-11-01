@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState, startTransition } from "react";
+import { useActionState, useEffect, useRef, useState, startTransition } from "react";
 import { Check, ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,8 +38,15 @@ async function toThumbnail(file: File): Promise<string> {
 
 export function BrandingCard({
   initial,
+  formId,
+  onSaved,
+  hideSave = false,
 }: {
   initial: { brandName: string | null; logoUrl: string | null };
+  /** the setup wizard submits this form from its own "הבא" button */
+  formId?: string;
+  onSaved?: () => void;
+  hideSave?: boolean;
 }) {
   const [state, formAction, pending] = useActionState<SettingsFormState, FormData>(
     updateBrandingAction,
@@ -51,9 +58,14 @@ export function BrandingCard({
   const [logoField, setLogoField] = useState("");
   const [readError, setReadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (state?.saved) onSaved?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per save
+  }, [state]);
 
   return (
     <form
+      id={formId}
       className="space-y-6"
       noValidate
       onSubmit={(e) => {
@@ -71,7 +83,9 @@ export function BrandingCard({
 
           <div className="rounded-2xl border border-cream-200 bg-white/60 px-4 py-3">
             <p className="text-xs text-ink-subtle mb-2">תצוגה מקדימה</p>
-            <BrandMark branding={{ brandName, logoUrl: logo }} />
+            <div className="pointer-events-none">
+              <BrandMark branding={{ brandName, logoUrl: logo }} />
+            </div>
           </div>
 
           <div>
@@ -150,9 +164,11 @@ export function BrandingCard({
             </span>
           )}
         </div>
-        <Button type="submit" disabled={pending}>
-          {pending ? "שומר…" : "שמירת מיתוג"}
-        </Button>
+        {!hideSave && (
+          <Button type="submit" disabled={pending}>
+            {pending ? "שומר…" : "שמירת מיתוג"}
+          </Button>
+        )}
       </div>
     </form>
   );

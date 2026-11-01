@@ -73,7 +73,7 @@ export default async function DashboardPage() {
     }),
     db.user.findUnique({
       where: { id: userId },
-      select: { agreementVersion: true, name: true, logoUrl: true, brandName: true },
+      select: { agreementVersion: true, name: true, logoUrl: true, brandName: true, onboardingCompletedAt: true },
     }),
   ]);
   const needsAgreement = me?.agreementVersion !== AGREEMENT_VERSION;
@@ -93,6 +93,16 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       {needsAgreement && <AgreementBanner />}
+      {me && !me.onboardingCompletedAt && (
+        // Chose "לסיים מאוחר יותר" in the setup wizard
+        <Link
+          href="/setup"
+          className="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700"
+        >
+          <span>ההגדרה הראשונית עוד לא הסתיימה</span>
+          <span className="font-medium underline underline-offset-2">להמשך</span>
+        </Link>
+      )}
       <header className="relative overflow-hidden rounded-3xl border border-cream-200/80 bg-gradient-to-l from-sage-50 via-cream-100 to-cream-50 shadow-soft">
         {/* Clinic-room illustration sits at the far (physical-left) edge in RTL */}
         <ClinicHero className="pointer-events-none select-none absolute inset-y-2 left-4 h-[calc(100%-1rem)] w-auto opacity-30 sm:opacity-100" />
