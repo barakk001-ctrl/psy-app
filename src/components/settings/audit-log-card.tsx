@@ -11,6 +11,7 @@ const ACTION_LABELS: Record<string, string> = {
   NOTE_APPEND: "צירוף הודעה לסיכום",
   SESSIONS_BULK_DELETE: "מחיקת הפגישות העתידיות של מטופל/ת",
   RECORD_EXPORT: "ייצוא סיכומי פגישות ל-PDF",
+  ACCOUNT_EXPORT: "הורדת כל נתוני החשבון",
   PASSWORD_CHANGE: "שינוי סיסמה",
   CLIENT_TRASH: "מחיקת תיק — העברה לסל המחזור",
   CLIENT_RESTORE: "שחזור תיק מסל המחזור",

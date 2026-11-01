@@ -26,13 +26,15 @@ import { headers } from "next/headers";
 import { TwoFactorSettings } from "@/components/settings/two-factor-settings";
 import { IdleTimeoutCard } from "@/components/settings/idle-timeout-card";
 import { normalizeIdleTimeout } from "@/lib/idle-timeout";
+import { AccountExportCard } from "@/components/settings/account-export-card";
+import { reauthMethod } from "@/lib/reauth";
 
 export const metadata = { title: "הגדרות — מרפאה אישית" };
 
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ paid?: string; payerr?: string }>;
+  searchParams: Promise<{ paid?: string; payerr?: string; export?: string }>;
 }) {
   const sp = await searchParams;
   // Payment results used to land here; the plans page shows them now
@@ -62,6 +64,7 @@ export default async function SettingsPage({
       inboxToken: true,
       inboxApiToken: true,
       totpEnabled: true,
+      totpSecret: true,
       totpBackupCodes: true,
       hashedPassword: true,
       morningApiKeyId: true,
@@ -222,6 +225,10 @@ export default async function SettingsPage({
       <BiometricSettings userEmail={user.email} userName={user.name} />
 
       <SubscriptionCard state={subState} />
+
+      <div id="account-data" className="scroll-mt-24">
+        <AccountExportCard method={reauthMethod(user)} email={user.email} message={sp.export} />
+      </div>
 
       {user.isAdmin && <AdminSubscriptionsCard users={adminUsers} meId={userId} />}
 

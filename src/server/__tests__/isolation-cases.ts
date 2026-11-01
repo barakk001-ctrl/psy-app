@@ -505,6 +505,8 @@ export const ROUTE_CASES: Record<string, Case> = {
 
 /** Actions that take no id or token of anything: they work on the signed-in account only. */
 export const NO_ID_INPUT: Record<string, string> = {
+  "account.sendReauthCodeAction": "own account",
+  "account.prepareAccountExportAction": "own account; the grant is bound to it (account-export.db.test.ts)",
   "auth.signOutAction": "own session",
   "auth.idleSignOutAction": "own session",
   "auth.loginAction": "sign-in: email and password, no record id",
@@ -552,6 +554,7 @@ export const NO_ID_INPUT: Record<string, string> = {
 
 /** Routes that take no id of anything a practice owns. */
 export const NO_ID_ROUTES: Record<string, string> = {
+  "account/export": "own account: a one-time grant bound to the session user (account-export.db.test.ts)",
   "auth/[...nextauth]": "sign-in",
   "billing/webhook": "no caller identity: trusts only a stored checkout confirmed with Grow (grow-callback tests)",
   "cron/reminders": "system job behind CRON_SECRET",

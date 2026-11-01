@@ -43,6 +43,9 @@ const ALLOWED: Record<string, string> = {
   "settings.calendarFeedDisableAction": "turning the calendar feed off (privacy)",
   "settings.setShowHolidaysAction": "calendar view preference, no data",
   "inbox.revokeInboxTokenAction": "revoking a token (security)",
+  // taking the data out stays open: it is the practice's own
+  "account.sendReauthCodeAction": "re-check before an export (no data changes)",
+  "account.prepareAccountExportAction": "full export stays open on expired accounts",
   // reads only
   "sessions.checkOverlapAction": "read-only check",
   "sessions.sessionScopeInfoAction": "read-only lookup",
@@ -60,6 +63,7 @@ const ALLOWED: Record<string, string> = {
 const API_ALLOWED: Record<string, string> = {
   "auth/[...nextauth]": "sign-in",
   "cron/reminders": "system job (CRON_SECRET)",
+  "account/export": "POST only so the grant stays out of URLs; reads data, stays open on expired accounts",
   "billing/webhook": "payment provider callback — renews the account",
   "csp-report": "browser CSP reports — logged, nothing stored",
 };

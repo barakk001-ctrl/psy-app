@@ -10,6 +10,7 @@ export type AuditAction =
   | "NOTE_DELETE"
   | "NOTE_APPEND"
   | "RECORD_EXPORT" // exported a client's summaries to PDF
+  | "ACCOUNT_EXPORT" // downloaded the whole account (src/lib/account-export.ts)
   | "SESSIONS_BULK_DELETE" // deleted a client's future meetings (never ones with notes)
   | "PASSWORD_CHANGE" // changed the account password from Settings
   | "CLIENT_TRASH" // moved a client (with their record) to the recycle bin

@@ -109,6 +109,11 @@ model User {
   // business number printed on invoices.
   loginPhone         String?
 
+  // Full account export (src/lib/account-export.ts): the re-check in Settings
+  // leaves a one-time grant here (sha256, 5 minutes) that the download spends.
+  exportGrantHash      String?
+  exportGrantExpiresAt DateTime?
+
   // Morning (Green Invoice) API connection — secret encrypted at app layer
   morningApiKeyId  String?
   morningApiSecret String?  // packed AES-256-GCM (iv:tag:ciphertext, base64)
