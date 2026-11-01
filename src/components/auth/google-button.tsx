@@ -46,6 +46,7 @@ export function GoogleButton({
       type="submit"
       formAction={formAction}
       formNoValidate
+      data-google-submit
       onClick={onClick}
       disabled={pending}
       className={cn(

@@ -8,6 +8,7 @@ import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifySecondFactor } from "@/lib/second-factor";
 import { logAudit } from "@/lib/audit";
+import { googleVerifiedUpdate } from "@/lib/email-verification";
 import { LOGIN_CODE_LIMITS, loginCodeRateKeys } from "@/lib/login-code";
 import { consumeLoginCode } from "@/lib/login-code-store";
 import { createPracticeUser } from "@/lib/practice-user";
@@ -15,6 +16,7 @@ import { canCreateAccount } from "@/lib/signup-policy";
 import {
   GOOGLE_AGREEMENT_COOKIE,
   decideGoogleSignIn,
+  displayNameFor,
   isGoogleConfigured,
   normalizeEmail,
   tokenForGoogleUser,
@@ -30,6 +32,11 @@ export class TwoFactorRateLimited extends CredentialsSignin {
 /** Too many one-time-code tries for this email or IP. */
 export class LoginCodeRateLimited extends CredentialsSignin {
   code = "rate_limited";
+}
+
+/** The password was right but the address isn't confirmed yet: no session. */
+export class EmailNotVerified extends CredentialsSignin {
+  code = "email_unverified";
 }
 
 const FIFTEEN_MIN = 15 * 60_000;
@@ -58,6 +65,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
         const valid = await bcrypt.compare(parsed.data.password, user.hashedPassword);
         if (!valid) return null;
+
+        // Only after the password, so this tells a stranger nothing
+        if (!user.emailVerifiedAt) throw new EmailNotVerified();
 
         // Two-factor: when enabled, a valid rotating code OR an unused
         // one-time backup code is mandatory — enforced here so it cannot be
@@ -132,9 +142,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
         const user = await db.user.findUnique({
           where: { email },
-          select: { id: true, email: true, name: true, idleTimeoutMinutes: true },
+          select: { id: true, email: true, name: true, idleTimeoutMinutes: true, emailVerifiedAt: true },
         });
-        if (!user) return null;
+        if (!user?.emailVerifiedAt) return null;
         if (!(await consumeLoginCode(user.id, code))) return null;
 
         return {
@@ -167,7 +177,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
       const email = profile?.email ? normalizeEmail(profile.email) : null;
       const existing = email
-        ? await db.user.findUnique({ where: { email }, select: { id: true } })
+        ? await db.user.findUnique({ where: { email }, select: { id: true, emailVerifiedAt: true } })
         : null;
       const agreementCookie = (await cookies()).get(GOOGLE_AGREEMENT_COOKIE)?.value;
 
@@ -189,6 +199,13 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         case "not-invited":
           return "/register?google=not-invited";
         case "link":
+          // A sign-up still waiting for its link: Google has now proven the address
+          if (!existing?.emailVerifiedAt) {
+            await db.user.update({
+              where: { id: decision.userId },
+              data: googleVerifiedUpdate(new Date(), displayNameFor(profile?.name, email ?? "")),
+            });
+          }
           return true;
         case "create": {
           const ip = ipOf(await headers());
@@ -196,7 +213,12 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
             return "/register?error=rate";
           }
           try {
-            await createPracticeUser({ email: decision.email, name: decision.name, hashedPassword: null });
+            await createPracticeUser({
+              email: decision.email,
+              name: decision.name,
+              hashedPassword: null,
+              emailVerified: true,
+            });
           } catch (err) {
             // Two tabs racing: the email is unique, so the other one won — sign
             // in to that account rather than failing.

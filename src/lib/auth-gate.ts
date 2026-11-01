@@ -85,7 +85,7 @@ export function sessionForToken<S extends SessionLike>(session: S, token: TokenL
 
 export type GateDecision = { type: "allow" } | { type: "deny" } | { type: "redirect"; to: string };
 
-export const PUBLIC_PATHS = ["/login", "/register", "/forgot-password", "/reset-password", "/agreement"];
+export const PUBLIC_PATHS = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/agreement"];
 
 /** The middleware's decision for one page request. */
 export function gateRequest(

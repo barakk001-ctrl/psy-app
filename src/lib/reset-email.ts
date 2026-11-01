@@ -1,3 +1,5 @@
+import { escapeHtml } from "@/lib/support-email";
+
 export function buildResetEmail(params: {
   name: string;
   resetUrl: string;
@@ -20,7 +22,7 @@ export function buildResetEmail(params: {
     <div style="background:#FDFBF7;border:1px solid #E8E2D5;border-radius:8px;padding:28px;">
       <h1 style="margin:0 0 16px;font-size:20px;color:#1A1714;">איפוס סיסמה</h1>
       <p style="margin:0 0 12px;font-size:15px;color:#3A332C;line-height:1.6;">
-        שלום ${params.name},
+        שלום ${escapeHtml(params.name)},
       </p>
       <p style="margin:0 0 20px;font-size:15px;color:#3A332C;line-height:1.6;">
         התקבלה בקשה לאיפוס הסיסמה לחשבון שלך במערכת מרפאה אישית. לחצו על הכפתור לקביעת סיסמה חדשה:

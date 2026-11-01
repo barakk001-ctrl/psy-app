@@ -10,6 +10,13 @@ import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { INVITE_ONLY_MESSAGE, canCreateAccount } from "@/lib/signup-policy";
 import { rateLimit } from "@/lib/rate-limit";
 import { createPracticeUser } from "@/lib/practice-user";
+import { EMAIL_VERIFY_LIMITS, emailVerifyRateKeys, registrationStep } from "@/lib/email-verification";
+import {
+  consumeVerifyToken,
+  findUserByVerifyToken,
+  sendExistingAccountNotice,
+  sendVerificationLink,
+} from "@/lib/email-verification-store";
 import { sendPasswordResetLink } from "@/lib/password-reset";
 import { LOGIN_CODE_LIMITS, loginCodeRateKeys, normalizeLoginCode } from "@/lib/login-code";
 import { createLoginCode } from "@/lib/login-code-store";
@@ -27,6 +34,7 @@ import {
   loginSchema,
   registerSchema,
   resetPasswordSchema,
+  verifyEmailSchema,
 } from "@/server/validators/auth";
 
 async function clientIp(): Promise<string> {
@@ -39,6 +47,11 @@ export type FormState = {
   fieldErrors?: Record<string, string[]>;
   /** Password was correct but a 2FA code is required — show the code field */
   needTotp?: boolean;
+  /** The sign-up went through as far as the visitor can tell: "check your email" */
+  pending?: boolean;
+  /** Password right, address not confirmed yet: same screen, from the login form */
+  unverified?: boolean;
+  email?: string;
 } | null;
 
 export async function signOutAction() {
@@ -112,6 +125,9 @@ export async function loginAction(_: FormState, formData: FormData): Promise<For
   } catch (err) {
     if (err instanceof AuthError) {
       if (err.type === "CredentialsSignin") {
+        if ((err as AuthError & { code?: string }).code === "email_unverified") {
+          return { unverified: true, email };
+        }
         return parsed.data.totp
           ? { error: "קוד האימות שגוי או שפג תוקפו", needTotp: true }
           : { error: "אימייל או סיסמה שגויים" };
@@ -154,31 +170,123 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
     return { error: "יותר מדי ניסיונות הרשמה. נסו שוב מאוחר יותר." };
   }
 
-  // By invitation while SIGNUP_OPEN is off (signup-policy.ts); an address
-  // that already has an account gets the "already registered" answer below
-  const existingUser = await db.user.findUnique({ where: { email }, select: { id: true } });
-  if (!existingUser && !canCreateAccount(email)) {
-    return { error: INVITE_ONLY_MESSAGE };
-  }
-
-  const existing = await db.user.findUnique({ where: { email } });
-  if (existing) {
-    return { error: "כתובת אימייל זו כבר רשומה במערכת" };
-  }
+  // From here on the answer must not depend on whether the address has an
+  // account: the refusal doesn't look at it, the hash is always computed, and
+  // no email is waited for. Details in src/lib/email-verification.ts.
+  const allowed = canCreateAccount(email);
+  if (!allowed) return { error: INVITE_ONLY_MESSAGE };
 
   const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
-  await createPracticeUser({ email, name: parsed.data.name, hashedPassword });
+  let existing = await db.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, emailVerifiedAt: true },
+  });
+  let step = registrationStep({ allowed, existing });
+  if (step === "create") {
+    try {
+      existing = {
+        ...(await createPracticeUser({ email, name: parsed.data.name, hashedPassword })),
+        emailVerifiedAt: null,
+      };
+    } catch (err) {
+      // Two tabs racing: the email is unique, so the other one created it
+      existing = await db.user.findUnique({
+        where: { email },
+        select: { id: true, email: true, emailVerifiedAt: true },
+      });
+      if (!existing) throw err;
+      step = registrationStep({ allowed, existing });
+    }
+  }
+
+  if (existing) {
+    const account = existing;
+    const keys = emailVerifyRateKeys(email, ip);
+    const send = async () => {
+      if (step === "notify-owner") {
+        if (rateLimit(keys.noticePerEmail, EMAIL_VERIFY_LIMITS.noticePerEmail).allowed) {
+          await sendExistingAccountNotice(account);
+        }
+      } else if (rateLimit(keys.sendPerEmail, EMAIL_VERIFY_LIMITS.sendPerEmail).allowed) {
+        await sendVerificationLink(account);
+      }
+    };
+    void send().catch(() => console.error("[verify-email] send threw"));
+  }
+
+  return { pending: true, email };
+}
+
+export type VerifyEmailResendState = { error?: string; sent?: boolean } | null;
+
+/**
+ * "שליחה מחדש" on the pending screen. Answers the same for every address;
+ * only an account still waiting for verification gets a mail.
+ */
+export async function resendVerificationAction(
+  _: VerifyEmailResendState,
+  formData: FormData,
+): Promise<VerifyEmailResendState> {
+  const parsed = loginCodeRequestSchema.safeParse({ email: formData.get("email") ?? "" });
+  if (!parsed.success) return { error: "כתובת אימייל לא תקינה" };
+  const email = parsed.data.email.toLowerCase();
+
+  const keys = emailVerifyRateKeys(email, await clientIp());
+  const byEmail = rateLimit(keys.sendPerEmail, EMAIL_VERIFY_LIMITS.sendPerEmail);
+  const byIp = rateLimit(keys.sendPerIp, EMAIL_VERIFY_LIMITS.sendPerIp);
+  if (!byEmail.allowed || !byIp.allowed) {
+    return { error: "נשלחו יותר מדי הודעות. נסו שוב בעוד שעה." };
+  }
+
+  const user = await db.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, emailVerifiedAt: true },
+  });
+  if (user && !user.emailVerifiedAt) {
+    void sendVerificationLink(user).catch(() => console.error("[verify-email] send threw"));
+  }
+  return { sent: true };
+}
+
+export type ConfirmEmailState = { error?: string; expired?: boolean } | null;
+
+/**
+ * /verify-email/<token>: the link plus the account's password. A mail
+ * scanner that opens the link changes nothing, and the mailbox alone can't
+ * adopt a password someone else chose. On success the person is signed in.
+ */
+export async function confirmEmailAction(
+  _: ConfirmEmailState,
+  formData: FormData,
+): Promise<ConfirmEmailState> {
+  const parsed = verifyEmailSchema.safeParse({
+    token: formData.get("token") ?? "",
+    password: formData.get("password") ?? "",
+  });
+  if (!parsed.success) return { error: "יש להזין את הסיסמה שנבחרה בהרשמה" };
+
+  const ip = await clientIp();
+  const keys = emailVerifyRateKeys("", ip);
+  const byIp = rateLimit(keys.confirmPerIp, EMAIL_VERIFY_LIMITS.confirmPerIp);
+  if (!byIp.allowed) return { error: "יותר מדי ניסיונות. נסו שוב בעוד מספר דקות." };
+
+  const user = await findUserByVerifyToken(parsed.data.token);
+  if (!user?.hashedPassword) return { expired: true };
+
+  if (!(await bcrypt.compare(parsed.data.password, user.hashedPassword))) {
+    return { error: "הסיסמה שגויה. זו הסיסמה שנבחרה בהרשמה." };
+  }
+  if (!(await consumeVerifyToken(user.id, parsed.data.token))) return { expired: true };
 
   try {
     await signIn("credentials", {
-      email,
+      email: user.email,
       password: parsed.data.password,
       redirect: false,
     });
   } catch {
-    redirect("/login");
+    redirect("/login?verified=1");
   }
-
   redirect("/dashboard");
 }
 
@@ -210,13 +318,15 @@ export async function requestPasswordResetAction(
     select: { id: true, name: true, email: true },
   });
 
-  // Always report success — never reveal whether the email is registered
+  // One answer for every address, and it doesn't wait for the email: neither
+  // the reply nor its timing tells whether the address is registered. A failed
+  // send is only logged (sendEmail logs the reason).
   if (user) {
-    const result = await sendPasswordResetLink(user);
-    if (!result.ok) {
-      console.error("Reset email failed:", result.error);
-      return { error: "שליחת האימייל נכשלה — נסו שוב או פנו לתמיכה" };
-    }
+    void sendPasswordResetLink(user)
+      .then((r) => {
+        if (!r.ok) console.error("[reset] send failed");
+      })
+      .catch(() => console.error("[reset] send threw"));
   }
 
   return { sent: true };
@@ -250,7 +360,7 @@ export async function resetPasswordAction(
     .digest("hex");
   const user = await db.user.findFirst({
     where: { resetToken: tokenHash, resetTokenExpiry: { gt: new Date() } },
-    select: { id: true },
+    select: { id: true, emailVerifiedAt: true },
   });
   if (!user) {
     return { error: "הקישור אינו תקף או שפג תוקפו — יש לבקש איפוס חדש" };
@@ -259,7 +369,15 @@ export async function resetPasswordAction(
   const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
   await db.user.update({
     where: { id: user.id },
-    data: { hashedPassword, resetToken: null, resetTokenExpiry: null },
+    data: {
+      hashedPassword,
+      resetToken: null,
+      resetTokenExpiry: null,
+      // The link proved the mailbox, and any unproven password is gone now
+      emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
+      emailVerifyTokenHash: null,
+      emailVerifyExpiresAt: null,
+    },
   });
 
   return { done: true };
@@ -367,9 +485,13 @@ export async function requestLoginCodeAction(
 
   const user = await db.user.findUnique({
     where: { email },
-    select: { id: true, name: true, email: true, loginPhone: true },
+    select: { id: true, name: true, email: true, loginPhone: true, emailVerifiedAt: true },
   });
-  if (user) {
+  if (user && !user.emailVerifiedAt) {
+    // No code before the address is confirmed: the code would sign the person
+    // in while a password nobody proved stays on the account. The link instead.
+    void sendVerificationLink(user).catch(() => console.error("[verify-email] send threw"));
+  } else if (user) {
     const code = await createLoginCode(user.id);
     void sendLoginCode(user, code)
       .then((r) => {

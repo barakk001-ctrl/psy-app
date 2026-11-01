@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GoogleButton, OrDivider } from "@/components/auth/google-button";
+import { VerifyEmailPending } from "@/components/auth/verify-email-pending";
 import { googleRegisterAction, registerAction, type FormState } from "@/server/actions/auth";
 
 export function RegisterForm({
@@ -25,6 +26,8 @@ export function RegisterForm({
   const [agreed, setAgreed] = useState(false);
   const [googleHint, setGoogleHint] = useState(false);
 
+  if (state?.pending && state.email) return <VerifyEmailPending email={state.email} />;
+
   return (
     <div>
       <div className="mb-8">
@@ -32,7 +35,20 @@ export function RegisterForm({
         <p className="text-ink-muted mt-2">הקליניקה שלך, מסודרת במקום אחד</p>
       </div>
 
-      <form action={formAction} className="space-y-4" noValidate>
+      <form
+        action={formAction}
+        className="space-y-4"
+        noValidate
+        onSubmit={(e) => {
+          // A refused sign-up keeps what was typed (see CLAUDE.md). Google's
+          // button has its own action and is left to run it.
+          const submitter = (e.nativeEvent as SubmitEvent).submitter;
+          if (submitter?.hasAttribute("data-google-submit")) return;
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          startTransition(() => formAction(fd));
+        }}
+      >
         <div>
           <Label htmlFor="name">שם מלא</Label>
           <Input

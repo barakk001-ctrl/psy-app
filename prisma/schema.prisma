@@ -91,6 +91,13 @@ model User {
   resetToken       String?
   resetTokenExpiry DateTime?
 
+  // Email verification (src/lib/email-verification.ts). Null verifiedAt = an
+  // email/password sign-up that hasn't confirmed its address: no session is
+  // issued until it does. The token is stored as sha256, single use, 24 hours.
+  emailVerifiedAt      DateTime?
+  emailVerifyTokenHash String?   @unique
+  emailVerifyExpiresAt DateTime?
+
   // Sign-in with a one-time code ("כניסה עם קוד חד פעמי"; rules in
   // src/lib/login-code.ts). One live code per account: HMAC-hashed, single
   // use, 10 minutes, at most 5 wrong tries. A new request replaces it.

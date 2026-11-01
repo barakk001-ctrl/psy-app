@@ -20,6 +20,8 @@ const ALLOWED: Record<string, string> = {
   "auth.idleSignOutAction": "sign-out",
   "auth.loginAction": "sign-in",
   "auth.registerAction": "creates a new (trial) account",
+  "auth.resendVerificationAction": "before an account can sign in",
+  "auth.confirmEmailAction": "before an account can sign in",
   "auth.requestPasswordResetAction": "account recovery",
   "auth.resetPasswordAction": "account recovery",
   "auth.googleSignInAction": "sign-in",

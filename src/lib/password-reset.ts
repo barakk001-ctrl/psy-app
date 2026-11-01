@@ -15,6 +15,9 @@ export async function sendPasswordResetLink(user: {
   name: string;
   email: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Links in emails go to the main address (APP_URL = https://mirpaa.app).
+  // Read first, while the request is alive: "שכחת סיסמה?" doesn't wait for this.
+  const origin = canonicalOrigin() ?? originFromHeaders(await headers());
   const token = crypto.randomBytes(32).toString("base64url");
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   await db.user.update({
@@ -25,8 +28,6 @@ export async function sendPasswordResetLink(user: {
     },
   });
 
-  // Links in emails go to the main address (APP_URL = https://mirpaa.app).
-  const origin = canonicalOrigin() ?? originFromHeaders(await headers());
   const { subject, html, text } = buildResetEmail({
     name: user.name,
     resetUrl: `${origin}/reset-password/${token}`,

@@ -21,7 +21,8 @@ function loginNotice(error: string | undefined): string | undefined {
 }
 
 /** ?reason= from the automatic sign-out (src/components/security/idle-guard.tsx). */
-function signedOutInfo(reason: string | undefined): string | undefined {
+function signedOutInfo(reason: string | undefined, verified: string | undefined): string | undefined {
+  if (verified === "1") return "כתובת האימייל אושרה. אפשר להתחבר.";
   if (reason === "idle") return "המערכת התנתקה עקב חוסר פעילות. כדי להמשיך יש להתחבר שוב.";
   if (reason === "absolute") return "מטעמי אבטחה יש להתחבר מחדש אחרי 12 שעות.";
   return undefined;
@@ -30,15 +31,15 @@ function signedOutInfo(reason: string | undefined): string | undefined {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; reason?: string }>;
+  searchParams: Promise<{ error?: string; reason?: string; verified?: string }>;
 }) {
-  const { error, reason } = await searchParams;
+  const { error, reason, verified } = await searchParams;
   return (
     <div>
       <LoginForm
         googleEnabled={isGoogleConfigured()}
         notice={loginNotice(error)}
-        info={signedOutInfo(reason)}
+        info={signedOutInfo(reason, verified)}
       />
       <div className="mt-6 pt-5 border-t border-cream-200 text-center">
         <ExplainerVideo />

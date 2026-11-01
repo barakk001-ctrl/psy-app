@@ -13,7 +13,7 @@ const at = (dayOffset, h, m = 0) => { const n = new Date(Date.now() + 2 * 360000
 (async () => {
   await db.user.deleteMany({ where: { email: "demo@demo.co.il" } });
   const user = await db.user.create({ data: {
-    email: "demo@demo.co.il", name: "נועה כהן-דמו", hashedPassword: await bcrypt.hash("Demo-pass-2026", 10),
+    email: "demo@demo.co.il", name: "נועה כהן-דמו", hashedPassword: await bcrypt.hash("Demo-pass-2026", 10), emailVerifiedAt: new Date(),
     agreementVersion: "draft-2026-10", agreementAcceptedAt: new Date(), trialEndsAt: new Date(Date.now() + 21 * DAY),
     showHolidays: true, vatLiable: true, businessName: "קליניקה לדוגמה", phone: "0501234567",
   } });

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GoogleButton, OrDivider } from "@/components/auth/google-button";
+import { VerifyEmailPending } from "@/components/auth/verify-email-pending";
 import { googleSignInAction, loginAction, type FormState } from "@/server/actions/auth";
 import { TRIAL_DAYS } from "@/lib/subscription";
 
@@ -33,6 +34,8 @@ export function LoginForm({
   const [totp, setTotp] = useState("");
 
   const needTotp = !!state?.needTotp;
+
+  if (state?.unverified && state.email) return <VerifyEmailPending email={state.email} />;
 
   return (
     <div>
