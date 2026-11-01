@@ -12,9 +12,9 @@ export default async function AppointmentRequestPage({
 
   const user = await db.user.findUnique({
     where: { inboxToken: token },
-    select: { businessName: true, name: true },
+    select: { businessName: true, name: true, closedAt: true },
   });
-  if (!user) notFound();
+  if (!user || user.closedAt) notFound();
 
   const displayName = user.businessName ?? user.name;
 

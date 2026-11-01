@@ -30,6 +30,8 @@ export async function topUpOpenEndedSeries(): Promise<number> {
       recurrenceRule: { not: null },
       parentSessionId: null,
       client: { status: "ACTIVE" },
+      // A closed account grows nothing (account-closure.ts)
+      user: { closedAt: null },
     },
     select: {
       id: true,

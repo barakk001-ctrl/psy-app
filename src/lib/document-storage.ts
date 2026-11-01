@@ -11,8 +11,9 @@
 // Today's backend is Postgres (`postgresBlobStore`, document-storage-pg.ts):
 // one ClientDocumentBlob row per document, deleted by ON DELETE CASCADE with
 // its document and so with the client (recycle-bin purge). An object-store
-// backend would have no cascade: purging a client would then have to call
-// `delete` for each of their documents first.
+// backend would have no cascade: purging a client, or a closed account
+// (account-closure-data.ts), would then have to call `delete` for each of their
+// documents first.
 
 import { decryptBuffer, encryptBuffer } from "@/lib/crypto";
 

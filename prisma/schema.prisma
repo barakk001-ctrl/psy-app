@@ -114,6 +114,12 @@ model User {
   exportGrantHash      String?
   exportGrantExpiresAt DateTime?
 
+  // Account closure (src/lib/account-closure.ts): set only by the owner in
+  // Settings, cleared by restoring. After purgeAfter the hourly job deletes the
+  // account for good. Subscription expiry never sets these.
+  closedAt   DateTime?
+  purgeAfter DateTime?
+
   // Morning (Green Invoice) API connection — secret encrypted at app layer
   morningApiKeyId  String?
   morningApiSecret String?  // packed AES-256-GCM (iv:tag:ciphertext, base64)
@@ -141,6 +147,8 @@ model User {
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  @@index([purgeAfter])
 }
 
 // One row per trial/subscription email to an account: taken before sending, so

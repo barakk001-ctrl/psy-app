@@ -11,11 +11,13 @@ import {
 export async function subscriptionStateFor(userId: string): Promise<SubscriptionState> {
   const u = await db.user.findUnique({
     where: { id: userId },
-    select: SUBSCRIPTION_FIELD_SELECT,
+    select: { ...SUBSCRIPTION_FIELD_SELECT, closedAt: true },
   });
   // Unknown user: let the caller's own auth checks surface the real error
   if (!u) return { status: "expired", activeUntil: null, plan: null, daysLeft: 0, writable: false };
-  return getSubscriptionState(u);
+  const state = getSubscriptionState(u);
+  // A closed account (account-closure.ts) can't be worked in, whatever its plan
+  return u.closedAt ? { ...state, writable: false } : state;
 }
 
 /** True when the account is past its trial/subscription — writes must refuse. */

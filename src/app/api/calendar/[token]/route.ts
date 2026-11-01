@@ -16,9 +16,10 @@ export async function GET(
 
   const user = await db.user.findUnique({
     where: { calendarToken: token },
-    select: { id: true, calendarNameMode: true },
+    select: { id: true, calendarNameMode: true, closedAt: true },
   });
-  if (!user) return NextResponse.json({ error: "not found" }, { status: 404 });
+  // A closed account's feed is gone at once; restoring brings the same link back
+  if (!user || user.closedAt) return NextResponse.json({ error: "not found" }, { status: 404 });
 
   // Recent past + all future; cancelled events are included as CANCELLED so
   // Google removes them from views instead of leaving stale entries.

@@ -4,6 +4,7 @@
 // Every job is idempotent: a run that overlaps another, or that also happens
 // through the cron route, does nothing twice.
 
+import { purgeClosedAccounts } from "@/lib/account-closure-data";
 import { purgeExpiredClients } from "@/lib/client-trash-data";
 import { purgeExpiredRateLimits } from "@/lib/rate-limit";
 import { topUpOpenEndedSeries } from "@/lib/series-topup";
@@ -18,15 +19,25 @@ const globalForMaintenance = globalThis as unknown as { psyMaintenance?: boolean
 export async function runMaintenance(
   now = new Date(),
 ): Promise<{
+  accountsPurged: number;
   clientsPurged: number;
   seriesExtended: number;
   supportEmailsSent: number;
   subscriptionNoticesSent: number;
 }> {
+  let accountsPurged = 0;
   let clientsPurged = 0;
   let seriesExtended = 0;
   let supportEmailsSent = 0;
   let subscriptionNoticesSent = 0;
+  try {
+    // Accounts their owners closed 30 days ago are deleted for good. Only those:
+    // an expired subscription never gets here (account-closure.ts).
+    accountsPurged = await purgeClosedAccounts(now);
+    if (accountsPurged > 0) console.log(`Maintenance: purged ${accountsPurged} closed account(s)`);
+  } catch (err) {
+    console.error("Maintenance: account purge failed:", err);
+  }
   try {
     // Clients 30 days in the recycle bin are deleted for good
     clientsPurged = await purgeExpiredClients(now);
@@ -64,7 +75,7 @@ export async function runMaintenance(
   } catch (err) {
     console.error("Maintenance: subscription notices failed:", err);
   }
-  return { clientsPurged, seriesExtended, supportEmailsSent, subscriptionNoticesSent };
+  return { accountsPurged, clientsPurged, seriesExtended, supportEmailsSent, subscriptionNoticesSent };
 }
 
 export function startMaintenance(): void {

@@ -35,9 +35,12 @@ export default async function AppLayout({
         phone: true,
         onboardingCompletedAt: true,
         onboardingPausedAt: true,
+        closedAt: true,
       },
     }),
   ]);
+  // A closed account has only one page left: restore it, or take a copy
+  if (branding?.closedAt) redirect("/account-closed");
   // A new account starts in the setup wizard (existing ones are marked done)
   if (branding && shouldEnterSetup(branding, sub.status)) redirect("/setup");
   const brand = branding ? { brandName: branding.brandName, logoUrl: branding.logoUrl } : undefined;

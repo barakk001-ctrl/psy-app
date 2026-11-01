@@ -27,6 +27,9 @@ import { TwoFactorSettings } from "@/components/settings/two-factor-settings";
 import { IdleTimeoutCard } from "@/components/settings/idle-timeout-card";
 import { normalizeIdleTimeout } from "@/lib/idle-timeout";
 import { AccountExportCard } from "@/components/settings/account-export-card";
+import { AccountClosureCard } from "@/components/settings/account-closure-card";
+import { AdminPendingClosuresCard } from "@/components/settings/admin-pending-closures-card";
+import { pendingClosures } from "@/lib/account-closure-data";
 import { reauthMethod } from "@/lib/reauth";
 
 export const metadata = { title: "הגדרות — מרפאה אישית" };
@@ -149,6 +152,8 @@ export default async function SettingsPage({
       ).map(({ attachmentName, ...r }) => ({ ...r, hasAttachment: !!attachmentName }))
     : [];
 
+  const closures = user.isAdmin ? await pendingClosures() : [];
+
   const morningConnected = !!(user.morningApiKeyId && user.morningApiSecret);
   const keyIdMasked = user.morningApiKeyId
     ? `…${user.morningApiKeyId.slice(-6)}`
@@ -230,9 +235,13 @@ export default async function SettingsPage({
         <AccountExportCard method={reauthMethod(user)} email={user.email} message={sp.export} />
       </div>
 
+      <AccountClosureCard method={reauthMethod(user)} email={user.email} isAdmin={user.isAdmin} />
+
       {user.isAdmin && <AdminSubscriptionsCard users={adminUsers} meId={userId} />}
 
       {user.isAdmin && <AdminSupportRequestsCard requests={supportRequests} />}
+
+      {user.isAdmin && <AdminPendingClosuresCard rows={closures} now={new Date()} />}
 
       <AuditLogCard entries={auditEntries} />
 

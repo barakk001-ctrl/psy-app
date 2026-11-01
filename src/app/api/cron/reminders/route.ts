@@ -50,6 +50,8 @@ async function run(req: Request) {
     where: {
       status: "PENDING",
       scheduledFor: { lte: now },
+      // Closing cancels the pending ones; this also covers any queued since
+      user: { closedAt: null },
     },
     orderBy: { scheduledFor: "asc" },
     take: MAX_BATCH,

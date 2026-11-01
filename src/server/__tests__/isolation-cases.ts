@@ -507,6 +507,8 @@ export const ROUTE_CASES: Record<string, Case> = {
 export const NO_ID_INPUT: Record<string, string> = {
   "account.sendReauthCodeAction": "own account",
   "account.prepareAccountExportAction": "own account; the grant is bound to it (account-export.db.test.ts)",
+  "account.closeAccountAction": "own account (account-closure.db.test.ts)",
+  "account.restoreAccountAction": "own account (account-closure.db.test.ts)",
   "auth.signOutAction": "own session",
   "auth.idleSignOutAction": "own session",
   "auth.loginAction": "sign-in: email and password, no record id",

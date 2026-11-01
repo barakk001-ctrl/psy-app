@@ -46,6 +46,8 @@ const ALLOWED: Record<string, string> = {
   // taking the data out stays open: it is the practice's own
   "account.sendReauthCodeAction": "re-check before an export (no data changes)",
   "account.prepareAccountExportAction": "full export stays open on expired accounts",
+  "account.closeAccountAction": "an expired account may still close itself",
+  "account.restoreAccountAction": "undoing a closure, on an account the lock blocks",
   // reads only
   "sessions.checkOverlapAction": "read-only check",
   "sessions.sessionScopeInfoAction": "read-only lookup",

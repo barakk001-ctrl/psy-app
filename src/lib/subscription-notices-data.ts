@@ -26,6 +26,8 @@ async function candidates(now: Date): Promise<NoticeUser[]> {
   return db.user.findMany({
     where: {
       subscriptionExempt: false,
+      // A closed account is leaving: no "your plan is ending" email (account-closure.ts)
+      closedAt: null,
       isAdmin: false,
       emailVerifiedAt: { not: null },
       OR: [{ trialEndsAt: near }, { subscriptionEndsAt: near }, { trialEndsAt: null }],
