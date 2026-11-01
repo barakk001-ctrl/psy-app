@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { decryptBuffer } from "@/lib/crypto";
 import { logAudit } from "@/lib/audit";
+import { sessionFileName } from "@/lib/sensitive-fields";
 import { contentDisposition } from "@/lib/client-documents";
 
 export const runtime = "nodejs";
@@ -38,7 +39,7 @@ export async function GET(
   return new Response(new Uint8Array(data), {
     headers: {
       "Content-Type": file.mimeType,
-      "Content-Disposition": contentDisposition(file.fileName, file.mimeType, true),
+      "Content-Disposition": contentDisposition(sessionFileName(file), file.mimeType, true),
       "X-Content-Type-Options": "nosniff",
       "Cache-Control": "private, no-store",
     },

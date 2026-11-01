@@ -1,3 +1,4 @@
+import { sessionFileName } from "@/lib/sensitive-fields";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -72,7 +73,7 @@ export default async function SessionDetailPage({
       },
       files: {
         orderBy: { createdAt: "desc" },
-        select: { id: true, fileName: true, size: true, createdAt: true },
+        select: { id: true, fileName: true, fileNameCiphertext: true, size: true, createdAt: true },
       },
     },
   });
@@ -180,7 +181,7 @@ export default async function SessionDetailPage({
             sessionId={sess.id}
             files={sess.files.map((f) => ({
               id: f.id,
-              fileName: f.fileName,
+              fileName: sessionFileName(f),
               size: f.size,
               createdAt: f.createdAt.toISOString(),
             }))}

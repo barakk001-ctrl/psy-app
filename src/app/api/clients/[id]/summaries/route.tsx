@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { decryptNote } from "@/lib/crypto";
 import { logAudit } from "@/lib/audit";
+import { clientIdNumber } from "@/lib/sensitive-fields";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { SummariesPDF } from "@/components/clients/summaries-pdf";
 import { pdfResponse } from "@/components/pdf/pdf-response";
@@ -20,7 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const [client, user] = await Promise.all([
     db.client.findFirst({
       where: { id, userId },
-      select: { id: true, firstName: true, lastName: true, idNumber: true },
+      select: { id: true, firstName: true, lastName: true, idNumber: true, idNumberCiphertext: true },
     }),
     db.user.findUnique({
       where: { id: userId },
@@ -63,7 +64,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       data={{
         practiceName: user?.brandName || user?.businessName || user?.name || "",
         clientName,
-        clientIdNumber: client.idNumber,
+        clientIdNumber: clientIdNumber(client),
         generatedAt: formatDate(new Date()),
         entries,
       }}

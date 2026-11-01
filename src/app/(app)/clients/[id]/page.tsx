@@ -1,3 +1,4 @@
+import { clientGeneralNotes, clientIdNumber, sessionFileName } from "@/lib/sensitive-fields";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, Mail, Phone, MapPin, Calendar as CalIcon, Pencil } from "lucide-react";
@@ -60,6 +61,7 @@ export default async function ClientDetailPage({
         select: {
           id: true,
           fileName: true,
+          fileNameCiphertext: true,
           size: true,
           createdAt: true,
           sessionId: true,
@@ -83,6 +85,9 @@ export default async function ClientDetailPage({
   });
 
   if (!client) notFound();
+
+  const idNumber = clientIdNumber(client);
+  const generalNotes = clientGeneralNotes(client);
 
   const [allSessions, notedSessions] = await Promise.all([
     db.session.findMany({
@@ -274,9 +279,9 @@ export default async function ClientDetailPage({
                 <span>{client.address}</span>
               </div>
             )}
-            {client.idNumber && (
+            {idNumber && (
               <div className="text-ink-muted text-xs pt-2 border-t border-cream-200">
-                ת.ז: <span dir="ltr">{client.idNumber}</span>
+                ת.ז: <span dir="ltr">{idNumber}</span>
               </div>
             )}
             {client.dateOfBirth && (
@@ -289,10 +294,10 @@ export default async function ClientDetailPage({
                 תעריף: {formatCurrency(client.defaultRate.toString())}
               </div>
             )}
-            {client.generalNotes && (
+            {generalNotes && (
               <div className="pt-3 border-t border-cream-200">
                 <p className="text-xs text-ink-muted whitespace-pre-wrap leading-relaxed">
-                  {client.generalNotes}
+                  {generalNotes}
                 </p>
               </div>
             )}
@@ -382,7 +387,7 @@ export default async function ClientDetailPage({
           documents={documents}
           sessionFiles={client.sessionFiles.map((f) => ({
             id: f.id,
-            fileName: f.fileName,
+            fileName: sessionFileName(f),
             size: f.size,
             createdAt: f.createdAt.toISOString(),
             sessionId: f.sessionId,

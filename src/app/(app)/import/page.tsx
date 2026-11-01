@@ -1,3 +1,4 @@
+import { inboxText } from "@/lib/sensitive-fields";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
@@ -22,7 +23,7 @@ export default async function ImportPage() {
       where: { userId, processed: false },
       orderBy: { createdAt: "desc" },
       take: 20,
-      select: { id: true, text: true, createdAt: true },
+      select: { id: true, text: true, textCiphertext: true, createdAt: true },
     }),
     // Recent + near-future sessions for attaching post-meeting notes
     db.session.findMany({
@@ -54,7 +55,7 @@ export default async function ImportPage() {
         clients={clients}
         inbox={inbox.map((m) => ({
           id: m.id,
-          text: m.text,
+          text: inboxText(m),
           createdAt: m.createdAt.toISOString(),
         }))}
         sessions={sessions.map((s) => ({

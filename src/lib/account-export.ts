@@ -14,6 +14,7 @@ import yazl from "yazl";
 import { dbAll } from "@/lib/db";
 import { decryptBuffer, decryptNote, decryptSecret } from "@/lib/crypto";
 import { PAYMENT_METHOD_LABELS } from "@/lib/income";
+import { clientGeneralNotes, clientIdNumber, inboxText, sessionFileName } from "@/lib/sensitive-fields";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
 import {
   CSV_BOM,
@@ -256,7 +257,7 @@ export async function buildExportEntries(userId: string): Promise<ExportEntry[]>
         r.id,
         r.firstName,
         r.lastName,
-        r.idNumber,
+        clientIdNumber(r),
         r.email,
         r.phone,
         day(r.dateOfBirth),
@@ -265,7 +266,7 @@ export async function buildExportEntries(userId: string): Promise<ExportEntry[]>
         r.status === "ACTIVE" ? "פעיל" : "לא פעיל",
         r.defaultRate,
         r.treatmentType,
-        r.generalNotes,
+        clientGeneralNotes(r),
         clock(r.createdAt),
         clock(r.deletedAt),
       ],
@@ -494,7 +495,7 @@ ${noteText(path, s.note!)}
       "הודעות נכנסות.csv",
       ["מזהה", "הודעה", "טופלה", "התקבלה"],
       () => paged((c) => dbAll.inboxMessage.findMany({ where: mine, ...orderPage, ...c })),
-      (r) => [r.id, r.text, r.processed ? "כן" : "לא", clock(r.createdAt)],
+      (r) => [r.id, inboxText(r), r.processed ? "כן" : "לא", clock(r.createdAt)],
     ),
     csvEntry(
       tally,
@@ -560,13 +561,13 @@ ${noteText(path, s.note!)}
   for await (const rows of paged((c) =>
     dbAll.sessionFile.findMany({
       where: mine,
-      select: { id: true, clientId: true, fileName: true, createdAt: true },
+      select: { id: true, clientId: true, fileName: true, fileNameCiphertext: true, createdAt: true },
       ...orderPage,
       ...c,
     }),
   )) {
     for (const f of rows) {
-      const path = place(`קבצי פגישות/${folder(f.clientId)}/${day(f.createdAt)} ${safeFileName(f.fileName)}`);
+      const path = place(`קבצי פגישות/${folder(f.clientId)}/${day(f.createdAt)} ${safeFileName(sessionFileName(f))}`);
       entries.push(
         fileEntry(tally, path, async () => {
           const row = await dbAll.sessionFile.findFirst({

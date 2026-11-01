@@ -28,6 +28,7 @@ import {
 import type { Prisma } from "@prisma/client";
 
 import { clientSchema, clientStatusSchema } from "@/server/validators/client";
+import { sealClientFields } from "@/lib/sensitive-fields";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -148,13 +149,12 @@ export async function createClientAction(
         userId,
         firstName: data.firstName,
         lastName: data.lastName,
-        idNumber: data.idNumber || null,
         email: data.email || null,
         phone: data.phone || null,
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
         address: data.address || null,
         defaultRate: data.defaultRate ?? null,
-        generalNotes: data.generalNotes || null,
+        ...sealClientFields(data),
         treatmentType: data.treatmentType,
       },
     });
@@ -218,13 +218,12 @@ export async function updateClientAction(
     {
       firstName: data.firstName,
       lastName: data.lastName,
-      idNumber: data.idNumber || null,
       email: data.email || null,
       phone: data.phone || null,
       dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
       address: data.address || null,
       defaultRate: data.defaultRate ?? null,
-      generalNotes: data.generalNotes || null,
+      ...sealClientFields(data),
       treatmentType: data.treatmentType,
       ...(data.status ? { status: data.status } : {}),
     },

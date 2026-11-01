@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { clientIdNumber } from "@/lib/sensitive-fields";
 import type { InvoicePDFData } from "@/components/invoices/invoice-pdf";
 import { docTypeLabel } from "@/lib/billing-docs";
 
@@ -44,7 +45,7 @@ export async function loadInvoicePdfData(
     client: {
       firstName: invoice.client.firstName,
       lastName: invoice.client.lastName,
-      idNumber: invoice.client.idNumber,
+      idNumber: clientIdNumber(invoice.client),
       address: invoice.client.address,
       email: invoice.client.email,
       phone: invoice.client.phone,

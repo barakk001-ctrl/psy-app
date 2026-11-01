@@ -8,6 +8,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { encryptBuffer } from "@/lib/crypto";
 import { logAudit } from "@/lib/audit";
+import { sealFileName } from "@/lib/sensitive-fields";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -53,7 +54,7 @@ export async function uploadSessionFileAction(
       userId,
       sessionId: session.id,
       clientId: session.clientId,
-      fileName: file.name.slice(0, 200) || "קובץ",
+      ...sealFileName(file.name.slice(0, 200) || "קובץ"),
       mimeType: file.type || "application/octet-stream",
       size: file.size,
       dataCiphertext: new Uint8Array(encrypted.ciphertext),

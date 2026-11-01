@@ -1,3 +1,4 @@
+import { clientIdNumber } from "@/lib/sensitive-fields";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
@@ -49,7 +50,7 @@ export default async function NewDocumentPage({
       // Inactive clients too (listed after the active ones)
       where: { userId },
       orderBy: [{ status: "asc" }, { lastName: "asc" }, { firstName: "asc" }],
-      select: { id: true, firstName: true, lastName: true, idNumber: true, email: true, defaultRate: true },
+      select: { id: true, firstName: true, lastName: true, idNumber: true, idNumberCiphertext: true, email: true, defaultRate: true },
     }),
     // Meetings that took place (or were missed) and aren't billed yet
     db.session.findMany({
@@ -121,7 +122,7 @@ export default async function NewDocumentPage({
         clients={clients.map((c) => ({
           id: c.id,
           name: `${c.firstName} ${c.lastName}`.trim(),
-          idNumber: c.idNumber,
+          idNumber: clientIdNumber(c),
           email: c.email,
           rate: c.defaultRate ? c.defaultRate.toString() : null,
         }))}

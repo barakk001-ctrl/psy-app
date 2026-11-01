@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { inboxText, sealInboxText } from "@/lib/sensitive-fields";
 import { rateLimit } from "@/lib/rate-limit";
 import { clientIpFrom } from "@/lib/client-ip";
 import { TURNSTILE_ERROR, passesTurnstile } from "@/lib/turnstile";
@@ -46,12 +47,12 @@ export async function processInboxMessageAction(id: string): Promise<string | nu
   await requireWritable(userId);
   const msg = await db.inboxMessage.findFirst({
     where: { id, userId },
-    select: { id: true, text: true },
+    select: { id: true, text: true, textCiphertext: true },
   });
   if (!msg) return null;
   await db.inboxMessage.update({ where: { id }, data: { processed: true } });
   revalidatePath("/import");
-  return msg.text;
+  return inboxText(msg);
 }
 
 export async function deleteInboxMessageAction(id: string) {
@@ -105,6 +106,6 @@ export async function submitAppointmentRequestAction(
     .filter(Boolean)
     .join("\n");
 
-  await db.inboxMessage.create({ data: { userId: user.id, text } });
+  await db.inboxMessage.create({ data: { userId: user.id, ...sealInboxText(text) } });
   return { sent: true };
 }

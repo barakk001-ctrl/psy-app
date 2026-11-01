@@ -177,7 +177,10 @@ model Client {
 
   firstName     String
   lastName      String
-  idNumber      String?      // ת.ז — encrypted at app layer if you want
+  // Moving to encrypted columns, expand-only (src/lib/sensitive-fields.ts): new
+  // writes go to *Ciphertext, reads take either. Read through the helpers.
+  idNumber      String?      // ת.ז; older rows only
+  idNumberCiphertext String? @db.Text
   email         String?
   phone         String?
   dateOfBirth   DateTime?
@@ -186,7 +189,8 @@ model Client {
   intakeDate    DateTime?
   status        ClientStatus @default(ACTIVE)
   defaultRate   Decimal?     @db.Decimal(10, 2)
-  generalNotes  String?      @db.Text
+  generalNotes  String?      @db.Text // older rows only
+  generalNotesCiphertext String? @db.Text
   treatmentType String       @default("טיפול פרטני") // label from the user-defined MeetingType list
 
   // Recycle bin (סל מחזור): set when the practitioner deletes the client. The
@@ -419,7 +423,8 @@ model SessionFile {
   clientId       String
   client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  fileName       String
+  fileName       String   // older rows only ("" once encrypted; sensitive-fields.ts)
+  fileNameCiphertext String?
   mimeType       String
   size           Int
   dataCiphertext Bytes
@@ -616,7 +621,8 @@ model InboxMessage {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  text      String   @db.Text
+  text      String   @db.Text // older rows only ("" once encrypted; sensitive-fields.ts)
+  textCiphertext String? @db.Text
   processed Boolean  @default(false)
   createdAt DateTime @default(now())
 

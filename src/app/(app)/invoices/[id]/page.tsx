@@ -1,3 +1,4 @@
+import { clientIdNumber } from "@/lib/sensitive-fields";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -259,9 +260,9 @@ export default async function InvoiceDetailPage({
                   {invoice.client.firstName} {invoice.client.lastName}
                 </span>
               </Link>
-              {invoice.client.idNumber && (
+              {clientIdNumber(invoice.client) && (
                 <div className="text-xs text-ink-muted">
-                  ת.ז: <span dir="ltr">{invoice.client.idNumber}</span>
+                  ת.ז: <span dir="ltr">{clientIdNumber(invoice.client)}</span>
                 </div>
               )}
               {invoice.client.email && (

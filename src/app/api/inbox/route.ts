@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { isReadOnly } from "@/lib/subscription-server";
+import { sealInboxText } from "@/lib/sensitive-fields";
 
 // An expired (read-only) account takes no new messages; reading still works in the app
 const READ_ONLY = { ok: false, error: "Account is read-only — renew the subscription to receive messages" };
@@ -39,7 +40,7 @@ export async function GET(req: Request) {
     if (!limited.allowed) {
       return Response.json({ ok: false, error: "Rate limited" }, { status: 429 });
     }
-    await db.inboxMessage.create({ data: { userId: user.id, text: message } });
+    await db.inboxMessage.create({ data: { userId: user.id, ...sealInboxText(message) } });
     return new Response(JSON.stringify({ ok: true, saved: true }), {
       headers: { "Content-Type": "application/json; charset=utf-8" },
     });
@@ -86,6 +87,6 @@ export async function POST(req: Request) {
   text = text.trim().slice(0, 5000);
   if (!text) return Response.json({ ok: false, error: "Empty message" }, { status: 400 });
 
-  await db.inboxMessage.create({ data: { userId: user.id, text } });
+  await db.inboxMessage.create({ data: { userId: user.id, ...sealInboxText(text) } });
   return Response.json({ ok: true });
 }

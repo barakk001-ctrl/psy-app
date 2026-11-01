@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { clientIdNumber } from "@/lib/sensitive-fields";
 import { sendEmail } from "@/lib/email";
 import { buildInvoiceEmail, renderInvoicePdfBuffer } from "@/lib/invoice-email";
 import { loadInvoicePdfData } from "@/lib/invoice-pdf-data";
@@ -210,7 +211,7 @@ export async function issueMorningReceiptAction(
     docType: user?.morningDocType ?? 400,
     clientName: `${invoice.client.firstName} ${invoice.client.lastName}`,
     clientEmail: invoice.client.email,
-    clientTaxId: invoice.client.idNumber,
+    clientTaxId: clientIdNumber(invoice.client),
     clientAddress: invoice.client.address,
     clientPhone: invoice.client.phone,
     description: `קבלה עבור חשבונית #${String(invoice.number).padStart(4, "0")}`,

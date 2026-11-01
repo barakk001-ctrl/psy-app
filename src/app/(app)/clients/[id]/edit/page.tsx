@@ -1,3 +1,4 @@
+import { clientGeneralNotes, clientIdNumber } from "@/lib/sensitive-fields";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -48,7 +49,7 @@ export default async function EditClientPage({
           treatmentType: client.treatmentType,
           firstName: client.firstName,
           lastName: client.lastName,
-          idNumber: client.idNumber,
+          idNumber: clientIdNumber(client),
           email: client.email,
           phone: client.phone,
           dateOfBirth: client.dateOfBirth
@@ -56,7 +57,7 @@ export default async function EditClientPage({
             : null,
           address: client.address,
           defaultRate: client.defaultRate ? client.defaultRate.toString() : null,
-          generalNotes: client.generalNotes,
+          generalNotes: clientGeneralNotes(client),
         }}
       />
     </div>
