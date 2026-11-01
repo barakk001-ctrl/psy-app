@@ -31,14 +31,14 @@ export function LegalPage({
 }) {
   return (
     <div className="legal-page min-h-screen bg-cream-50">
-      <div className="sticky top-0 z-20 border-b border-cream-200 bg-cream-50/95 backdrop-blur pt-[env(safe-area-inset-top)]">
+      <header className="sticky top-0 z-20 border-b border-cream-200 bg-cream-50/95 backdrop-blur pt-[env(safe-area-inset-top)]">
         <div className="max-w-2xl mx-auto px-4 h-12 flex items-center justify-between gap-3">
           <span className="font-display text-base text-ink truncate">{barTitle}</span>
           <LegalBackButton />
         </div>
-      </div>
+      </header>
 
-      <div id="top" className="max-w-2xl mx-auto px-5 pt-8 pb-24">
+      <main id="top" className="max-w-2xl mx-auto px-5 pt-8 pb-24">
         <header className="mb-8">
           <h1 className="font-display text-3xl text-ink">{title}</h1>
           <p className="text-ink-muted mt-2 text-sm leading-relaxed">{subtitle}</p>
@@ -62,7 +62,7 @@ export function LegalPage({
 
         {footer}
         <p className="text-xs text-ink-subtle mt-4">גרסה: {version}</p>
-      </div>
+      </main>
 
       <BackToTopButton />
     </div>

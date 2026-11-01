@@ -17,6 +17,8 @@ const inMorning = (
   </span>
 );
 
+export const metadata = { title: "חשבוניות — מרפאה אישית" };
+
 export default async function InvoicesPage() {
   const session = await auth();
   const userId = session!.user.id;
@@ -101,7 +103,7 @@ export default async function InvoicesPage() {
         <Card>
           <CardContent className="py-16 text-center">
             <FileText className="w-12 h-12 mx-auto text-ink-subtle mb-4" strokeWidth={1.25} />
-            <h3 className="font-display text-xl text-ink">עדיין אין מסמכים</h3>
+            <h2 className="font-display text-xl text-ink">עדיין אין מסמכים</h2>
             <p className="text-ink-muted text-sm mt-1 max-w-sm mx-auto">
               חשבונית או קבלה על פגישות שהתקיימו — בוחרים את הפגישות, בודקים בתצוגה המקדימה ומפיקים.
             </p>

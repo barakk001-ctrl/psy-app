@@ -15,6 +15,8 @@ import { decryptSecret } from "@/lib/crypto";
 import { waitingText } from "@/lib/waitlist";
 import { WaitlistPanel, type WaitlistRow } from "@/components/clients/waitlist-panel";
 
+export const metadata = { title: "לקוחות — מרפאה אישית" };
+
 export default async function ClientsPage({
   searchParams,
 }: {

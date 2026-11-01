@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { signOutAction } from "@/server/actions/auth";
 import { NAV_ITEMS } from "./nav-items";
 import { BrandMark, type Branding } from "@/components/layout/brand-mark";
+import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 
 export function MobileTopBar({
   userName,
@@ -18,6 +19,8 @@ export function MobileTopBar({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(open, drawerRef, () => setOpen(false));
 
   // Close drawer when navigating to a new route
   useEffect(() => {
@@ -44,6 +47,7 @@ export function MobileTopBar({
           type="button"
           onClick={() => setOpen(true)}
           aria-label="תפריט"
+          aria-expanded={open}
           className="p-2 -m-2 text-ink-soft hover:text-ink"
         >
           <Menu className="w-6 h-6" />
@@ -64,22 +68,33 @@ export function MobileTopBar({
           RTL-aware Tailwind direction flipping which has caused the drawer to
           stay visible when closed. */}
       <div
+        ref={drawerRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="תפריט"
         className={cn(
           "lg:hidden fixed inset-y-0 z-50 w-72 max-w-[85vw] glass border-l border-cream-200/60 shadow-lift",
-          "rounded-s-3xl transition-transform duration-300 ease-out flex flex-col",
+          "rounded-s-3xl flex flex-col outline-none",
         )}
         style={{
           right: 0,
           transform: open ? "translateX(0)" : "translateX(100%)",
+          // Closed: out of the tab order and away from screen readers, once
+          // the slide-out has finished. Opening is immediate, or the focus
+          // moved in by useDialogFocus would land on a hidden panel.
+          visibility: open ? "visible" : "hidden",
+          transition: open
+            ? "transform 300ms ease-out"
+            : "transform 300ms ease-out, visibility 0s linear 300ms",
         }}
-        aria-hidden={!open}
       >
         <div className="p-4 flex items-center justify-between border-b border-cream-300">
           <span className="font-display text-lg text-ink">תפריט</span>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            aria-label="סגור תפריט"
+            aria-label="סגירת התפריט"
             className="p-2 -m-2 text-ink-soft hover:text-ink"
           >
             <X className="w-5 h-5" />
@@ -96,6 +111,7 @@ export function MobileTopBar({
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
                       "flex items-center gap-3 px-3.5 py-3 rounded-xl text-base transition-all duration-200",
                       active

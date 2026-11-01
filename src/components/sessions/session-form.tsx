@@ -162,7 +162,7 @@ export function SessionForm({
               ))}
             </Select>
             {fieldErr.clientId && (
-              <p className="text-xs text-terracotta-600 mt-1">{fieldErr.clientId[0]}</p>
+              <p role="alert" className="text-xs text-terracotta-600 mt-1">{fieldErr.clientId[0]}</p>
             )}
             {clients.length === 0 && (
               <p className="text-xs text-ink-muted mt-1">
@@ -284,7 +284,7 @@ export function SessionForm({
                 invalid={!!fieldErr.meetingUrl}
               />
               {fieldErr.meetingUrl && (
-                <p className="text-xs text-terracotta-600 mt-1">{fieldErr.meetingUrl[0]}</p>
+                <p role="alert" className="text-xs text-terracotta-600 mt-1">{fieldErr.meetingUrl[0]}</p>
               )}
             </div>
           )}
@@ -345,7 +345,7 @@ export function SessionForm({
                 invalid={!!fieldErr.occurrences}
               />
               {fieldErr.occurrences && (
-                <p className="text-xs text-terracotta-600 mt-1">
+                <p role="alert" className="text-xs text-terracotta-600 mt-1">
                   {fieldErr.occurrences[0]}
                 </p>
               )}
@@ -382,7 +382,7 @@ export function SessionForm({
 
       {/* an overlap is already shown live above the checkbox; don't say it twice */}
       {state?.error && !state.fieldErrors && !(state.conflict && overlap) && (
-        <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
+        <div role="alert" className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
           {state.error}
         </div>
       )}

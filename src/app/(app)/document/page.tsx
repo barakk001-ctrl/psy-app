@@ -23,6 +23,8 @@ export const dynamic = "force-dynamic";
 
 const BASE = "/document";
 
+export const metadata = { title: "תיעוד פגישות — מרפאה אישית" };
+
 export default async function DocumentPage({
   searchParams,
 }: {

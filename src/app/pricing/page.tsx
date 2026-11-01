@@ -40,6 +40,7 @@ export default async function PricingPage() {
           </Link>
         </header>
 
+        <main>
         <div className="text-center mb-8">
           <h1 className="font-display text-3xl sm:text-4xl text-ink">מסלולים ומחירים</h1>
           <p className="text-ink-muted mt-3 leading-relaxed max-w-xl mx-auto text-balance">
@@ -85,6 +86,8 @@ export default async function PricingPage() {
           )}
         </div>
 
+        </main>
+
         <footer className="mt-10 border-t border-cream-200 pt-4 text-center text-xs text-ink-muted space-y-1">
           <p>
             <Link href="/terms" className="underline underline-offset-2">
@@ -97,6 +100,10 @@ export default async function PricingPage() {
             {" · "}
             <Link href="/agreement" className="underline underline-offset-2">
               הסכם החזקת מידע
+            </Link>
+            {" · "}
+            <Link href="/accessibility" className="underline underline-offset-2">
+              הצהרת נגישות
             </Link>
           </p>
           <p>

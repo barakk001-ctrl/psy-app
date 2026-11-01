@@ -17,7 +17,7 @@ export default {
           DEFAULT: "#1A1714",
           soft: "#3A332C",
           muted: "#6B5F52",
-          subtle: "#9A8E80",
+          subtle: "#74685A",
         },
         sage: {
           50: "#F1F4ED",

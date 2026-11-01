@@ -207,3 +207,43 @@
     radial-gradient(ellipse 72% 46% at 50% 36%, rgba(40, 60, 50, 0.68) 0%, rgba(40, 60, 50, 0.52) 55%, rgba(40, 60, 50, 0) 100%),
     linear-gradient(160deg, rgba(104, 136, 116, 0.5) 0%, rgba(86, 116, 100, 0.42) 55%, rgba(66, 92, 80, 0.5) 100%);
 }
+
+/* Accessibility (IS 5568 / WCAG AA). A visible keyboard focus everywhere; the
+   components that draw their own ring say so with outline-none (in the base
+   layer, so that utility wins). */
+@layer base {
+  :focus-visible {
+    outline: 2px solid #4a6048;
+    outline-offset: 2px;
+  }
+}
+main:focus,
+main:focus-visible {
+  outline: none;
+}
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 200;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  background: #3a4b39;
+  color: #fdfbf7;
+  font-weight: 500;
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: none;
+}
+/* Whoever asked the system for less motion gets none, anywhere */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

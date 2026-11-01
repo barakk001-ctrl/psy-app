@@ -20,6 +20,8 @@ export const dynamic = "force-dynamic";
 
 const VALID_KEYS = new Set(PERIODS.map((p) => p.key));
 
+export const metadata = { title: "פילוח ודוחות — מרפאה אישית" };
+
 export default async function ReportsPage({
   searchParams,
 }: {

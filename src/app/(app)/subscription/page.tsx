@@ -17,6 +17,8 @@ import { startCardPaymentAction } from "@/server/actions/subscription";
  * and buys or renews. Card payment (Grow) when configured; otherwise a
  * request to the operator, who replies with payment details.
  */
+export const metadata = { title: "מנוי ומסלולים — מרפאה אישית" };
+
 export default async function SubscriptionPage({
   searchParams,
 }: {

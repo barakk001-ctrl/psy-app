@@ -10,6 +10,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <input
         ref={ref}
+        aria-invalid={invalid || undefined}
         className={cn(
           "w-full h-11 px-3.5 rounded-xl border bg-white/60 text-ink placeholder:text-ink-subtle",
           "border-cream-300 focus:border-sage-500 focus:bg-white",

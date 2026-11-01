@@ -9,6 +9,8 @@ import { SessionForm } from "@/components/sessions/session-form";
 import { schedulingWindowUiFor } from "@/lib/subscription-server";
 import { sessionScopeInfoAction } from "@/server/actions/sessions";
 
+export const metadata = { title: "עריכת פגישה — מרפאה אישית" };
+
 export default async function EditSessionPage({
   params,
 }: {

@@ -15,7 +15,7 @@ export function IncomeChart({
       <div
         className="flex items-end gap-1 sm:gap-2 px-1"
         style={{ height: `${CHART_HEIGHT}px` }}
-        role="img"
+        role="list"
         aria-label="הכנסות ב-12 החודשים האחרונים"
       >
         {data.map((d, i) => {
@@ -26,11 +26,14 @@ export function IncomeChart({
           return (
             <div
               key={i}
+              role="listitem"
               tabIndex={0}
-              className="flex-1 h-full flex flex-col items-center justify-end gap-1.5 group min-w-0 outline-none"
+              aria-label={`${d.label}: ${formatCurrency(d.value)}${d.isPartial ? " (עד עכשיו)" : ""}`}
+              className="flex-1 h-full flex flex-col items-center justify-end gap-1.5 group min-w-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-sage-600 focus-visible:ring-offset-2"
               title={`${d.label}: ${formatCurrency(d.value)}`}
             >
               <span
+                aria-hidden
                 className={cn(
                   "text-[10px] text-ink-muted whitespace-nowrap transition-opacity",
                   d.value > 0
@@ -46,7 +49,7 @@ export function IncomeChart({
                   d.value === 0
                     ? "bg-cream-200 group-hover:bg-cream-300"
                     : d.isPartial
-                      ? "bg-sage-300 group-hover:bg-sage-500"
+                      ? "bg-sage-300 border border-sage-600 group-hover:bg-sage-500"
                       : "bg-sage-500 group-hover:bg-sage-600",
                 )}
                 style={{ height: `${barHeight}px` }}
@@ -55,7 +58,7 @@ export function IncomeChart({
           );
         })}
       </div>
-      <div className="flex items-end gap-1 sm:gap-2 mt-2 px-1">
+      <div className="flex items-end gap-1 sm:gap-2 mt-2 px-1" aria-hidden>
         {data.map((d, i) => (
           <div
             key={i}

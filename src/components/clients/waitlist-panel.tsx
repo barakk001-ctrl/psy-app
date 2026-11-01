@@ -86,7 +86,7 @@ function EntryForm({
             autoFocus={!entry}
           />
           {fieldErr.fullName && (
-            <p className="text-xs text-terracotta-600 mt-1">{fieldErr.fullName[0]}</p>
+            <p role="alert" className="text-xs text-terracotta-600 mt-1">{fieldErr.fullName[0]}</p>
           )}
         </div>
         <div>
@@ -115,7 +115,7 @@ function EntryForm({
         />
       </div>
       {state?.error && (
-        <p className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
+        <p role="alert" className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
           {state.error}
         </p>
       )}
@@ -179,7 +179,7 @@ function EntryRow({ entry }: { entry: WaitlistRow }) {
               <a
                 href={tel}
                 className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-cream-300 bg-white/70 text-sm text-ink hover:bg-white"
-                aria-label={`התקשרות אל ${entry.fullName}`}
+                aria-label={`התקשרות אל ${entry.fullName}, ${entry.phone}`}
               >
                 <Phone className="w-4 h-4 text-sage-600" />
                 <span dir="ltr">{entry.phone}</span>
@@ -212,7 +212,7 @@ function EntryRow({ entry }: { entry: WaitlistRow }) {
       {confirmDelete ? (
         <div className="rounded-xl border border-terracotta-500/30 bg-terracotta-500/5 px-4 py-3 space-y-2 text-sm">
           <p className="text-ink">להסיר את {entry.fullName} מרשימת ההמתנה?</p>
-          {error && <p className="text-terracotta-600">{error}</p>}
+          {error && <p role="alert" className="text-terracotta-600">{error}</p>}
           <div className="flex gap-2">
             <Button type="button" size="sm" variant="danger" disabled={pending} onClick={remove}>
               {pending ? "מסיר…" : "כן, להסיר"}

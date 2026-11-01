@@ -24,6 +24,8 @@ import {
   Receipt,
 } from "lucide-react";
 
+export const metadata = { title: "בית — מרפאה אישית" };
+
 export default async function DashboardPage() {
   const session = await auth();
   const userId = session!.user.id;

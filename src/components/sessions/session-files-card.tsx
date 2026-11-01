@@ -104,7 +104,7 @@ export function SessionFilesCard({
           }}
         />
 
-        {error && <p className="text-sm text-terracotta-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-terracotta-600">{error}</p>}
 
         {files.length > 0 && (
           <ul className="divide-y divide-cream-200">

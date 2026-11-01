@@ -13,6 +13,7 @@ import { setShowHolidaysAction } from "@/server/actions/settings";
 import type { HolidayMap } from "@/lib/holidays";
 import type { WindowUi } from "@/lib/scheduling-window";
 import { hourRange, minutesOfDay, slotTime } from "@/lib/calendar-hours";
+import { darkenForText } from "@/lib/color-contrast";
 import {
   QuickEditDialog,
   type QuickEditData,
@@ -38,10 +39,23 @@ const dayKey = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2
 // Color sessions by status — sage for scheduled, muted for past, terracotta for problems.
 const STATUS_BG: Record<string, string> = {
   SCHEDULED: "#5C7559",
-  COMPLETED: "#9A8E80",
+  COMPLETED: "#74685A",
   CANCELLED: "#D4CCB9",
-  NO_SHOW: "#B5654A",
+  NO_SHOW: "#A3573E",
 };
+
+const EVENT_TEXT = "#FDFBF7";
+
+/**
+ * FullCalendar's own markup: the prev/next icons are role="img" with no name
+ * (the button around them has one).
+ */
+function fixCalendarIcons(root: Element | null) {
+  root?.querySelectorAll(".fc-icon[role='img']").forEach((el) => {
+    el.removeAttribute("role");
+    el.setAttribute("aria-hidden", "true");
+  });
+}
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -109,12 +123,16 @@ export function CalendarView({
       status === "SCHEDULED"
         ? typeColors?.[e.extendedProps?.treatmentType as string]
         : undefined;
-    const bg = typeColor ?? STATUS_BG[status];
+    // Cancelled is a pale tile with dark text; everything else carries light
+    // text, on a colour darkened just enough to stay readable at this size.
+    const cancelled = status === "CANCELLED";
+    const base = typeColor ?? STATUS_BG[status] ?? STATUS_BG.SCHEDULED!;
+    const bg = cancelled ? base : darkenForText(base, EVENT_TEXT);
     return {
       ...e,
       backgroundColor: bg,
       borderColor: bg,
-      textColor: "#FDFBF7",
+      textColor: cancelled ? "#1A1714" : EVENT_TEXT,
     };
   });
 
@@ -129,6 +147,12 @@ export function CalendarView({
         locale={heLocale}
         direction="rtl"
         firstDay={0}
+        // Meetings can be reached with Tab; Enter opens one like a click
+        eventInteractive
+        viewDidMount={(arg) => fixCalendarIcons(arg.el.closest(".calendar-shell"))}
+        // FullCalendar labels a day by its number alone, which hides the
+        // meetings inside it from screen readers
+        dayCellDidMount={(arg) => arg.el.removeAttribute("aria-labelledby")}
         // Fill the fixed-height shell; the grid scrolls internally, not the page
         height="100%"
         headerToolbar={
@@ -433,7 +457,7 @@ export function CalendarView({
           font-size: 0.78rem;
         }
         .calendar-shell .fc .fc-timegrid-slot-label-cushion {
-          color: #9a8e80;
+          color: #74685a;
           font-size: 0.72rem;
         }
         .calendar-shell .fc-event {

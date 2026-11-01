@@ -95,7 +95,7 @@ export function DraftDocumentActions({
       </p>
 
       {error && (
-        <p
+        <p role="alert"
           className={`rounded-lg px-3 py-2 text-sm ${
             uncertain
               ? "border border-gold-400 bg-gold-200/40 text-ink"
@@ -227,7 +227,7 @@ export function IssuedDocumentActions({
             תופק ב-morning חשבונית זיכוי על מלוא ה{label}, והיא תסומן כאן כמבוטלת. הפגישות שבה
             יחזרו להיות פתוחות לחיוב.
           </p>
-          {error && <p className="text-sm text-terracotta-600">{error}</p>}
+          {error && <p role="alert" className="text-sm text-terracotta-600">{error}</p>}
           <div className="flex gap-2">
             <Button type="button" size="sm" variant="danger" onClick={credit} disabled={pending}>
               {pending ? "מפיק…" : "כן, להפיק חשבונית זיכוי"}

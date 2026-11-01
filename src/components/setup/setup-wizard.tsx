@@ -159,7 +159,7 @@ export function SetupWizard({ step, brand, business, meetingTypes, defaultMinute
           )}
 
           {error && (
-            <p className="rounded-xl border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
+            <p role="alert" className="rounded-xl border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
               {error}
             </p>
           )}

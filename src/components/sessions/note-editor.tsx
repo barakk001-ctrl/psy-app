@@ -77,7 +77,7 @@ export function NoteEditor({
       />
 
       {state?.error && (
-        <div className="text-sm text-terracotta-600">{state.error}</div>
+        <div role="alert" className="text-sm text-terracotta-600">{state.error}</div>
       )}
 
       <div className="flex items-center justify-between">

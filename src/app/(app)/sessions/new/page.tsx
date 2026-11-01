@@ -6,6 +6,8 @@ import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { SessionForm } from "@/components/sessions/session-form";
 import { schedulingWindowUiFor } from "@/lib/subscription-server";
 
+export const metadata = { title: "פגישה חדשה — מרפאה אישית" };
+
 export default async function NewSessionPage({
   searchParams,
 }: {

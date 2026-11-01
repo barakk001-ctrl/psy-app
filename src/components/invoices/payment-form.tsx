@@ -86,7 +86,7 @@ export function PaymentForm({
       </div>
 
       {state?.error && (
-        <div className="text-sm text-terracotta-600">{state.error}</div>
+        <div role="alert" className="text-sm text-terracotta-600">{state.error}</div>
       )}
 
       <div className="flex items-center justify-end gap-2">

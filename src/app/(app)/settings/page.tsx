@@ -27,6 +27,8 @@ import { TwoFactorSettings } from "@/components/settings/two-factor-settings";
 import { IdleTimeoutCard } from "@/components/settings/idle-timeout-card";
 import { normalizeIdleTimeout } from "@/lib/idle-timeout";
 
+export const metadata = { title: "הגדרות — מרפאה אישית" };
+
 export default async function SettingsPage({
   searchParams,
 }: {

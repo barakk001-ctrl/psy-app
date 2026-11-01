@@ -28,6 +28,8 @@ import { VAT_RATE, vatBreakdown } from "@/lib/vat";
 import { PAYMENT_METHOD_LABELS } from "@/lib/income";
 
 
+export const metadata = { title: "מסמך — מרפאה אישית" };
+
 export default async function InvoiceDetailPage({
   params,
   searchParams,

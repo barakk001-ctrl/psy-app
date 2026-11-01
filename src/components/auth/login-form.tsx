@@ -67,7 +67,7 @@ export function LoginForm({
             invalid={!!state?.fieldErrors?.email}
           />
           {state?.fieldErrors?.email && (
-            <p className="text-xs text-terracotta-600 mt-1">
+            <p role="alert" className="text-xs text-terracotta-600 mt-1">
               {state.fieldErrors.email[0]}
             </p>
           )}
@@ -86,7 +86,7 @@ export function LoginForm({
             invalid={!!state?.fieldErrors?.password}
           />
           {state?.fieldErrors?.password && (
-            <p className="text-xs text-terracotta-600 mt-1">
+            <p role="alert" className="text-xs text-terracotta-600 mt-1">
               {state.fieldErrors.password[0]}
             </p>
           )}

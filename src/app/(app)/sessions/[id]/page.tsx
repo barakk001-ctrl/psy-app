@@ -35,6 +35,8 @@ const LOCATION_LABELS = {
   OTHER: "אחר",
 } as const;
 
+export const metadata = { title: "פגישה — מרפאה אישית" };
+
 export default async function SessionDetailPage({
   params,
 }: {

@@ -31,6 +31,10 @@ export default function PrivacyPage() {
           <Link href="/terms" className="underline underline-offset-2">
             תנאי שימוש
           </Link>
+          {" · "}
+          <Link href="/accessibility" className="underline underline-offset-2">
+            הצהרת נגישות
+          </Link>
         </p>
       }
     />

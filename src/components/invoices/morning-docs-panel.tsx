@@ -66,7 +66,7 @@ export function MorningDocsPanel({
       </CardHeader>
       <CardContent className="p-0">
         {state?.error && (
-          <div className="px-5 py-3 text-sm text-terracotta-600 border-b border-cream-200">
+          <div role="alert" className="px-5 py-3 text-sm text-terracotta-600 border-b border-cream-200">
             {state.error}
           </div>
         )}

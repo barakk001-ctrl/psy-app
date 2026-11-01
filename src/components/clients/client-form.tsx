@@ -134,7 +134,7 @@ export function ClientForm({
                 invalid={!!fieldErr.firstName}
               />
               {fieldErr.firstName && (
-                <p className="text-xs text-terracotta-600 mt-1">{fieldErr.firstName[0]}</p>
+                <p role="alert" className="text-xs text-terracotta-600 mt-1">{fieldErr.firstName[0]}</p>
               )}
             </div>
             <div>
@@ -146,7 +146,7 @@ export function ClientForm({
                 invalid={!!fieldErr.lastName}
               />
               {fieldErr.lastName && (
-                <p className="text-xs text-terracotta-600 mt-1">{fieldErr.lastName[0]}</p>
+                <p role="alert" className="text-xs text-terracotta-600 mt-1">{fieldErr.lastName[0]}</p>
               )}
             </div>
           </div>
@@ -204,7 +204,7 @@ export function ClientForm({
                 invalid={!!fieldErr.email}
               />
               {fieldErr.email && (
-                <p className="text-xs text-terracotta-600 mt-1">{fieldErr.email[0]}</p>
+                <p role="alert" className="text-xs text-terracotta-600 mt-1">{fieldErr.email[0]}</p>
               )}
             </div>
             <div>
@@ -262,7 +262,7 @@ export function ClientForm({
       </Card>
 
       {state?.error && (
-        <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
+        <div role="alert" className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
           {state.error}
         </div>
       )}

@@ -4,6 +4,8 @@ import { formatDateTime } from "@/lib/format";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
 import { ImportMessageForm } from "@/components/import/import-message-form";
 
+export const metadata = { title: "קליטת הודעות — מרפאה אישית" };
+
 export default async function ImportPage() {
   const session = await auth();
   const userId = session!.user.id;

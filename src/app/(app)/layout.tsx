@@ -6,6 +6,7 @@ import { MobileTabBar } from "@/components/nav/mobile-tab-bar";
 import { BiometricLockOverlay } from "@/components/security/biometric-lock-overlay";
 import { IdleGuard } from "@/components/security/idle-guard";
 import { HelpWidget } from "@/components/help/help-widget";
+import { SkipLink } from "@/components/ui/skip-link";
 import { normalizeIdleTimeout } from "@/lib/idle-timeout";
 import { shouldEnterSetup } from "@/lib/onboarding";
 import { ClinicBanner } from "@/components/layout/clinic-banner";
@@ -46,6 +47,7 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen flex">
+      <SkipLink />
       <BiometricLockOverlay />
       <IdleGuard
         idleMinutes={normalizeIdleTimeout(branding?.idleTimeoutMinutes)}
@@ -54,7 +56,7 @@ export default async function AppLayout({
       <DesktopSidebar userName={session.user.name} branding={brand} />
       <div className="flex-1 min-w-0 flex flex-col">
         <MobileTopBar userName={session.user.name} branding={brand} />
-        <main className="flex-1">
+        <main id="main-content" tabIndex={-1} className="flex-1">
           {/* pb-28 on mobile so content isn't hidden behind the floating tab bar */}
           <div className="container-page py-6 lg:py-8 pb-28 lg:pb-8 animate-page">
             <ClinicBanner userName={session.user.name} logoUrl={branding?.logoUrl} />

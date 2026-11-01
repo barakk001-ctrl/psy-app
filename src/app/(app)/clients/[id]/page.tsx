@@ -20,6 +20,8 @@ import { tookPlace } from "@/lib/income";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { KEEP_REASON_LABELS, type KeepReason } from "@/lib/bulk-delete";
 
+export const metadata = { title: "תיק לקוח/ה — מרפאה אישית" };
+
 export default async function ClientDetailPage({
   params,
   searchParams,

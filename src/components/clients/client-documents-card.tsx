@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { focusOnAppear } from "@/components/ui/use-dialog-focus";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { isStandaloneApp } from "@/components/ui/pdf-button";
@@ -679,7 +680,7 @@ function DocumentRow({
               dir="auto"
             />
           </label>
-          {error && <p className="text-sm text-terracotta-600">{error}</p>}
+          {error && <p role="alert" className="text-sm text-terracotta-600">{error}</p>}
           <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" size="sm" disabled={pending}>
               {pending ? "שומר…" : "שמירה"}
@@ -702,9 +703,11 @@ function DocumentRow({
 
       {mode === "delete" && (
         <div
+          ref={focusOnAppear}
+          tabIndex={-1}
           role="alertdialog"
           aria-label="מחיקת מסמך"
-          className="mt-3 sm:ms-[3.25rem] sm:w-[26rem] rounded-xl border border-terracotta-500/30 bg-terracotta-500/5 px-4 py-3 space-y-2 text-sm"
+          className="outline-none mt-3 sm:ms-[3.25rem] sm:w-[26rem] rounded-xl border border-terracotta-500/30 bg-terracotta-500/5 px-4 py-3 space-y-2 text-sm"
         >
           <p className="font-medium text-ink">
             למחוק את ״<span dir="auto">{doc.name}</span>״?
@@ -713,7 +716,7 @@ function DocumentRow({
             הקובץ יימחק לצמיתות ולא יהיה אפשר לשחזר אותו. ייתכן שחלה עליך חובה לשמור
             מסמכים טיפוליים — ההחלטה שלך.
           </p>
-          {error && <p className="text-terracotta-600">{error}</p>}
+          {error && <p role="alert" className="text-terracotta-600">{error}</p>}
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <Button type="button" size="sm" variant="danger" disabled={pending} onClick={remove}>
               {pending ? "מוחק…" : "מחיקת המסמך"}

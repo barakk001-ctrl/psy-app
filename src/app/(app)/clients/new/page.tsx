@@ -7,6 +7,8 @@ import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { splitFullName } from "@/lib/waitlist";
 import { ClientForm } from "@/components/clients/client-form";
 
+export const metadata = { title: "לקוח/ה חדש/ה — מרפאה אישית" };
+
 export default async function NewClientPage({
   searchParams,
 }: {

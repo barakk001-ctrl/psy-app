@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { focusOnAppear } from "@/components/ui/use-dialog-focus";
 import { cn } from "@/lib/utils";
 import { TRASH_DAYS } from "@/lib/client-trash";
 import {
@@ -21,7 +22,7 @@ function idForm(clientId: string) {
 }
 
 const PANEL =
-  "rounded-xl border border-terracotta-500/30 bg-terracotta-500/5 px-4 py-3 space-y-2 text-sm text-start";
+  "outline-none rounded-xl border border-terracotta-500/30 bg-terracotta-500/5 px-4 py-3 space-y-2 text-sm text-start";
 
 function ClinicalWarning() {
   return (
@@ -119,7 +120,7 @@ export function DeleteClientButton({
     );
   } else if (preview && !preview.allowed) {
     panel = (
-      <div role="alertdialog" aria-label="מחיקת תיק" className={PANEL}>
+      <div ref={focusOnAppear} tabIndex={-1} role="alertdialog" aria-label="מחיקת תיק" className={PANEL}>
         <p className="font-medium text-ink">אי אפשר למחוק את {preview.name}</p>
         {preview.active ? (
           <p className="text-ink-soft">
@@ -144,7 +145,7 @@ export function DeleteClientButton({
     );
   } else if (preview && preview.allowed) {
     panel = (
-      <div role="alertdialog" aria-label="מחיקת תיק" className={PANEL}>
+      <div ref={focusOnAppear} tabIndex={-1} role="alertdialog" aria-label="מחיקת תיק" className={PANEL}>
         <p className="font-medium text-ink">למחוק את {preview.name}?</p>
         <p className="text-terracotta-600 font-medium">{preview.contents}</p>
         {preview.clinicalWarning && <ClinicalWarning />}
@@ -153,7 +154,7 @@ export function DeleteClientButton({
           יום הוא יימחק לצמיתות, אוטומטית. בינתיים הוא לא יופיע בשום מקום, ולא יישלחו
           תזכורות.
         </p>
-        {error && <p className="text-terracotta-600">{error}</p>}
+        {error && <p role="alert" className="text-terracotta-600">{error}</p>}
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <Button type="button" size="sm" variant="danger" disabled={pending} onClick={confirm}>
             {pending ? "מוחק…" : "מחיקה — העברה לסל המחזור"}
@@ -245,7 +246,13 @@ export function TrashRowActions({ clientId }: { clientId: string }) {
             <p className="text-sm text-terracotta-600">{preview.error}</p>
           )}
           {preview && "allowed" in preview && preview.allowed && (
-            <div role="alertdialog" aria-label="מחיקה לצמיתות" className={cn(PANEL, "sm:w-[26rem]")}>
+            <div
+              ref={focusOnAppear}
+              tabIndex={-1}
+              role="alertdialog"
+              aria-label="מחיקה לצמיתות"
+              className={cn(PANEL, "sm:w-[26rem]")}
+            >
               <p className="font-medium text-ink">למחוק את {preview.name} לצמיתות?</p>
               <p className="text-terracotta-600 font-medium">{preview.contents}</p>
               {preview.clinicalWarning && <ClinicalWarning />}
@@ -272,7 +279,7 @@ export function TrashRowActions({ clientId }: { clientId: string }) {
               </div>
             </div>
           )}
-          {error && <p className="text-sm text-terracotta-600">{error}</p>}
+          {error && <p role="alert" className="text-sm text-terracotta-600">{error}</p>}
         </div>
       )}
     </>

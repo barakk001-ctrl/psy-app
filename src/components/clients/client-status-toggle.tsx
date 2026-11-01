@@ -3,6 +3,7 @@
 import { useOptimistic, useState, useTransition } from "react";
 import { UserCheck, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { focusOnAppear } from "@/components/ui/use-dialog-focus";
 import {
   setClientStatusAction,
   type ClientStatusResult,
@@ -64,10 +65,12 @@ export function DeactivationConfirmPanel({
 }) {
   return (
     <div
+      ref={focusOnAppear}
+      tabIndex={-1}
       role="alertdialog"
       aria-label="העברה ללא פעילים"
       className={cn(
-        "rounded-xl border border-terracotta-500/30 bg-terracotta-500/5 px-4 py-3 space-y-2 text-sm text-start",
+        "outline-none rounded-xl border border-terracotta-500/30 bg-terracotta-500/5 px-4 py-3 space-y-2 text-sm text-start",
         className,
       )}
     >

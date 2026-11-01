@@ -20,6 +20,8 @@ const dayLabel = (d: Date) =>
  * (meetings) → receipt lines → notes → preview → issue in morning (or save a
  * draft when morning isn't connected).
  */
+export const metadata = { title: "מסמך חדש — מרפאה אישית" };
+
 export default async function NewDocumentPage({
   searchParams,
 }: {

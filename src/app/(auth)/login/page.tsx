@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
 import { ExplainerVideo } from "@/components/auth/explainer-video";
 import { isGoogleConfigured } from "@/lib/google-auth";
 
 // Reads the environment (Google keys) and ?error= at request time
 export const dynamic = "force-dynamic";
+export const metadata = { title: "כניסה — מרפאה אישית" };
 
 /** ?error= from a Google round-trip (Auth.js error types + our own codes) → Hebrew. */
 function loginNotice(error: string | undefined): string | undefined {
@@ -43,6 +45,11 @@ export default async function LoginPage({
       />
       <div className="mt-6 pt-5 border-t border-cream-200 text-center">
         <ExplainerVideo />
+        <p className="mt-4 text-xs text-ink-muted">
+          <Link href="/accessibility" className="underline underline-offset-2">
+            הצהרת נגישות
+          </Link>
+        </p>
       </div>
     </div>
   );

@@ -78,7 +78,7 @@ export function BiometricSettings({
           </Button>
         )}
 
-        {error && <p className="text-sm text-terracotta-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-terracotta-600">{error}</p>}
       </CardContent>
     </Card>
   );

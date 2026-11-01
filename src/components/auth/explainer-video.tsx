@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { PlayCircle, X } from "lucide-react";
+import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 
 /** "How it works" — opens the silent, captioned explainer video in a lightbox. */
 export function ExplainerVideo({
@@ -12,6 +13,8 @@ export function ExplainerVideo({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(open, panelRef, () => setOpen(false));
 
   return (
     <>
@@ -32,7 +35,7 @@ export function ExplainerVideo({
             onClick={() => setOpen(false)}
             aria-hidden
           />
-          <div className="relative w-full max-w-3xl">
+          <div ref={panelRef} tabIndex={-1} className="relative w-full max-w-3xl outline-none">
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -47,6 +50,7 @@ export function ExplainerVideo({
               controls
               autoPlay
               playsInline
+              aria-label="סרטון הסבר ללא קול, עם כיתובים בתמונה"
               className="w-full rounded-2xl shadow-lift bg-black"
             />
           </div>

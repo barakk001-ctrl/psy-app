@@ -24,7 +24,7 @@ export function ExpectedVsReceivedChart({
     <div className="w-full">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-ink-muted mb-4">
         <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm bg-cream-300 border border-cream-400" />
+          <span className="w-3 h-3 rounded-sm bg-cream-300 border border-ink-subtle" />
           צפוי לפי היומן
         </span>
         <span className="inline-flex items-center gap-1.5">
@@ -38,17 +38,20 @@ export function ExpectedVsReceivedChart({
       <div
         className="flex items-end gap-1 sm:gap-2 px-1"
         style={{ height: `${CHART_HEIGHT}px` }}
-        role="img"
+        role="list"
         aria-label="הכנסה צפויה מול הכנסה בפועל, 12 החודשים האחרונים"
       >
         {data.map((d, i) => (
           <div
             key={i}
+            role="listitem"
             tabIndex={0}
-            className="flex-1 h-full flex flex-col items-center justify-end group min-w-0 outline-none"
+            aria-label={`${d.label}: התקבל ${formatCurrency(d.value)} מתוך ${formatCurrency(d.expected)} צפוי`}
+            className="flex-1 h-full flex flex-col items-center justify-end group min-w-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-sage-600 focus-visible:ring-offset-2"
             title={`${d.label} — צפוי ${formatCurrency(d.expected)} · התקבל ${formatCurrency(d.value)}`}
           >
             <span
+              aria-hidden
               className={cn(
                 "text-[10px] leading-tight text-ink-muted whitespace-nowrap text-center mb-1",
                 "opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity",
@@ -65,7 +68,7 @@ export function ExpectedVsReceivedChart({
               {/* Expected: the pale full-width bar */}
               <div
                 className={cn(
-                  "absolute bottom-0 inset-x-0 rounded-t border border-b-0 border-cream-400 bg-cream-300/80",
+                  "absolute bottom-0 inset-x-0 rounded-t border border-b-0 border-ink-subtle bg-cream-300/80",
                   d.expected === 0 && "border-0 bg-cream-200",
                 )}
                 style={{ height: `${Math.max(h(d.expected), 2)}px` }}
@@ -75,7 +78,7 @@ export function ExpectedVsReceivedChart({
                 <div
                   className={cn(
                     "relative w-3/5 rounded-t ring-2 ring-white/80",
-                    d.isPartial ? "bg-sage-300" : "bg-sage-500 group-hover:bg-sage-600",
+                    d.isPartial ? "bg-sage-300 border border-sage-600" : "bg-sage-500 group-hover:bg-sage-600",
                   )}
                   style={{ height: `${h(d.value)}px` }}
                 />
@@ -84,7 +87,7 @@ export function ExpectedVsReceivedChart({
           </div>
         ))}
       </div>
-      <div className="flex items-end gap-1 sm:gap-2 mt-2 px-1">
+      <div className="flex items-end gap-1 sm:gap-2 mt-2 px-1" aria-hidden>
         {data.map((d, i) => (
           <div key={i} className="flex-1 text-center text-[10px] sm:text-xs text-ink-muted">
             {d.label}

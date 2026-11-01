@@ -49,6 +49,8 @@ const SECTION_TITLES: Record<CollectStatus, string> = {
   all: "פגישות ותשלומים",
 };
 
+export const metadata = { title: "אישורי תשלום — מרפאה אישית" };
+
 export default async function CollectPage({
   searchParams,
 }: {

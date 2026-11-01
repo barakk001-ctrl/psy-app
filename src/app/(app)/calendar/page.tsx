@@ -12,6 +12,8 @@ import type { EventInput } from "@fullcalendar/core";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "יומן — מרפאה אישית" };
+
 export default async function CalendarPage() {
   const session = await auth();
   const userId = session!.user.id;

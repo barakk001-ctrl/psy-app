@@ -98,6 +98,8 @@ describe("gateRequest — the middleware", () => {
     expect(gateRequest("/privacy", null)).toEqual({ type: "allow" });
     expect(gateRequest("/pricing", null)).toEqual({ type: "allow" });
     expect(gateRequest("/pricing", pending)).toEqual({ type: "allow" });
+    expect(gateRequest("/accessibility", null)).toEqual({ type: "allow" });
+    expect(gateRequest("/accessibility", pending)).toEqual({ type: "allow" });
   });
 
   it("guests see public pages and are refused app pages", () => {

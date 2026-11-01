@@ -79,7 +79,7 @@ export function MorningPdfPreview({
           <ExternalLink className="w-3 h-3" /> פתיחת ה-PDF של morning
         </a>
       )}
-      {error && <p className="text-xs text-terracotta-600 max-w-sm">{error}</p>}
+      {error && <p role="alert" className="text-xs text-terracotta-600 max-w-sm">{error}</p>}
     </div>
   );
 }

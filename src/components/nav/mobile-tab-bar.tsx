@@ -43,6 +43,7 @@ export function MobileTabBar() {
             <li key={item.href} className="flex-1">
               <Link
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-2xl",
                   "transition-all duration-300",

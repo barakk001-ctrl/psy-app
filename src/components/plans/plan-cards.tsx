@@ -146,7 +146,9 @@ function PlanCard({
         <span className="font-display text-4xl text-ink">₪{price}</span>
         <span className="text-sm text-ink-muted">{per}</span>
         {regularPrice !== undefined && (
-          <span className="text-sm text-ink-subtle line-through">₪{regularPrice}</span>
+          <span className="text-sm text-ink-subtle line-through">
+            <span className="sr-only">מחיר רגיל: </span>₪{regularPrice}
+          </span>
         )}
       </div>
       <p className="text-xs font-medium text-sage-700 mt-1">{subtitle}</p>

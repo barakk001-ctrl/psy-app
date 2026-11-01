@@ -1,6 +1,7 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ExternalLink, X } from "lucide-react";
@@ -114,6 +115,9 @@ export function QuickEditDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(true, panelRef, onClose);
+
   const typeOptions = meetingTypes.includes(data.treatmentType)
     ? meetingTypes
     : [data.treatmentType, ...meetingTypes];
@@ -123,16 +127,22 @@ export function QuickEditDialog({
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-6"
       role="dialog"
       aria-modal="true"
-      aria-label="עריכת פגישה"
+      aria-labelledby="quick-edit-title"
     >
       <div
         className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative w-full max-w-lg max-h-[calc(100dvh-1.5rem)] overflow-y-auto glass rounded-3xl border border-cream-200/80 shadow-lift p-6 space-y-5">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="relative w-full max-w-lg max-h-[calc(100dvh-1.5rem)] overflow-y-auto glass rounded-3xl border border-cream-200/80 shadow-lift p-6 space-y-5 outline-none"
+      >
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-2xl text-ink">עריכת פגישה</h2>
+          <h2 id="quick-edit-title" className="font-display text-2xl text-ink">
+            עריכת פגישה
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -284,7 +294,7 @@ export function QuickEditDialog({
           )}
 
           {state?.error && !state.conflict && (
-            <div className="rounded-xl border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">{state.error}</div>
+            <div role="alert" className="rounded-xl border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">{state.error}</div>
           )}
 
           {(overlap || state?.conflict) && (

@@ -95,10 +95,16 @@ export function gateRequest(
   const isLoggedIn = !!session?.user?.id;
   const isPending = !isLoggedIn && !!session?.twoFactorPending;
 
-  // The agreement, terms and privacy policy are readable by everyone — guests during
+  // The agreement, terms, privacy policy and accessibility statement are readable by everyone — guests during
   // registration and signed-in users during re-acceptance. So are the plans
   // and prices (/pricing), which the login page links to.
-  if (path === "/agreement" || path === "/terms" || path === "/privacy" || path === "/pricing") {
+  if (
+    path === "/agreement" ||
+    path === "/terms" ||
+    path === "/privacy" ||
+    path === "/pricing" ||
+    path === "/accessibility"
+  ) {
     return { type: "allow" };
   }
 

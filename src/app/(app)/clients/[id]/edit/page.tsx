@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { ClientForm } from "@/components/clients/client-form";
 
+export const metadata = { title: "עריכת תיק — מרפאה אישית" };
+
 export default async function EditClientPage({
   params,
 }: {

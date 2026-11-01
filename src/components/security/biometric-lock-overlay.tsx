@@ -48,7 +48,12 @@ export function BiometricLockOverlay() {
   if (state === "open") return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-cream-50 flex flex-col items-center justify-center gap-6 px-6 text-center">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="המערכת נעולה"
+      className="fixed inset-0 z-[100] bg-cream-50 flex flex-col items-center justify-center gap-6 px-6 text-center"
+    >
       {state === "locked" && (
         <>
           <div className="w-16 h-16 rounded-2xl bg-sage-600 text-cream-50 flex items-center justify-center font-display text-3xl">

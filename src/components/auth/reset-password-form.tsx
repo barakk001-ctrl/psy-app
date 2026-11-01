@@ -55,7 +55,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
             invalid={!!fieldErr.password}
           />
           {fieldErr.password && (
-            <p className="text-xs text-terracotta-600 mt-1">{fieldErr.password[0]}</p>
+            <p role="alert" className="text-xs text-terracotta-600 mt-1">{fieldErr.password[0]}</p>
           )}
         </div>
 
@@ -70,12 +70,12 @@ export function ResetPasswordForm({ token }: { token: string }) {
             invalid={!!fieldErr.confirm}
           />
           {fieldErr.confirm && (
-            <p className="text-xs text-terracotta-600 mt-1">{fieldErr.confirm[0]}</p>
+            <p role="alert" className="text-xs text-terracotta-600 mt-1">{fieldErr.confirm[0]}</p>
           )}
         </div>
 
         {state?.error && !state.fieldErrors && (
-          <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
+          <div role="alert" className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
             {state.error}
           </div>
         )}

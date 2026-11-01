@@ -93,7 +93,7 @@ export function MorningSettingsForm({
                   href="https://app.greeninvoice.co.il"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sage-600 hover:text-sage-700"
+                  className="text-sage-600 hover:text-sage-700 underline underline-offset-2"
                 >
                   app.greeninvoice.co.il
                 </a>
@@ -104,7 +104,7 @@ export function MorningSettingsForm({
                   href="https://app.greeninvoice.co.il/settings/developers/api"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sage-600 hover:text-sage-700"
+                  className="text-sage-600 hover:text-sage-700 underline underline-offset-2"
                 >
                   קישור ישיר
                 </a>
@@ -176,7 +176,7 @@ export function MorningSettingsForm({
                   href="https://lp.sandbox.d.greeninvoice.co.il/join/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sage-600 hover:text-sage-700"
+                  className="text-sage-600 hover:text-sage-700 underline underline-offset-2"
                   dir="ltr"
                 >
                   lp.sandbox.d.greeninvoice.co.il/join
@@ -191,7 +191,7 @@ export function MorningSettingsForm({
           )}
 
           {state?.error && (
-            <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
+            <div role="alert" className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
               {state.error}
             </div>
           )}
