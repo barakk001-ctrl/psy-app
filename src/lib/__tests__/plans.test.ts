@@ -44,10 +44,10 @@ describe("plan options", () => {
 });
 
 describe("public price wording", () => {
-  it("states final prices without naming the operator's VAT status", () => {
-    expect(PLAN_FACTS).toContain("המחירים סופיים, ולא יתווסף להם מע״מ.");
-    expect(PLAN_FACTS.join(" ")).not.toContain("עוסק פטור");
-    expect(PLAN_FACTS.join(" ")).not.toContain("כולל מע״מ");
+  it("says nothing about VAT or the operator's tax status", () => {
+    const text = [...PLAN_FACTS, ...PLAN_OPTIONS.map((p) => p.note), TRIAL_PLAN.note].join(" ");
+    expect(text).not.toContain("מע״מ");
+    expect(text).not.toContain("עוסק פטור");
   });
 });
 
@@ -92,7 +92,8 @@ describe("planRequestMessage", () => {
       "19.10.26",
     );
     expect(r.subject).toBe("בקשה לרכישת מנוי שנתי");
-    expect(r.message).toContain(`₪${PRICING.yearlyIntro} לשנה (מחיר סופי).`);
+    expect(r.message).toContain(`₪${PRICING.yearlyIntro} לשנה.`);
+    expect(r.message).not.toContain("מע״מ");
     expect(r.message).not.toContain("עוסק פטור");
     expect(r.message).not.toContain("כולל מע״מ");
     expect(r.message).toContain("בתקופת ניסיון (עד 19.10.26)");

@@ -3,7 +3,7 @@
 // Clinical information is governed by the data-holding agreement
 // (src/lib/agreement.ts), which prevails on that subject.
 
-import { OPERATOR_EMAIL, OPERATOR_LINE, PRICES_FINAL_SENTENCE } from "@/lib/operator";
+import { OPERATOR_EMAIL, OPERATOR_LINE } from "@/lib/operator";
 
 export const TERMS_VERSION = "draft-2026-10";
 
@@ -50,7 +50,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
   {
     title: "5. מנויים, מחירים ותשלום",
     items: [
-      `המנוי הוא חודשי או שנתי. מחירי ההיכרות כיום: מנוי חודשי 25 ₪ ומנוי שנתי 250 ₪ (במקום 45 ₪ ו-450 ₪). ${PRICES_FINAL_SENTENCE} מחיר ההיכרות חל על התקופה שנרכשה בו.`,
+      `המנוי הוא חודשי או שנתי. מחירי ההיכרות כיום: מנוי חודשי 25 ₪ ומנוי שנתי 250 ₪ (במקום 45 ₪ ו-450 ₪). מחיר ההיכרות חל על התקופה שנרכשה בו.`,
       "התשלום נעשה מראש עבור כל תקופה, באמצעות ספק סליקה חיצוני. פרטי כרטיס האשראי נמסרים לספק הסליקה בלבד ואינם נשמרים במערכת. על כל תשלום תונפק קבלה.",
       "המנוי אינו מתחדש אוטומטית: בתום התקופה ששולמה, להמשך השימוש יש לשלם עבור תקופה נוספת.",
       "המפעיל/ה רשאי/ת לשנות את המחירים בהודעה של 30 יום מראש. שינוי מחיר לא יחול על תקופה ששולמה.",

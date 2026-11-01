@@ -1,6 +1,5 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PRICE_VAT_NOTE } from "@/lib/operator";
 import {
   PLAN_FACTS,
   PLAN_FEATURES,
@@ -60,7 +59,7 @@ export function PlanCards({
             price={p.price}
             per={p.per}
             regularPrice={p.regularPrice}
-            subtitle={`מחיר היכרות · ${PRICE_VAT_NOTE}`}
+            subtitle="מחיר היכרות"
             note={p.note}
             highlight={p.highlight}
             current={currentPlan === p.id}

@@ -4,7 +4,6 @@
 
 import { PRICING, TRIAL_DAYS, type SubscriptionState } from "@/lib/subscription";
 import { TRIAL_SCHEDULING_DAYS } from "@/lib/scheduling-window";
-import { PRICES_FINAL_SENTENCE } from "@/lib/operator";
 
 export type PlanId = "MONTHLY" | "YEARLY";
 
@@ -98,7 +97,6 @@ export const PLAN_FEATURES: string[] = [
 
 /** The short rules shown under the plans (match /terms sections 4–7). */
 export const PLAN_FACTS: string[] = [
-  PRICES_FINAL_SENTENCE,
   `${TRIAL_DAYS} יום ניסיון חינם מההרשמה — בלי כרטיס אשראי.`,
   `בתקופת הניסיון אפשר לקבוע פגישות עד ${TRIAL_SCHEDULING_DAYS} יום קדימה; במנוי חודשי או שנתי — בלי הגבלה.`,
   "המנוי לא מתחדש אוטומטית: בסוף התקופה מחדשים רק אם רוצים.",
@@ -139,7 +137,7 @@ export function planRequestMessage(
   return {
     subject: `בקשה לרכישת ${plan.title}`,
     message: [
-      `אשמח לרכוש ${plan.title} — ₪${plan.price} ${plan.per} (מחיר סופי).`,
+      `אשמח לרכוש ${plan.title} — ₪${plan.price} ${plan.per}.`,
       `מצב החשבון כרגע: ${status}.`,
       "נשלח מעמוד ״מנוי ומסלולים״.",
     ].join("\n"),
