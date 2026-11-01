@@ -8,7 +8,11 @@ import { AuthError } from "next-auth";
 import { db } from "@/lib/db";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { INVITE_ONLY_MESSAGE, canCreateAccount } from "@/lib/signup-policy";
-import { rateLimit } from "@/lib/rate-limit";
+import { allAllowed, rateLimit } from "@/lib/rate-limit";
+import { clientIpFrom } from "@/lib/client-ip";
+import { LOGIN_LIMITS, LOGIN_LOCKED_MESSAGE } from "@/lib/login-lockout";
+import { clearLoginFailures, isLoginLocked } from "@/lib/login-lockout-store";
+import { TURNSTILE_ERROR, passesTurnstile } from "@/lib/turnstile";
 import { createPracticeUser } from "@/lib/practice-user";
 import { EMAIL_VERIFY_LIMITS, emailVerifyRateKeys, registrationStep } from "@/lib/email-verification";
 import {
@@ -38,8 +42,7 @@ import {
 } from "@/server/validators/auth";
 
 async function clientIp(): Promise<string> {
-  const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  return clientIpFrom(await headers());
 }
 
 export type FormState = {
@@ -83,10 +86,10 @@ export async function loginAction(_: FormState, formData: FormData): Promise<For
 
   const email = parsed.data.email.toLowerCase();
   const ip = await clientIp();
-  const byEmail = rateLimit(`login:email:${email}`, { limit: 8, windowMs: 15 * 60_000 });
-  const byIp = rateLimit(`login:ip:${ip}`, { limit: 25, windowMs: 15 * 60_000 });
-  if (!byEmail.allowed || !byIp.allowed) {
-    return { error: "יותר מדי ניסיונות התחברות. נסו שוב בעוד מספר דקות." };
+  const byEmail = await rateLimit(`login:email:${email}`, LOGIN_LIMITS.perEmail);
+  const byIp = await rateLimit(`login:ip:${ip}`, LOGIN_LIMITS.perIp);
+  if (!byEmail.allowed || !byIp.allowed || (await isLoginLocked(email))) {
+    return { error: LOGIN_LOCKED_MESSAGE };
   }
 
   const user = await db.user.findUnique({
@@ -125,9 +128,9 @@ export async function loginAction(_: FormState, formData: FormData): Promise<For
   } catch (err) {
     if (err instanceof AuthError) {
       if (err.type === "CredentialsSignin") {
-        if ((err as AuthError & { code?: string }).code === "email_unverified") {
-          return { unverified: true, email };
-        }
+        const code = (err as AuthError & { code?: string }).code;
+        if (code === "email_unverified") return { unverified: true, email };
+        if (code === "rate_limited") return { error: LOGIN_LOCKED_MESSAGE };
         return parsed.data.totp
           ? { error: "קוד האימות שגוי או שפג תוקפו", needTotp: true }
           : { error: "אימייל או סיסמה שגויים" };
@@ -165,7 +168,9 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
   const email = parsed.data.email.toLowerCase();
 
   const ip = await clientIp();
-  const byIp = rateLimit(`register:ip:${ip}`, { limit: 5, windowMs: 60 * 60_000 });
+  if (!(await passesTurnstile(formData, ip))) return { error: TURNSTILE_ERROR };
+
+  const byIp = await rateLimit(`register:ip:${ip}`, { limit: 5, windowMs: 60 * 60_000 });
   if (!byIp.allowed) {
     return { error: "יותר מדי ניסיונות הרשמה. נסו שוב מאוחר יותר." };
   }
@@ -204,10 +209,10 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
     const keys = emailVerifyRateKeys(email, ip);
     const send = async () => {
       if (step === "notify-owner") {
-        if (rateLimit(keys.noticePerEmail, EMAIL_VERIFY_LIMITS.noticePerEmail).allowed) {
+        if ((await rateLimit(keys.noticePerEmail, EMAIL_VERIFY_LIMITS.noticePerEmail)).allowed) {
           await sendExistingAccountNotice(account);
         }
-      } else if (rateLimit(keys.sendPerEmail, EMAIL_VERIFY_LIMITS.sendPerEmail).allowed) {
+      } else if ((await rateLimit(keys.sendPerEmail, EMAIL_VERIFY_LIMITS.sendPerEmail)).allowed) {
         await sendVerificationLink(account);
       }
     };
@@ -232,11 +237,11 @@ export async function resendVerificationAction(
   const email = parsed.data.email.toLowerCase();
 
   const keys = emailVerifyRateKeys(email, await clientIp());
-  const byEmail = rateLimit(keys.sendPerEmail, EMAIL_VERIFY_LIMITS.sendPerEmail);
-  const byIp = rateLimit(keys.sendPerIp, EMAIL_VERIFY_LIMITS.sendPerIp);
-  if (!byEmail.allowed || !byIp.allowed) {
-    return { error: "נשלחו יותר מדי הודעות. נסו שוב בעוד שעה." };
-  }
+  const allowed = await allAllowed([
+    [keys.sendPerIp, EMAIL_VERIFY_LIMITS.sendPerIp],
+    [keys.sendPerEmail, EMAIL_VERIFY_LIMITS.sendPerEmail],
+  ]);
+  if (!allowed) return { error: "נשלחו יותר מדי הודעות. נסו שוב בעוד שעה." };
 
   const user = await db.user.findUnique({
     where: { email },
@@ -267,7 +272,7 @@ export async function confirmEmailAction(
 
   const ip = await clientIp();
   const keys = emailVerifyRateKeys("", ip);
-  const byIp = rateLimit(keys.confirmPerIp, EMAIL_VERIFY_LIMITS.confirmPerIp);
+  const byIp = await rateLimit(keys.confirmPerIp, EMAIL_VERIFY_LIMITS.confirmPerIp);
   if (!byIp.allowed) return { error: "יותר מדי ניסיונות. נסו שוב בעוד מספר דקות." };
 
   const user = await findUserByVerifyToken(parsed.data.token);
@@ -307,9 +312,17 @@ export async function requestPasswordResetAction(
   }
 
   const ip = await clientIp();
-  const byIp = rateLimit(`reset:ip:${ip}`, { limit: 5, windowMs: 60 * 60_000 });
-  const byEmail = rateLimit(`reset:email:${email}`, { limit: 3, windowMs: 60 * 60_000 });
-  if (!byIp.allowed || !byEmail.allowed) {
+  if (!(await passesTurnstile(formData, ip))) return { error: TURNSTILE_ERROR };
+
+  // The reset link is a way in when a password is locked, so a stranger must
+  // not be able to use it up: see LOGIN_CODE_LIMITS, the same idea.
+  const hour = 60 * 60_000;
+  const allowed = await allAllowed([
+    [`reset:ip:${ip}`, { limit: 5, windowMs: hour }],
+    [`reset:email-ip:${email}:${ip}`, { limit: 3, windowMs: hour }],
+    [`reset:email:${email}`, { limit: 10, windowMs: hour }],
+  ]);
+  if (!allowed) {
     return { error: "יותר מדי בקשות — נסו שוב מאוחר יותר" };
   }
 
@@ -360,7 +373,7 @@ export async function resetPasswordAction(
     .digest("hex");
   const user = await db.user.findFirst({
     where: { resetToken: tokenHash, resetTokenExpiry: { gt: new Date() } },
-    select: { id: true, emailVerifiedAt: true },
+    select: { id: true, email: true, emailVerifiedAt: true },
   });
   if (!user) {
     return { error: "הקישור אינו תקף או שפג תוקפו — יש לבקש איפוס חדש" };
@@ -379,6 +392,7 @@ export async function resetPasswordAction(
       emailVerifyExpiresAt: null,
     },
   });
+  await clearLoginFailures(user.email);
 
   return { done: true };
 }
@@ -476,10 +490,16 @@ export async function requestLoginCodeAction(
   if (!parsed.success) return { error: "כתובת אימייל לא תקינה" };
   const email = parsed.data.email.toLowerCase();
 
-  const keys = loginCodeRateKeys(email, await clientIp());
-  const byEmail = rateLimit(keys.sendPerEmail, LOGIN_CODE_LIMITS.sendPerEmail);
-  const byIp = rateLimit(keys.sendPerIp, LOGIN_CODE_LIMITS.sendPerIp);
-  if (!byEmail.allowed || !byIp.allowed) {
+  const ip = await clientIp();
+  if (!(await passesTurnstile(formData, ip))) return { error: TURNSTILE_ERROR };
+
+  const keys = loginCodeRateKeys(email, ip);
+  const allowed = await allAllowed([
+    [keys.sendPerIp, LOGIN_CODE_LIMITS.sendPerIp],
+    [keys.sendPerEmailIp, LOGIN_CODE_LIMITS.sendPerEmailIp],
+    [keys.sendPerEmail, LOGIN_CODE_LIMITS.sendPerEmail],
+  ]);
+  if (!allowed) {
     return { error: "נשלחו יותר מדי קודים. נסו שוב בעוד כמה דקות, או התחברו עם סיסמה." };
   }
 

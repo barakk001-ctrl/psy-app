@@ -6,6 +6,9 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { rateLimit } from "@/lib/rate-limit";
+import { clientIpFrom } from "@/lib/client-ip";
+import { LOGIN_LIMITS } from "@/lib/login-lockout";
+import { clearLoginFailures, isLoginLocked, recordLoginFailure } from "@/lib/login-lockout-store";
 import { verifySecondFactor } from "@/lib/second-factor";
 import { logAudit } from "@/lib/audit";
 import { googleVerifiedUpdate } from "@/lib/email-verification";
@@ -34,16 +37,21 @@ export class LoginCodeRateLimited extends CredentialsSignin {
   code = "rate_limited";
 }
 
+/** Too many password tries, or the password is locked for now (login-lockout.ts). */
+export class LoginRateLimited extends CredentialsSignin {
+  code = "rate_limited";
+}
+
 /** The password was right but the address isn't confirmed yet: no session. */
 export class EmailNotVerified extends CredentialsSignin {
   code = "email_unverified";
 }
 
-const FIFTEEN_MIN = 15 * 60_000;
-
-function ipOf(h: Headers): string {
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-}
+/**
+ * Compared when there is no password to check, so an unknown address takes as
+ * long to answer as a known one. Not the hash of anything in use.
+ */
+const NO_ACCOUNT_HASH = "$2a$10$EpYxeUKAgAdvQny.r/Mqduk18paE4uP102bjVP.2BIEUmdRTymKYG";
 
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   ...authConfig, // includes `session` (JWT, idle-expiry lifetime)
@@ -54,17 +62,27 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         password: { label: "Password", type: "password" },
         totp: { label: "TOTP", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
+        const email = parsed.data.email.toLowerCase();
 
-        const user = await db.user.findUnique({
-          where: { email: parsed.data.email.toLowerCase() },
-        });
-        if (!user?.hashedPassword) return null;
+        // Enforced here so a direct POST to the callback URL meets them too.
+        // Own buckets: the login form counts its tries in loginAction, and
+        // one attempt there must not count twice.
+        const ip = clientIpFrom(request.headers);
+        const byEmail = await rateLimit(`login-auth:email:${email}`, LOGIN_LIMITS.perEmail);
+        const byIp = await rateLimit(`login-auth:ip:${ip}`, LOGIN_LIMITS.perIp);
+        if (!byEmail.allowed || !byIp.allowed || (await isLoginLocked(email))) {
+          throw new LoginRateLimited();
+        }
 
-        const valid = await bcrypt.compare(parsed.data.password, user.hashedPassword);
-        if (!valid) return null;
+        const user = await db.user.findUnique({ where: { email } });
+        const valid = await bcrypt.compare(parsed.data.password, user?.hashedPassword ?? NO_ACCOUNT_HASH);
+        if (!user?.hashedPassword || !valid) {
+          await recordLoginFailure(email);
+          return null;
+        }
 
         // Only after the password, so this tells a stranger nothing
         if (!user.emailVerifiedAt) throw new EmailNotVerified();
@@ -73,9 +91,13 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         // one-time backup code is mandatory — enforced here so it cannot be
         // bypassed around the login form.
         if (user.totpEnabled && user.totpSecret) {
-          if (!(await verifySecondFactor(user, parsed.data.totp ?? ""))) return null;
+          if (!(await verifySecondFactor(user, parsed.data.totp ?? ""))) {
+            await recordLoginFailure(email);
+            return null;
+          }
         }
 
+        await clearLoginFailures(email);
         await logAudit(user.id, "LOGIN_PASSWORD");
         return {
           id: user.id,
@@ -103,13 +125,16 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         const user = await db.user.findUnique({ where: { id: pending.userId } });
         if (!user?.totpEnabled || !user.totpSecret) return null;
 
-        const byEmail = rateLimit(`login:email:${user.email}`, { limit: 8, windowMs: FIFTEEN_MIN });
-        const byIp = rateLimit(`login:ip:${ipOf(request.headers)}`, { limit: 25, windowMs: FIFTEEN_MIN });
-        if (!byEmail.allowed || !byIp.allowed) throw new TwoFactorRateLimited();
+        // By user, not by the password's per-address bucket: a stranger
+        // typing wrong passwords must not block this step (login-lockout.ts)
+        const byUser = await rateLimit(`login-2fa:user:${user.id}`, LOGIN_LIMITS.perEmail);
+        const byIp = await rateLimit(`login:ip:${clientIpFrom(request.headers)}`, LOGIN_LIMITS.perIp);
+        if (!byUser.allowed || !byIp.allowed) throw new TwoFactorRateLimited();
 
         const code = typeof credentials?.code === "string" ? credentials.code : "";
         if (!(await verifySecondFactor(user, code))) return null;
 
+        await clearLoginFailures(user.email);
         await logAudit(user.id, "LOGIN_TWO_FACTOR");
         return {
           id: user.id,
@@ -135,9 +160,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         const code = typeof credentials?.code === "string" ? credentials.code : "";
         if (!email || !code) return null;
 
-        const keys = loginCodeRateKeys(email, ipOf(request.headers));
-        const byEmail = rateLimit(keys.verifyPerEmail, LOGIN_CODE_LIMITS.verifyPerEmail);
-        const byIp = rateLimit(keys.verifyPerIp, LOGIN_CODE_LIMITS.verifyPerIp);
+        const keys = loginCodeRateKeys(email, clientIpFrom(request.headers));
+        const byEmail = await rateLimit(keys.verifyPerEmail, LOGIN_CODE_LIMITS.verifyPerEmail);
+        const byIp = await rateLimit(keys.verifyPerIp, LOGIN_CODE_LIMITS.verifyPerIp);
         if (!byEmail.allowed || !byIp.allowed) throw new LoginCodeRateLimited();
 
         const user = await db.user.findUnique({
@@ -146,6 +171,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         });
         if (!user?.emailVerifiedAt) return null;
         if (!(await consumeLoginCode(user.id, code))) return null;
+        await clearLoginFailures(email);
 
         return {
           id: user.id,
@@ -206,10 +232,11 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
               data: googleVerifiedUpdate(new Date(), displayNameFor(profile?.name, email ?? "")),
             });
           }
+          if (email) await clearLoginFailures(email);
           return true;
         case "create": {
-          const ip = ipOf(await headers());
-          if (!rateLimit(`register:ip:${ip}`, { limit: 5, windowMs: 60 * 60_000 }).allowed) {
+          const ip = clientIpFrom(await headers());
+          if (!(await rateLimit(`register:ip:${ip}`, { limit: 5, windowMs: 60 * 60_000 })).allowed) {
             return "/register?error=rate";
           }
           try {

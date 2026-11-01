@@ -35,7 +35,7 @@ export async function GET(req: Request) {
   const message = (url.searchParams.get("message") ?? "").trim().slice(0, 5000);
   if (message) {
     if (await isReadOnly(user.id)) return Response.json(READ_ONLY, { status: 403 });
-    const limited = rateLimit(`inbox:${user.id}`, { limit: 60, windowMs: 60 * 60_000 });
+    const limited = await rateLimit(`inbox:${user.id}`, { limit: 60, windowMs: 60 * 60_000 });
     if (!limited.allowed) {
       return Response.json({ ok: false, error: "Rate limited" }, { status: 429 });
     }
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
   if (!user) return Response.json({ ok: false, error: "Invalid token" }, { status: 401 });
   if (await isReadOnly(user.id)) return Response.json(READ_ONLY, { status: 403 });
 
-  const limited = rateLimit(`inbox:${user.id}`, { limit: 60, windowMs: 60 * 60_000 });
+  const limited = await rateLimit(`inbox:${user.id}`, { limit: 60, windowMs: 60 * 60_000 });
   if (!limited.allowed) {
     return Response.json({ ok: false, error: "Rate limited" }, { status: 429 });
   }

@@ -5,6 +5,7 @@
 // through the cron route, does nothing twice.
 
 import { purgeExpiredClients } from "@/lib/client-trash-data";
+import { purgeExpiredRateLimits } from "@/lib/rate-limit";
 import { topUpOpenEndedSeries } from "@/lib/series-topup";
 import { retryFailedSupportEmails } from "@/lib/support-data";
 
@@ -40,6 +41,12 @@ export async function runMaintenance(
     if (supportEmailsSent > 0) console.log(`Maintenance: re-sent ${supportEmailsSent} support request email(s)`);
   } catch (err) {
     console.error("Maintenance: support email retry failed:", err);
+  }
+  try {
+    // Rate-limit counters whose window has passed
+    await purgeExpiredRateLimits(now);
+  } catch (err) {
+    console.error("Maintenance: rate-limit purge failed:", err);
   }
   return { clientsPurged, seriesExtended, supportEmailsSent };
 }

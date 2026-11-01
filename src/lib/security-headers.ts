@@ -13,9 +13,11 @@
 // - media: /explainer.mp4;
 // - connections: same origin only (server actions, /api/auth/session, files);
 //   plus Sentry's EU ingest host when browser error reporting is switched on;
-// - no third-party script at all — Google sign-in and Grow payments are full
-//   page redirects started by a form/server action, so they only matter to
-//   form-action. Resend and morning are called from the server, never the browser.
+// - no third-party script, unless Cloudflare Turnstile is switched on
+//   (src/lib/turnstile.ts: its script and frame on the public forms) — Google
+//   sign-in and Grow payments are full page redirects started by a form/server
+//   action, so they only matter to form-action. Resend and morning are called
+//   from the server, never the browser.
 
 export type SecurityHeaderOptions = {
   /** `next dev` needs eval for React Refresh; production never does. */
@@ -36,18 +38,21 @@ const FORM_TARGETS = [
 /** Sentry's EU (Frankfurt) ingest hosts, e.g. o123.ingest.de.sentry.io. */
 const SENTRY_EU_INGEST = "https://*.ingest.de.sentry.io";
 
+/** Cloudflare Turnstile: its api.js and the challenge frame. */
+const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
+
 /** The full policy, sent as Content-Security-Policy-Report-Only. */
 export function contentSecurityPolicy(opts: SecurityHeaderOptions = {}): string {
   const reportPath = opts.reportPath ?? CSP_REPORT_PATH;
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
-    "script-src": ["'self'", "'unsafe-inline'", ...(opts.dev ? ["'unsafe-eval'"] : [])],
+    "script-src": ["'self'", "'unsafe-inline'", TURNSTILE_ORIGIN, ...(opts.dev ? ["'unsafe-eval'"] : [])],
     "style-src": ["'self'", "'unsafe-inline'"],
     "img-src": ["'self'", "data:", "blob:"],
     "font-src": ["'self'", "data:"],
     "media-src": ["'self'", "blob:"],
     "connect-src": ["'self'", SENTRY_EU_INGEST, ...(opts.dev ? ["ws:"] : [])],
-    "frame-src": ["'self'", "blob:"],
+    "frame-src": ["'self'", "blob:", TURNSTILE_ORIGIN],
     "worker-src": ["'self'", "blob:"],
     "manifest-src": ["'self'"],
     "object-src": ["'none'"],

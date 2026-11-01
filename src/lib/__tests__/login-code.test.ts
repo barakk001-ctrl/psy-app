@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   LOGIN_CODE_LIMITS,
   LOGIN_CODE_MAX_ATTEMPTS,
@@ -11,7 +11,7 @@ import {
   loginCodeRateKeys,
   normalizeLoginCode,
 } from "../login-code";
-import { rateLimit } from "../rate-limit";
+import { createLimiter, memoryStore } from "../rate-limit-core";
 
 const SECRET = "test-secret";
 const USER = "user_1";
@@ -132,35 +132,30 @@ describe("checkLoginCode", () => {
 });
 
 describe("one-time code rate limits", () => {
-  afterEach(() => vi.useRealTimers());
+  const limiter = () => createLimiter(memoryStore(), memoryStore());
 
-  it("allows 3 codes per email per 15 minutes, then again after the window", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(T0);
-    const limits = LOGIN_CODE_LIMITS.sendPerEmail;
-    const key = loginCodeRateKeys("rl-send@example.com", "1.1.1.1").sendPerEmail;
-    for (let i = 0; i < limits.limit; i++) expect(rateLimit(key, limits).allowed).toBe(true);
-    expect(rateLimit(key, limits).allowed).toBe(false);
-    vi.setSystemTime(T0 + limits.windowMs + 1);
-    expect(rateLimit(key, limits).allowed).toBe(true);
+  it("allows 3 codes per address and IP in 15 minutes, then again after the window", async () => {
+    const { rateLimit } = limiter();
+    const limits = LOGIN_CODE_LIMITS.sendPerEmailIp;
+    const key = loginCodeRateKeys("rl-send@example.com", "1.1.1.1").sendPerEmailIp;
+    for (let i = 0; i < limits.limit; i++) expect((await rateLimit(key, limits, T0)).allowed).toBe(true);
+    expect((await rateLimit(key, limits, T0)).allowed).toBe(false);
+    expect((await rateLimit(key, limits, T0 + limits.windowMs + 1)).allowed).toBe(true);
   });
 
-  it("limits sends per IP across different emails", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(T0);
+  it("limits sends per IP across different emails", async () => {
+    const { rateLimit } = limiter();
     const limits = LOGIN_CODE_LIMITS.sendPerIp;
     for (let i = 0; i < limits.limit; i++) {
       const key = loginCodeRateKeys(`rl-ip-${i}@example.com`, "2.2.2.2").sendPerIp;
-      expect(rateLimit(key, limits).allowed).toBe(true);
+      expect((await rateLimit(key, limits, T0)).allowed).toBe(true);
     }
     const key = loginCodeRateKeys("rl-ip-last@example.com", "2.2.2.2").sendPerIp;
-    expect(rateLimit(key, limits).allowed).toBe(false);
+    expect((await rateLimit(key, limits, T0)).allowed).toBe(false);
   });
 
-  it("checks codes against the password login's buckets", () => {
-    const keys = loginCodeRateKeys("a@example.com", "3.3.3.3");
-    expect(keys.verifyPerEmail).toBe("login:email:a@example.com");
-    expect(keys.verifyPerIp).toBe("login:ip:3.3.3.3");
+  it("the check is limited like the password login", () => {
     expect(LOGIN_CODE_LIMITS.verifyPerEmail).toEqual({ limit: 8, windowMs: 15 * 60_000 });
+    expect(LOGIN_CODE_LIMITS.verifyPerIp).toEqual({ limit: 25, windowMs: 15 * 60_000 });
   });
 });

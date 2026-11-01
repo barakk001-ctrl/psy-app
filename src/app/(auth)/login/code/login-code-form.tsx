@@ -6,6 +6,7 @@ import { MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import {
   requestLoginCodeAction,
   verifyLoginCodeAction,
@@ -20,7 +21,13 @@ function ErrorBox({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function LoginCodeForm({ initialEmail }: { initialEmail: string }) {
+export function LoginCodeForm({
+  initialEmail,
+  turnstileKey,
+}: {
+  initialEmail: string;
+  turnstileKey?: string | null;
+}) {
   const [sendState, sendAction, sending] = useActionState<LoginCodeState, FormData>(
     requestLoginCodeAction,
     null,
@@ -75,6 +82,8 @@ export function LoginCodeForm({ initialEmail }: { initialEmail: string }) {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
+
+          <TurnstileWidget siteKey={turnstileKey} resetKey={sendState} />
 
           {sendState?.error && <ErrorBox>{sendState.error}</ErrorBox>}
 
@@ -157,6 +166,7 @@ export function LoginCodeForm({ initialEmail }: { initialEmail: string }) {
           }}
         >
           <input type="hidden" name="email" value={sentTo} />
+          <TurnstileWidget siteKey={turnstileKey} resetKey={sendState} />
           <button
             type="submit"
             disabled={sending}

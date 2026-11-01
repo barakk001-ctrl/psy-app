@@ -11,10 +11,16 @@ export const LOGIN_CODE_LENGTH = 6;
 export const LOGIN_CODE_TTL_MS = 10 * 60_000;
 export const LOGIN_CODE_MAX_ATTEMPTS = 5;
 
-/** Rate limits (src/lib/rate-limit.ts keys). The code check itself shares the
- *  password login's buckets, so switching method buys an attacker nothing. */
+/**
+ * Rate limits (src/lib/rate-limit.ts keys). This is the way in when a password
+ * is locked (login-lockout.ts), so nothing a stranger does may use it up: the
+ * check doesn't share the password's per-address bucket, and sends are limited
+ * tightly per address + IP. The per-address ceiling, there to protect the
+ * mailbox, is above what one IP may send (sendPerIp).
+ */
 export const LOGIN_CODE_LIMITS = {
-  sendPerEmail: { limit: 3, windowMs: 15 * 60_000 },
+  sendPerEmailIp: { limit: 3, windowMs: 15 * 60_000 },
+  sendPerEmail: { limit: 12, windowMs: 60 * 60_000 },
   sendPerIp: { limit: 10, windowMs: 60 * 60_000 },
   verifyPerEmail: { limit: 8, windowMs: 15 * 60_000 },
   verifyPerIp: { limit: 25, windowMs: 15 * 60_000 },
@@ -22,10 +28,11 @@ export const LOGIN_CODE_LIMITS = {
 
 export function loginCodeRateKeys(email: string, ip: string) {
   return {
+    sendPerEmailIp: `login-code:send:email-ip:${email}:${ip}`,
     sendPerEmail: `login-code:send:email:${email}`,
     sendPerIp: `login-code:send:ip:${ip}`,
-    // Same buckets as the password login (loginAction / auth.ts)
-    verifyPerEmail: `login:email:${email}`,
+    verifyPerEmail: `login-code:verify:email:${email}`,
+    // Same IP bucket as the password login (loginAction / auth.ts)
     verifyPerIp: `login:ip:${ip}`,
   };
 }

@@ -1,4 +1,5 @@
 import { ForgotPasswordForm } from "./forgot-password-form";
+import { turnstileSiteKey } from "@/lib/turnstile";
 
 // Rendered per request rather than prerendered at build time: on Railway's EU
 // builder, prerendering this page hit a Next.js bundler error ("Could not find
@@ -6,5 +7,5 @@ import { ForgotPasswordForm } from "./forgot-password-form";
 export const dynamic = "force-dynamic";
 
 export default function ForgotPasswordPage() {
-  return <ForgotPasswordForm />;
+  return <ForgotPasswordForm turnstileKey={turnstileSiteKey()} />;
 }

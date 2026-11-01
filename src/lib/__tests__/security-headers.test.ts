@@ -37,7 +37,8 @@ describe("contentSecurityPolicy", () => {
   const csp = contentSecurityPolicy();
 
   it("allows only our own scripts (plus Next's inline bootstrap), no eval in production", () => {
-    expect(directive(csp, "script-src")).toBe("script-src 'self' 'unsafe-inline'");
+    expect(directive(csp, "script-src")).toBe("script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com");
+    expect(directive(csp, "frame-src")).toContain("https://challenges.cloudflare.com");
     expect(directive(contentSecurityPolicy({ dev: true }), "script-src")).toContain("'unsafe-eval'");
   });
 

@@ -7,12 +7,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import {
   submitAppointmentRequestAction,
   type RequestFormState,
 } from "@/server/actions/inbox";
 
-export function RequestForm({ token }: { token: string }) {
+export function RequestForm({ token, turnstileKey }: { token: string; turnstileKey?: string | null }) {
   const [state, formAction, pending] = useActionState<RequestFormState, FormData>(
     submitAppointmentRequestAction,
     null,
@@ -62,6 +63,8 @@ export function RequestForm({ token }: { token: string }) {
             <Label htmlFor="message">הודעה</Label>
             <Textarea id="message" name="message" rows={3} placeholder="לא חובה" />
           </div>
+
+          <TurnstileWidget siteKey={turnstileKey} resetKey={state} />
 
           {state?.error && (
             <div role="alert" className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">

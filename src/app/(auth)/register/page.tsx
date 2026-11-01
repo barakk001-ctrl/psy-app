@@ -2,6 +2,7 @@ import { RegisterForm } from "@/components/auth/register-form";
 import { InviteOnly } from "@/components/auth/invite-only";
 import { isGoogleConfigured } from "@/lib/google-auth";
 import { inviteOnly } from "@/lib/signup-policy";
+import { turnstileSiteKey } from "@/lib/turnstile";
 
 // Reads the environment (Google keys, sign-up mode) and the query at request time
 export const dynamic = "force-dynamic";
@@ -26,5 +27,5 @@ export default async function RegisterPage({
       : googleEnabled && sp.google === "agreement"
         ? "כדי לפתוח חשבון חדש עם Google, יש לסמן קודם את אישור הסכם החזקת המידע ואז ללחוץ שוב על \"המשך עם Google\"."
         : undefined;
-  return <RegisterForm googleEnabled={googleEnabled} notice={notice} />;
+  return <RegisterForm googleEnabled={googleEnabled} notice={notice} turnstileKey={turnstileSiteKey()} />;
 }

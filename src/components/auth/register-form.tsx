@@ -7,16 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GoogleButton, OrDivider } from "@/components/auth/google-button";
 import { VerifyEmailPending } from "@/components/auth/verify-email-pending";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { googleRegisterAction, registerAction, type FormState } from "@/server/actions/auth";
 
 export function RegisterForm({
   googleEnabled = false,
   notice,
+  turnstileKey,
 }: {
   /** Show "המשך עם Google" — only when the Google keys are configured */
   googleEnabled?: boolean;
   /** A message carried in the URL (e.g. Google sign-in needs the agreement first) */
   notice?: string;
+  /** Set only while Turnstile is on (src/lib/turnstile.ts) */
+  turnstileKey?: string | null;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     registerAction,
@@ -140,6 +144,8 @@ export function RegisterForm({
             כדי להמשיך עם Google יש לסמן קודם את אישור ההסכם
           </p>
         )}
+
+        <TurnstileWidget siteKey={turnstileKey} resetKey={state} />
 
         {(state?.error ?? (state ? undefined : notice)) && (
           <div className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">

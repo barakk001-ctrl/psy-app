@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { RequestForm } from "@/components/import/request-form";
+import { turnstileSiteKey } from "@/lib/turnstile";
 
 export default async function AppointmentRequestPage({
   params,
@@ -32,7 +33,7 @@ export default async function AppointmentRequestPage({
           </p>
         </header>
 
-        <RequestForm token={token} />
+        <RequestForm token={token} turnstileKey={turnstileSiteKey()} />
       </div>
     </div>
   );

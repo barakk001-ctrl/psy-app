@@ -62,7 +62,7 @@ export async function confirmTotpEnrollmentAction(
   const userId = await requireUserId();
   const code = String(formData.get("code") ?? "");
 
-  const limited = rateLimit(`totp:${userId}`, { limit: 10, windowMs: 15 * 60_000 });
+  const limited = await rateLimit(`totp:${userId}`, { limit: 10, windowMs: 15 * 60_000 });
   if (!limited.allowed) return { error: "יותר מדי ניסיונות — נסו שוב בעוד רבע שעה" };
 
   const user = await db.user.findUnique({
@@ -97,7 +97,7 @@ export async function regenerateBackupCodesAction(
   const userId = await requireUserId();
   const code = String(formData.get("code") ?? "");
 
-  const limited = rateLimit(`totp:${userId}`, { limit: 10, windowMs: 15 * 60_000 });
+  const limited = await rateLimit(`totp:${userId}`, { limit: 10, windowMs: 15 * 60_000 });
   if (!limited.allowed) return { error: "יותר מדי ניסיונות — נסו שוב בעוד רבע שעה" };
 
   const user = await db.user.findUnique({
@@ -130,7 +130,7 @@ export async function disableTotpAction(
   const userId = await requireUserId();
   const code = String(formData.get("code") ?? "");
 
-  const limited = rateLimit(`totp:${userId}`, { limit: 10, windowMs: 15 * 60_000 });
+  const limited = await rateLimit(`totp:${userId}`, { limit: 10, windowMs: 15 * 60_000 });
   if (!limited.allowed) return { error: "יותר מדי ניסיונות — נסו שוב בעוד רבע שעה" };
 
   const user = await db.user.findUnique({

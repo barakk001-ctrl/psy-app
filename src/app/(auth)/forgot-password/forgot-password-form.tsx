@@ -6,12 +6,13 @@ import { MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import {
   requestPasswordResetAction,
   type ResetRequestState,
 } from "@/server/actions/auth";
 
-export function ForgotPasswordForm() {
+export function ForgotPasswordForm({ turnstileKey }: { turnstileKey?: string | null }) {
   const [state, formAction, pending] = useActionState<ResetRequestState, FormData>(
     requestPasswordResetAction,
     null,
@@ -54,6 +55,8 @@ export function ForgotPasswordForm() {
             autoFocus
           />
         </div>
+
+        <TurnstileWidget siteKey={turnstileKey} resetKey={state} />
 
         {state?.error && (
           <div role="alert" className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">

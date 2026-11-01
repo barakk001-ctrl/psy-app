@@ -8,6 +8,8 @@ import { headers } from "next/headers";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
+import { clientIpFrom } from "@/lib/client-ip";
+import { TURNSTILE_ERROR, passesTurnstile } from "@/lib/turnstile";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -79,9 +81,9 @@ export async function submitAppointmentRequestAction(
   if (!token) return { error: "קישור לא תקין" };
   if (!name || !phone) return { error: "נא למלא שם וטלפון" };
 
-  const h = await headers();
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const limited = rateLimit(`request:${ip}`, { limit: 5, windowMs: 60 * 60_000 });
+  const ip = clientIpFrom(await headers());
+  if (!(await passesTurnstile(formData, ip))) return { error: TURNSTILE_ERROR };
+  const limited = await rateLimit(`request:${ip}`, { limit: 5, windowMs: 60 * 60_000 });
   if (!limited.allowed) return { error: "יותר מדי בקשות — נסו שוב מאוחר יותר" };
 
   const user = await db.user.findUnique({

@@ -260,7 +260,7 @@ export async function changePasswordAction(
   }
 
   // Guessing the current password from a signed-in session is still guessing
-  const limit = rateLimit(`change-password:${userId}`, { limit: 5, windowMs: 15 * 60_000 });
+  const limit = await rateLimit(`change-password:${userId}`, { limit: 5, windowMs: 15 * 60_000 });
   if (!limit.allowed) {
     return { error: "יותר מדי ניסיונות — נסו שוב בעוד כמה דקות" };
   }
@@ -293,7 +293,7 @@ export async function sendSetPasswordLinkAction(
   __: FormData,
 ): Promise<SetPasswordLinkState> {
   const userId = await requireUserId();
-  const limit = rateLimit(`set-password-link:${userId}`, { limit: 3, windowMs: 60 * 60_000 });
+  const limit = await rateLimit(`set-password-link:${userId}`, { limit: 3, windowMs: 60 * 60_000 });
   if (!limit.allowed) return { error: "יותר מדי בקשות — נסו שוב מאוחר יותר" };
 
   const me = await db.user.findUnique({

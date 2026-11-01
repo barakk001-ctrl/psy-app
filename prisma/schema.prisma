@@ -218,6 +218,18 @@ model MeetingType {
 // Not unique by transactionId any more: idempotency is the GrowCheckout's
 // PENDING → APPLIED switch, so a forged early callback (recorded UNVERIFIED)
 // can never block the real one.
+// Rate-limit counters and login-failure counts (src/lib/rate-limit.ts). The key
+// is an HMAC, so the table holds no email or IP address. Expired rows are
+// deleted by the hourly maintenance.
+model RateLimitBucket {
+  key       String   @id
+  count     Int      @default(0)
+  expiresAt DateTime
+  lastHitAt DateTime
+
+  @@index([expiresAt])
+}
+
 model BillingEvent {
   id            String   @id @default(cuid())
   provider      String   @default("grow")

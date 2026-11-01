@@ -91,7 +91,7 @@ export async function requestPlanAction(planId: string): Promise<PlanRequestResu
   const plan = planById(planId);
   if (!plan) return { ok: false, error: "המסלול לא נמצא" };
 
-  const limit = rateLimit(`plan-request:${userId}`, { limit: 3, windowMs: 60 * 60_000 });
+  const limit = await rateLimit(`plan-request:${userId}`, { limit: 3, windowMs: 60 * 60_000 });
   if (!limit.allowed) {
     return { ok: false, error: "הבקשה כבר נשלחה — נחזור עם תשובה בהקדם." };
   }

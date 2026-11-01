@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { encryptBuffer } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
+import { clientIpFrom } from "@/lib/client-ip";
 import {
   SUPPORT_RATE_LIMIT,
   SUPPORT_SAVED_NOT_EMAILED_MESSAGE,
@@ -66,9 +67,9 @@ export async function submitSupportRequestAction(
   }
 
   const h = await headers();
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const byUser = rateLimit(`support:user:${userId}`, SUPPORT_RATE_LIMIT);
-  const byIp = rateLimit(`support:ip:${ip}`, SUPPORT_RATE_LIMIT);
+  const ip = clientIpFrom(h);
+  const byUser = await rateLimit(`support:user:${userId}`, SUPPORT_RATE_LIMIT);
+  const byIp = await rateLimit(`support:ip:${ip}`, SUPPORT_RATE_LIMIT);
   if (!byUser.allowed || !byIp.allowed) {
     return { error: "נשלחו כמה פניות ברצף — אפשר לשלוח שוב בעוד כשעה" };
   }
