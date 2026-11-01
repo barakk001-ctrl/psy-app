@@ -113,6 +113,11 @@ export function gateRequest(
     return path === TWO_FACTOR_PATH ? { type: "allow" } : { type: "redirect", to: TWO_FACTOR_PATH };
   }
 
+  // The public home: guests see it, signed-in users go straight to the app.
+  if (path === "/") {
+    return isLoggedIn ? { type: "redirect", to: "/dashboard" } : { type: "allow" };
+  }
+
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
   if (isPublic) {
     return isLoggedIn ? { type: "redirect", to: "/dashboard" } : { type: "allow" };

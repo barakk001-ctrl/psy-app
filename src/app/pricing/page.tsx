@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { LogoMark, Wordmark } from "@/components/brand/logo-mark";
+import { PublicFooter } from "@/components/legal/public-footer";
 import { PlanCards } from "@/components/plans/plan-cards";
 import { TRIAL_DAYS } from "@/lib/subscription";
-import { copyrightYears } from "@/lib/copyright";
-import { OPERATOR_EMAIL, OPERATOR_FOOTER } from "@/lib/operator";
 import { inviteOnly } from "@/lib/signup-policy";
 
 // Public, like /terms (auth-gate lets everyone through). Linked from the login
 // and register pages; signed-in users are pointed to their own /subscription.
-export const metadata = { title: "מסלולים ומחירים — מרפאה אישית" };
+export const metadata = {
+  title: "מסלולים ומחירים — מרפאה אישית",
+  description: "מנוי היכרות חינם ל-30 יום, ואז מנוי חודשי או שנתי. בלי חיוב אוטומטי.",
+};
 export const dynamic = "force-dynamic";
 
 const CTA_PRIMARY =
@@ -28,7 +30,7 @@ export default async function PricingPage() {
     <div className="min-h-screen bg-cream-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <header className="flex items-center justify-between gap-4 mb-10">
-          <Link href={signedIn ? "/dashboard" : "/login"} className="flex items-center gap-3">
+          <Link href={signedIn ? "/dashboard" : "/"} className="flex items-center gap-3">
             <LogoMark size={40} />
             <Wordmark className="text-xl" />
           </Link>
@@ -88,34 +90,7 @@ export default async function PricingPage() {
 
         </main>
 
-        <footer className="mt-10 border-t border-cream-200 pt-4 text-center text-xs text-ink-muted space-y-1">
-          <p>
-            <Link href="/terms" className="underline underline-offset-2">
-              תנאי שימוש
-            </Link>
-            {" · "}
-            <Link href="/privacy" className="underline underline-offset-2">
-              מדיניות פרטיות
-            </Link>
-            {" · "}
-            <Link href="/agreement" className="underline underline-offset-2">
-              הסכם החזקת מידע
-            </Link>
-            {" · "}
-            <Link href="/accessibility" className="underline underline-offset-2">
-              הצהרת נגישות
-            </Link>
-          </p>
-          <p>
-            © כל הזכויות שמורות למרפאה אישית <span dir="ltr">{copyrightYears()}</span>
-          </p>
-          <p>
-            {OPERATOR_FOOTER} ·{" "}
-            <a href={`mailto:${OPERATOR_EMAIL}`} className="underline underline-offset-2">
-              <span dir="ltr">{OPERATOR_EMAIL}</span>
-            </a>
-          </p>
-        </footer>
+        <PublicFooter className="mt-10" />
       </div>
     </div>
   );

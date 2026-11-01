@@ -8,9 +8,12 @@ import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 export function ExplainerVideo({
   label = "איך זה עובד? צפו בהדגמה קצרה",
   className = "mx-auto flex items-center gap-2 text-sm text-sage-600 hover:text-sage-700 font-medium",
+  children,
 }: {
   label?: string;
   className?: string;
+  /** replaces the icon and label, e.g. a poster image */
+  children?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -19,8 +22,12 @@ export function ExplainerVideo({
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={className}>
-        <PlayCircle className="w-5 h-5" />
-        {label}
+        {children ?? (
+          <>
+            <PlayCircle className="w-5 h-5" />
+            {label}
+          </>
+        )}
       </button>
 
       {open && (

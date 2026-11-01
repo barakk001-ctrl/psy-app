@@ -47,6 +47,27 @@ describe("resolveAuthState", () => {
   });
 });
 
+describe("the public home", () => {
+  const signedIn = { user: { id: "u1" } };
+
+  it("guests see it, signed-in users go to the app", () => {
+    expect(gateRequest("/", null)).toEqual({ type: "allow" });
+    expect(gateRequest("/", signedIn)).toEqual({ type: "redirect", to: "/dashboard" });
+  });
+
+  it("a sign-in waiting for its code still goes to the code page", () => {
+    expect(gateRequest("/", { user: null, twoFactorPending: { userId: "u1" } })).toEqual({
+      type: "redirect",
+      to: TWO_FACTOR_PATH,
+    });
+  });
+
+  it("the installed app's start page stays protected: signed out it goes to login", () => {
+    expect(gateRequest("/dashboard", null)).toEqual({ type: "deny" });
+    expect(gateRequest("/dashboard", signedIn)).toEqual({ type: "allow" });
+  });
+});
+
 describe("sessionForToken — what auth() returns", () => {
   it("a normal user keeps the user with its id", () => {
     const s = asAuthSees({ id: "u1" });

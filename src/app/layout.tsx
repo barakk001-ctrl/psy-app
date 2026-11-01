@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Rubik, Assistant } from "next/font/google";
 import "./globals.css";
+import { SITE_URL } from "@/lib/site";
 
 // Bold rounded Hebrew sans for headings — clean, modern, friendly
 const fontDisplay = Rubik({
@@ -18,6 +19,7 @@ const fontSans = Assistant({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "מרפאה אישית — מערכת לניהול קליניקה",
   description: "מערכת לניהול קליניקה: לקוחות, פגישות, חשבוניות ותשלומים",
   appleWebApp: {
