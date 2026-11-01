@@ -144,6 +144,14 @@ export function RegisterForm({
           <span className="text-sm text-ink-soft leading-relaxed">
             קראתי ואני מסכימ/ה ל
             <Link
+              href="/terms"
+              target="_blank"
+              className="inline-block -my-2.5 py-2.5 px-0.5 font-bold text-sage-700 underline underline-offset-4 decoration-2 decoration-sage-500 hover:text-sage-800"
+            >
+              תנאי השימוש
+            </Link>{" "}
+            ול
+            <Link
               href="/agreement"
               target="_blank"
               // Bold + underlined so it reads as a link; the padding (offset by
@@ -163,7 +171,7 @@ export function RegisterForm({
 
         {googleHint && (
           <p role="alert" className="text-xs text-terracotta-600 -mt-2">
-            כדי להמשיך עם Google יש לסמן קודם את אישור ההסכם
+            כדי להמשיך עם Google יש לסמן קודם את האישור
           </p>
         )}
 
@@ -183,7 +191,7 @@ export function RegisterForm({
           <>
             <OrDivider />
             <p className="text-xs text-ink-subtle -mt-3 mb-3 text-center">
-              בלי סיסמה — נכנסים עם חשבון Google (עם אישור ההסכם שלמעלה)
+              בלי סיסמה — נכנסים עם חשבון Google (עם האישור שלמעלה)
             </p>
             {/* Same form, so the agreement checkbox travels with it */}
             <GoogleButton

@@ -70,6 +70,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Google sign-up and invite codes (real Postg
     expect(u?.emailVerifiedAt).toBeTruthy();
     expect(u?.hashedPassword).toBeNull();
     expect(u?.inviteCodeId).toBe(inv.id);
+    expect(u?.termsVersion).toBeTruthy();
+    expect(u?.termsAcceptedAt).toBeTruthy();
+    expect(u?.agreementVersion).toBe(AGREED);
     expect((await db.inviteCode.findUnique({ where: { id: inv.id } }))?.usedCount).toBe(1);
   });
 
@@ -111,6 +114,16 @@ describe.skipIf(!TEST_DATABASE_URL)("Google sign-up and invite codes (real Postg
     expect(await signIn("old@example.test", { invite: "GDDDCDDE2345" })).toBe(true);
     expect((await db.inviteCode.findUnique({ where: { code: "GDDDCDDE2345" } }))?.usedCount).toBe(0);
     expect((await user("old@example.test"))?.hashedPassword).toBe("x");
+  });
+
+  it("signing in leaves an older account's missing terms alone", async () => {
+    await createPracticeUser({ email: "old@example.test", name: "ותיק", hashedPassword: "x", emailVerified: true });
+    await db.user.update({
+      where: { email: "old@example.test" },
+      data: { termsVersion: null, termsAcceptedAt: null },
+    });
+    expect(await signIn("old@example.test", { agreement: undefined })).toBe(true);
+    expect((await user("old@example.test"))?.termsVersion).toBeNull();
   });
 
   it("Google verifies a waiting sign-up and drops the password nobody proved", async () => {

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { claimInvite } from "@/lib/invite-store";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
+import { TERMS_VERSION } from "@/lib/terms";
 import { TRIAL_DAYS } from "@/lib/subscription";
 
 /** The invite code ran out between the check and the sign-up. */
@@ -9,7 +10,7 @@ export class InviteUnavailable extends Error {}
 /**
  * Creates a new practice owner — the one place users are created, for both
  * email/password registration and "המשך עם Google". Every new account starts
- * with the current agreement accepted (the caller made sure it was) and a
+ * with the current agreement and terms accepted (the caller made sure they were) and a
  * TRIAL_DAYS trial; everything else takes the schema defaults.
  * `hashedPassword` is null for an account opened through Google, which is
  * also the only path passing `emailVerified`: Google proved the address, an
@@ -37,6 +38,8 @@ export async function createPracticeUser(input: {
         emailVerifiedAt: input.emailVerified ? new Date(now) : null,
         agreementVersion: AGREEMENT_VERSION,
         agreementAcceptedAt: new Date(now),
+        termsVersion: TERMS_VERSION,
+        termsAcceptedAt: new Date(now),
         trialEndsAt: new Date(now + TRIAL_DAYS * 24 * 60 * 60 * 1000),
       },
       select: { id: true, email: true, name: true },

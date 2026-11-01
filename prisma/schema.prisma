@@ -56,6 +56,10 @@ model User {
   // a version bump triggers the re-acceptance banner on the dashboard)
   agreementVersion    String?
   agreementAcceptedAt DateTime?
+  // Terms of service accepted at sign-up (version from src/lib/terms.ts). Null
+  // for accounts that signed up before this was asked; nobody is asked again.
+  termsVersion        String?
+  termsAcceptedAt     DateTime?
 
   // Private ICS calendar feed (Google Calendar subscribe-by-URL).
   // calendarNameMode: FIRST | FULL | NONE — how client names appear in events.

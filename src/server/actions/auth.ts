@@ -159,11 +159,12 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
     };
   }
 
-  // The data-holding agreement is a precondition for holding any clinical data
+  // One checkbox for both: the terms of service, and the data-holding agreement,
+  // which is a precondition for holding any clinical data
   if (formData.get("agreement") !== "on") {
     return {
-      error: "יש לאשר את הסכם החזקת המידע כדי להירשם",
-      fieldErrors: { agreement: ["נדרש אישור ההסכם"] },
+      error: "יש לאשר את תנאי השימוש ואת הסכם החזקת המידע כדי להירשם",
+      fieldErrors: { agreement: ["נדרש אישור"] },
     };
   }
 

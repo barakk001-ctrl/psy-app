@@ -36,7 +36,7 @@ export default async function RegisterPage({
     sp.error === "rate"
       ? "יותר מדי ניסיונות הרשמה. נסו שוב מאוחר יותר."
       : googleEnabled && sp.google === "agreement"
-        ? "כדי לפתוח חשבון חדש עם Google, יש לסמן קודם את אישור הסכם החזקת המידע ואז ללחוץ שוב על \"המשך עם Google\"."
+        ? "כדי לפתוח חשבון חדש עם Google, יש לסמן קודם את אישור התנאים וההסכם ואז ללחוץ שוב על \"המשך עם Google\"."
         : undefined;
   return (
     <RegisterForm
