@@ -51,6 +51,13 @@ export async function DocumentView({
       select: { id: true, docType: true, morningDocNumber: true, number: true, status: true },
     }),
   ]);
+  const linkedSessions = draft.sessionIds?.length
+    ? await db.session.findMany({
+        where: { id: { in: draft.sessionIds }, userId: invoice.userId },
+        orderBy: { startsAt: "asc" },
+        select: { id: true, startsAt: true },
+      })
+    : [];
   const docName = (d: { docType: number | null; morningDocNumber: string | null; number: number }) =>
     `${docTypeLabel(d.docType)} ${d.morningDocNumber ?? `(טיוטה #${d.number})`}`;
 
@@ -197,6 +204,23 @@ export async function DocumentView({
                   {docName(d)}
                 </Link>
                 {d.status === "CANCELLED" && <span className="text-ink-muted"> · בוטל</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {linkedSessions.length > 0 && (
+        <div className="rounded-xl border border-cream-300 bg-white/60 px-4 py-3 text-sm">
+          <div className="text-ink-muted text-xs mb-1">
+            {issued ? "פגישות משויכות" : "פגישות שיסומנו בהפקה"} (פנימי, לא מופיע במסמך)
+          </div>
+          <ul className="flex flex-wrap gap-x-4 gap-y-0.5">
+            {linkedSessions.map((s) => (
+              <li key={s.id}>
+                <Link href={`/sessions/${s.id}`} className="text-sage-600 hover:underline">
+                  {formatDate(s.startsAt)}
+                </Link>
               </li>
             ))}
           </ul>

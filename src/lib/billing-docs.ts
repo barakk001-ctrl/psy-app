@@ -136,6 +136,17 @@ export function canCreditNote(doc: {
   );
 }
 
+/**
+ * A meeting that has no payment link yet, which is what "מסמך חדש" suggests:
+ * on no document, and no document number typed or written on it either way.
+ */
+export const UNLINKED_SESSION = {
+  invoiceItem: null,
+  morningDocNumber: null,
+  morningInvoiceReceiptNumber: null,
+  morningReceiptNumber: null,
+} as const;
+
 // ── Payment (receipt line) kinds ────────────────────────────────────────────
 
 export const PAYMENT_KINDS = [

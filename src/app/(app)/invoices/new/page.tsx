@@ -4,7 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getMorningCredentials } from "@/lib/morning";
-import { creatableKinds, defaultKind, documentClientName, documentDefaults, docTypeLabel, DOC_KINDS, type DocKind } from "@/lib/billing-docs";
+import { creatableKinds, defaultKind, documentClientName, documentDefaults, docTypeLabel, DOC_KINDS, UNLINKED_SESSION, type DocKind } from "@/lib/billing-docs";
 import { clinicDay, draftFromInvoice, loadCreditableInvoices } from "@/lib/billing-doc-data";
 import { DocumentForm } from "@/components/invoices/document-form";
 
@@ -77,8 +77,8 @@ export default async function NewDocumentPage({
     db.session.findMany({
       where: {
         userId,
-        // A draft from before keeps the meetings already tied to its lines
-        AND: [{ OR: [{ invoiceItem: null }, ...(storedRow ? [{ invoiceItem: { invoiceId: storedRow.id } }] : [])] }],
+        // No payment link yet. A draft from before keeps the meetings tied to its lines.
+        AND: [{ OR: [UNLINKED_SESSION, ...(storedRow ? [{ invoiceItem: { invoiceId: storedRow.id } }] : [])] }],
         OR: [
           { status: { in: ["COMPLETED", "NO_SHOW"] } },
           { status: "SCHEDULED", startsAt: { lt: now } },

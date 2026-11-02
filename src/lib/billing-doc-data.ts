@@ -167,10 +167,24 @@ export async function applyCreditNote(
   inv: { docType: number | null; relatedInvoiceId: string | null },
 ): Promise<void> {
   if (inv.docType !== DOC_KINDS.CREDIT_NOTE.code || !inv.relatedInvoiceId) return;
+  const orig = await tx.invoice.findFirst({
+    where: { id: inv.relatedInvoiceId, userId },
+    select: { docType: true, morningDocNumber: true, items: { select: { sessionId: true } } },
+  });
   await tx.invoice.updateMany({
     where: { id: inv.relatedInvoiceId, userId },
     data: { status: "CANCELLED" },
   });
+  // The cancelled number leaves its meetings too, or they'd stay "linked" and
+  // never be suggested again. A number she typed for another document stays.
+  const fields = orig?.docType != null ? SESSION_FIELDS[orig.docType] : undefined;
+  const sessionIds = orig?.items.map((i) => i.sessionId).filter((s): s is string => !!s) ?? [];
+  if (fields && orig?.morningDocNumber && sessionIds.length) {
+    await tx.session.updateMany({
+      where: { id: { in: sessionIds }, userId, [fields[0]]: orig.morningDocNumber },
+      data: { [fields[0]]: null, [fields[1]]: null },
+    });
+  }
   await tx.invoiceItem.updateMany({
     where: { invoiceId: inv.relatedInvoiceId, invoice: { userId } },
     data: { sessionId: null },

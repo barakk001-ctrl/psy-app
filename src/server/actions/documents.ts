@@ -9,6 +9,7 @@ import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { computeInvoiceStatus } from "@/lib/invoice-status";
 import {
   DOC_KINDS,
+  UNLINKED_SESSION,
   agorotToDecimalString,
   canCreditNote,
   docKindByCode,
@@ -158,7 +159,7 @@ async function parseDraft(userId: string, json: string, complete: boolean): Prom
         id: { in: sessionIds },
         userId,
         clientId: clientId as string,
-        OR: [{ invoiceItem: null }, ...(draftId ? [{ invoiceItem: { invoiceId: draftId } }] : [])],
+        OR: [UNLINKED_SESSION, ...(draftId ? [{ invoiceItem: { invoiceId: draftId } }] : [])],
       },
     });
     if (ok !== sessionIds.length) {

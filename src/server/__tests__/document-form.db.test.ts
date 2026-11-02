@@ -315,6 +315,71 @@ describe.skipIf(!TEST_DATABASE_URL)("income-document form (real Postgres, mornin
     expect(r.problems?.join(" ")).toContain("סכום התקבולים");
   });
 
+  describe("meetings", () => {
+    it("records the number by document type, and keeps a number she typed", async () => {
+      await db.session.update({ where: { id: a.pastSessionId }, data: { morningReceiptNumber: "111" } });
+      // The form doesn't suggest it now, and the server agrees
+      const refused = await save(
+        body({ kind: "TAX_INVOICE", clientId: a.clientId, sessionIds: [a.pastSessionId] }),
+        "draft",
+      );
+      expect(refused.invoiceId).toBeUndefined();
+
+      await db.session.update({ where: { id: a.pastSessionId }, data: { morningReceiptNumber: null } });
+      const r = await save(
+        body({
+          kind: "RECEIPT",
+          clientId: a.clientId,
+          dueDate: "",
+          items: [],
+          payments: [{ method: "CASH", date: "2026-11-02", amount: "100" }],
+          sessionIds: [a.pastSessionId],
+        }),
+        "issue",
+      );
+      expect(r.issue?.ok).toBe(true);
+      const s = await db.session.findUniqueOrThrow({ where: { id: a.pastSessionId } });
+      expect(s.morningReceiptNumber).toBe("7001");
+      expect(s.morningDocNumber).toBeNull();
+    });
+
+    it("links them when the number is typed by hand too", async () => {
+      await db.user.update({ where: { id: a.userId }, data: { morningApiKeyId: null, morningApiSecret: null } });
+      const { setDocumentMorningNumberAction } = await import("@/server/actions/documents");
+      const draft = await save(body({ clientId: a.clientId, sessionIds: [a.pastSessionId] }), "draft");
+      expect(await setDocumentMorningNumberAction(draft.invoiceId!, "20500")).toEqual({ saved: true });
+      const s = await db.session.findUniqueOrThrow({
+        where: { id: a.pastSessionId },
+        select: { morningDocNumber: true, invoiceItem: { select: { linkOnly: true } } },
+      });
+      expect(s).toEqual({ morningDocNumber: "20500", invoiceItem: { linkOnly: true } });
+    });
+
+    it("a credit note cancelling the document frees its meetings, number and all", async () => {
+      const inv = await save(body({ clientId: a.clientId, sessionIds: [a.pastSessionId] }), "issue");
+      const issued = await db.session.findUniqueOrThrow({ where: { id: a.pastSessionId } });
+      expect(issued.morningDocNumber).toBe("7001");
+
+      const stored = await db.invoice.findUniqueOrThrow({ where: { id: inv.invoiceId } });
+      const r = await save(
+        body({
+          kind: "CREDIT_NOTE",
+          clientId: a.clientId,
+          dueDate: "",
+          relatedInvoiceId: stored.id,
+          items: [{ description: "זיכוי", quantity: 1, unitPrice: stored.total.toString() }],
+        }),
+        "issue",
+      );
+      expect(r.issue?.ok).toBe(true);
+      const freed = await db.session.findUniqueOrThrow({
+        where: { id: a.pastSessionId },
+        select: { morningDocNumber: true, invoiceItem: true },
+      });
+      expect(freed).toEqual({ morningDocNumber: null, invoiceItem: null });
+    });
+  });
+
   it("refuses another practice's client or meeting", async () => {
     expect((await save(body({ clientId: b.clientId }), "draft")).invoiceId).toBeUndefined();
     const r = await save(body({ clientId: a.clientId, sessionIds: [b.pastSessionId] }), "draft");
