@@ -104,7 +104,8 @@ export async function sendInvoiceEmailAction(
   if (invoice.status === "CANCELLED") {
     return { error: "לא ניתן לשלוח חשבונית מבוטלת" };
   }
-  if (!invoice.client.email) {
+  const client = invoice.client;
+  if (!client?.email) {
     return { error: "ללקוח/ה אין כתובת אימייל — יש להוסיף אותה בכרטיס הלקוח" };
   }
 
@@ -118,7 +119,7 @@ export async function sendInvoiceEmailAction(
 
   const businessName = invoice.user.businessName ?? invoice.user.name;
   const { subject, html, text } = buildInvoiceEmail({
-    clientFirstName: invoice.client.firstName,
+    clientFirstName: client.firstName,
     businessName,
     invoiceNumber: invoice.number,
     issueDate: invoice.issueDate,
@@ -127,7 +128,7 @@ export async function sendInvoiceEmailAction(
   });
 
   const result = await sendEmail({
-    to: invoice.client.email,
+    to: client.email,
     subject,
     html,
     text,
@@ -202,6 +203,8 @@ export async function issueMorningReceiptAction(
     };
   }
 
+  const client = invoice.client;
+  if (!client) return { error: "למסמך הזה אין כרטיס לקוח." };
   const user = await db.user.findUnique({
     where: { id: userId },
     select: { morningDocType: true, vatLiable: true },
@@ -209,11 +212,11 @@ export async function issueMorningReceiptAction(
 
   const payload = buildMorningReceiptPayload({
     docType: user?.morningDocType ?? 400,
-    clientName: `${invoice.client.firstName} ${invoice.client.lastName}`,
-    clientEmail: invoice.client.email,
-    clientTaxId: clientIdNumber(invoice.client),
-    clientAddress: invoice.client.address,
-    clientPhone: invoice.client.phone,
+    clientName: `${client.firstName} ${client.lastName}`,
+    clientEmail: client.email,
+    clientTaxId: clientIdNumber(client),
+    clientAddress: client.address,
+    clientPhone: client.phone,
     description: `קבלה עבור חשבונית #${String(invoice.number).padStart(4, "0")}`,
     items: invoice.items.map((it) => ({
       description: it.description,

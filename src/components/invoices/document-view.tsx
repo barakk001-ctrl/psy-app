@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ChevronLeft, ExternalLink, User as UserIcon, XCircle } from "lucide-react";
+import { ChevronLeft, ExternalLink, User as UserIcon, XCircle, Pencil } from "lucide-react";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { PdfButton } from "@/components/ui/pdf-button";
 import {
   DOC_KINDS,
   canCreditNote,
+  documentClientName,
   docKindByCode,
   docTypeLabel,
   morningCopyText,
@@ -81,10 +82,17 @@ export async function DocumentView({
             {info.label} {issued ? invoice.morningDocNumber : ""}
           </h1>
           <div className="text-sm text-ink-muted mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <Link href={`/clients/${invoice.client.id}`} className="inline-flex items-center gap-1 hover:text-sage-600">
-              <UserIcon className="w-4 h-4" />
-              {invoice.client.firstName} {invoice.client.lastName}
-            </Link>
+            {invoice.client ? (
+              <Link href={`/clients/${invoice.client.id}`} className="inline-flex items-center gap-1 hover:text-sage-600">
+                <UserIcon className="w-4 h-4" />
+                {invoice.client.firstName} {invoice.client.lastName}
+              </Link>
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <UserIcon className="w-4 h-4" />
+                {documentClientName(invoice)} · לקוח מזדמן
+              </span>
+            )}
             <span>{formatDate(invoice.issueDate)}</span>
             {related && (
               <Link href={`/invoices/${related.id}`} className="text-sage-600 hover:underline">
@@ -104,6 +112,13 @@ export async function DocumentView({
           )}
           {!issued && !cancelled && (
             <>
+              {!invoice.relatedInvoiceId && (
+                <Link href={`/invoices/new?draft=${invoice.id}`}>
+                  <Button type="button" size="sm" variant="secondary">
+                    <Pencil className="w-4 h-4" /> עריכה
+                  </Button>
+                </Link>
+              )}
               <PdfButton
                 url={`/api/invoices/${invoice.id}/pdf`}
                 fileName={`draft-${invoice.number}.pdf`}

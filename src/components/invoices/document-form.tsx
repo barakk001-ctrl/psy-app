@@ -16,6 +16,8 @@ import {
   CARD_TYPE_LABELS,
   DEAL_TYPES,
   DEAL_TYPE_LABELS,
+  DOC_CURRENCIES,
+  DOC_CURRENCY_LABELS,
   DOC_KINDS,
   PAYMENT_DETAIL_FIELDS,
   PAYMENT_DETAIL_LABELS,
@@ -24,10 +26,12 @@ import {
   agorotToDecimalString,
   documentProblems,
   documentTotals,
-  lineAgorot,
+  formatDocMoney,
+  lastDayOfMonth,
   morningCopyText,
   morningNewDocumentUrl,
   parseAgorot,
+  type DocCurrency,
   type DocKind,
   type DocumentDraft,
   type PaymentDetailField,
@@ -57,7 +61,7 @@ export type DocSessionOption = {
   rate: string | null;
 };
 
-type ItemRow = { key: string; description: string; quantity: string; unitPrice: string; sessionId?: string };
+type ItemRow = { key: string; description: string; quantity: string; unitPrice: string };
 type PaymentRow = {
   key: string;
   method: PaymentKind;
@@ -70,11 +74,8 @@ type PaymentRow = {
 let keySeq = 0;
 const nextKey = () => `r${++keySeq}`;
 
-const ils = (agorot: number) =>
-  `₪${Number(agorotToDecimalString(agorot)).toLocaleString("he-IL", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+/** The select's value for a client who isn't on the list. */
+const ONE_OFF = "one-off";
 
 export function DocumentForm({
   initialKind,
@@ -102,6 +103,11 @@ export function DocumentForm({
     sessionIds?: string[];
     /** a receipt for this tax invoice */
     relatedInvoice?: { id: string; label: string; balance: string };
+    /** the printed details when that invoice's client is one-off */
+    oneOffName?: string;
+    oneOffTaxId?: string;
+    /** the saved draft being edited */
+    stored?: { id: string; clientId: string | null; draft: DocumentDraft };
   };
 }) {
   const router = useRouter();
@@ -113,37 +119,78 @@ export function DocumentForm({
   // a credit note is issued from the invoice it cancels, never from this form.
   const [crediting, setCrediting] = useState(initialCredit);
   const info = DOC_KINDS[kind];
-  const [clientId, setClientId] = useState(initial?.clientId ?? "");
+  const stored = initial?.stored;
+  const storedDraft = stored?.draft;
+  const [clientId, setClientId] = useState(stored ? (stored.clientId ?? "") : (initial?.clientId ?? ""));
   const client = clients.find((c) => c.id === clientId);
-  const [clientName, setClientName] = useState(client?.name ?? "");
-  const [clientTaxId, setClientTaxId] = useState(client?.idNumber ?? "");
-  const [sendEmail, setSendEmail] = useState(false);
-  const [clientEmail, setClientEmail] = useState(client?.email ?? "");
-  const [date, setDate] = useState(today);
-  const [dueDate, setDueDate] = useState("");
-  const [vatIncluded, setVatIncluded] = useState(true);
-  const [description, setDescription] = useState(related ? `קבלה עבור ${related.label}` : "");
-  const [remarks, setRemarks] = useState("");
-
-  const sessionRow = (s: DocSessionOption): ItemRow => ({
-    key: nextKey(),
-    description: `פגישה ${s.day}`,
-    quantity: "1",
-    unitPrice: s.rate ?? client?.rate ?? "",
-    sessionId: s.id,
-  });
-  const [items, setItems] = useState<ItemRow[]>(() =>
-    sessions.filter((s) => initial?.sessionIds?.includes(s.id)).map(sessionRow),
+  // A saved draft with a name and no client is a one-off client's
+  const [oneOff, setOneOff] = useState(
+    !!initial?.oneOffName || (!!storedDraft?.clientName && !stored?.clientId),
   );
-  const [payments, setPayments] = useState<PaymentRow[]>(() => [
-    {
+  const [clientName, setClientName] = useState(
+    storedDraft?.clientName ?? initial?.oneOffName ?? client?.name ?? "",
+  );
+  const [clientTaxId, setClientTaxId] = useState(
+    storedDraft ? (storedDraft.clientTaxId ?? "") : (initial?.oneOffTaxId ?? client?.idNumber ?? ""),
+  );
+  const [emails, setEmails] = useState<string[]>(
+    storedDraft ? (storedDraft.clientEmails ?? []) : client?.email ? [client.email] : [],
+  );
+  const [date, setDate] = useState(storedDraft?.date ?? today);
+  const [dueDate, setDueDate] = useState(storedDraft?.dueDate ?? lastDayOfMonth(today));
+  const [vatIncluded, setVatIncluded] = useState(storedDraft?.vatIncluded ?? true);
+  const [currency, setCurrency] = useState<DocCurrency>((storedDraft?.currency as DocCurrency) ?? "ILS");
+  const [description, setDescription] = useState(
+    storedDraft?.description ?? (related ? `קבלה עבור ${related.label}` : ""),
+  );
+  const [remarks, setRemarks] = useState(storedDraft?.remarks ?? "");
+
+  const emptyItem = (rate?: string | null): ItemRow => ({
+    key: nextKey(),
+    description: "",
+    quantity: "1",
+    unitPrice: rate ?? "",
+  });
+  // Every field is open from the start, so there is always a line to fill in
+  const [items, setItems] = useState<ItemRow[]>(() => {
+    const rows = storedDraft?.items.map((it) => ({
       key: nextKey(),
-      method: "BIT",
-      date: today,
-      amount: related ? related.balance : "",
-      autoAmount: !related,
-    },
-  ]);
+      description: it.description,
+      quantity: String(it.quantity),
+      unitPrice: agorotToDecimalString(it.unitPriceAgorot),
+    }));
+    return rows?.length ? rows : [emptyItem(client?.rate)];
+  });
+  const [sessionIds, setSessionIds] = useState<string[]>(
+    storedDraft?.sessionIds ?? initial?.sessionIds ?? [],
+  );
+  const [payments, setPayments] = useState<PaymentRow[]>(() =>
+    storedDraft?.payments.length
+      ? storedDraft.payments.map((p) => ({
+          ...p,
+          key: nextKey(),
+          amount: agorotToDecimalString(p.amountAgorot),
+          autoAmount: false,
+          cardType: p.cardType ?? undefined,
+          dealType: p.dealType ?? undefined,
+          bankName: p.bankName ?? undefined,
+          bankBranch: p.bankBranch ?? undefined,
+          bankAccount: p.bankAccount ?? undefined,
+          chequeNumber: p.chequeNumber ?? undefined,
+          cardLast4: p.cardLast4 ?? undefined,
+          reference: p.reference ?? undefined,
+          installments: p.installments != null ? String(p.installments) : undefined,
+        }))
+      : [
+          {
+            key: nextKey(),
+            method: "BIT",
+            date: today,
+            amount: related ? related.balance : "",
+            autoAmount: !related,
+          },
+        ],
+  );
 
   const [showPreview, setShowPreview] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
@@ -151,7 +198,7 @@ export function DocumentForm({
   const [copied, setCopied] = useState(false);
 
   const clientSessions = sessions.filter((s) => s.clientId === clientId);
-  const pickedSessions = new Set(items.map((i) => i.sessionId).filter(Boolean));
+  const money = (agorot: number) => formatDocMoney(agorot, currency);
 
   // The draft as the rules (and morning) see it
   const draft: DocumentDraft = useMemo(
@@ -159,20 +206,21 @@ export function DocumentForm({
       kind,
       clientName,
       clientTaxId: clientTaxId || null,
-      clientEmail: sendEmail ? clientEmail || null : null,
+      clientEmails: emails.map((e) => e.trim()).filter(Boolean),
       date,
       dueDate: info.hasDueDate ? dueDate || null : null,
       vatIncluded,
+      currency,
+      sessionIds: info.hasSessions && clientId ? sessionIds : [],
       description: description || null,
       remarks: remarks || null,
-      items: items
-        .filter((it) => info.hasItems || it.sessionId)
-        .map((it) => ({
-          description: it.description,
-          quantity: Number(it.quantity) || 0,
-          unitPriceAgorot: parseAgorot(it.unitPrice) ?? 0,
-          sessionId: it.sessionId ?? null,
-        })),
+      items: info.hasItems
+        ? items.map((it) => ({
+            description: it.description,
+            quantity: Number(it.quantity) || 0,
+            unitPriceAgorot: parseAgorot(it.unitPrice) ?? 0,
+          }))
+        : [],
       payments: info.hasPayments
         ? payments.map((p) => ({
             method: p.method,
@@ -190,14 +238,11 @@ export function DocumentForm({
           }))
         : [],
     }),
-    [kind, info, clientName, clientTaxId, sendEmail, clientEmail, date, dueDate, vatIncluded, description, remarks, items, payments],
+    [kind, info, clientId, clientName, clientTaxId, emails, date, dueDate, vatIncluded, currency, sessionIds, description, remarks, items, payments],
   );
   const totals = documentTotals(draft, business.vatLiable);
-  // What the receipt lines should add up to: the invoice total, or (receipt)
-  // the meetings it covers
-  const targetAgorot = info.hasItems
-    ? totals.totalAgorot
-    : draft.items.reduce((s, it) => s + lineAgorot(it), 0);
+  // What the receipt lines should add up to (a receipt has no total of its own)
+  const targetAgorot = info.hasItems ? totals.totalAgorot : 0;
 
   // A single auto receipt line follows the total
   const shownPayments = payments.map((p, i) =>
@@ -206,22 +251,22 @@ export function DocumentForm({
       : p,
   );
 
-  function pickClient(id: string) {
-    const c = clients.find((x) => x.id === id);
-    setClientId(id);
+  function pickClient(value: string) {
+    const c = clients.find((x) => x.id === value);
+    setOneOff(value === ONE_OFF);
+    setClientId(c?.id ?? "");
     setClientName(c?.name ?? "");
     setClientTaxId(c?.idNumber ?? "");
-    setClientEmail(c?.email ?? "");
-    setSendEmail(false);
-    setItems((prev) => prev.filter((it) => !it.sessionId));
+    setEmails(c?.email ? [c.email] : []);
+    setSessionIds([]);
+    // A rate typed for the previous client shouldn't follow the next one
+    setItems((prev) =>
+      prev.length === 1 && !prev[0].description ? [emptyItem(c?.rate)] : prev,
+    );
   }
 
-  function toggleSession(s: DocSessionOption) {
-    setItems((prev) =>
-      prev.some((it) => it.sessionId === s.id)
-        ? prev.filter((it) => it.sessionId !== s.id)
-        : [...prev, sessionRow(s)],
-    );
+  function toggleSession(id: string) {
+    setSessionIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
   const updateItem = (key: string, patch: Partial<ItemRow>) =>
@@ -242,8 +287,7 @@ export function DocumentForm({
 
   function openPreview() {
     setServerError(null);
-    const d = submittable();
-    const found = clientId ? documentProblems(d, business.vatLiable) : ["יש לבחור לקוח/ה.", ...documentProblems(d, business.vatLiable)];
+    const found = documentProblems(submittable(), business.vatLiable);
     setProblems(found);
     if (found.length === 0) {
       setShowPreview(true);
@@ -258,10 +302,13 @@ export function DocumentForm({
       clientId,
       clientName: d.clientName,
       clientTaxId: d.clientTaxId ?? "",
-      clientEmail: d.clientEmail ?? "",
+      clientEmails: d.clientEmails ?? [],
       date: d.date,
       dueDate: d.dueDate ?? "",
       vatIncluded: d.vatIncluded,
+      currency: d.currency,
+      sessionIds: d.sessionIds ?? [],
+      draftId: stored?.id ?? "",
       description: d.description ?? "",
       remarks: d.remarks ?? "",
       relatedInvoiceId: related?.id ?? "",
@@ -269,7 +316,6 @@ export function DocumentForm({
         description: it.description,
         quantity: it.quantity,
         unitPrice: agorotToDecimalString(it.unitPriceAgorot),
-        sessionId: it.sessionId ?? "",
       })),
       payments: d.payments.map((p) => ({
         method: p.method,
@@ -439,13 +485,12 @@ export function DocumentForm({
             <Label htmlFor="doc-client">לקוח/ה *</Label>
             <Select
               id="doc-client"
-              value={clientId}
+              value={oneOff ? ONE_OFF : clientId}
               disabled={!!related}
               onChange={(e) => pickClient(e.target.value)}
             >
-              <option value="" disabled>
-                בחר/י לקוח/ה
-              </option>
+              <option value="">בחירת לקוח/ה מהרשימה</option>
+              <option value={ONE_OFF}>לקוח מזדמן (לא ברשימה)</option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -453,14 +498,14 @@ export function DocumentForm({
               ))}
             </Select>
           </div>
-          {clientId && (
-            <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="doc-name">{clientId ? "שם על המסמך *" : "שם הלקוח/ה *"}</Label>
+              <Input id="doc-name" value={clientName} onChange={(e) => setClientName(e.target.value)} maxLength={120} />
+            </div>
+            {info.hasTaxId && (
               <div>
-                <Label htmlFor="doc-name">שם על המסמך *</Label>
-                <Input id="doc-name" value={clientName} onChange={(e) => setClientName(e.target.value)} maxLength={120} />
-              </div>
-              <div>
-                <Label htmlFor="doc-taxid">ת״ז / ח״פ</Label>
+                <Label htmlFor="doc-taxid">ח.פ / ת.ז לקוח</Label>
                 <Input
                   id="doc-taxid"
                   value={clientTaxId}
@@ -469,10 +514,14 @@ export function DocumentForm({
                   dir="ltr"
                   className="text-right"
                   maxLength={20}
+                  aria-describedby="doc-taxid-hint"
                 />
+                <p id="doc-taxid-hint" className="text-xs text-ink-muted mt-1">
+                  חובה לקבלת מספר הקצאה
+                </p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="doc-date">תאריך המסמך *</Label>
@@ -497,175 +546,138 @@ export function DocumentForm({
               />
             </div>
           )}
-          {morningConnected && clientId && (
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm text-ink-soft">
-                <input
-                  type="checkbox"
-                  checked={sendEmail}
-                  onChange={(e) => setSendEmail(e.target.checked)}
-                  className="h-4 w-4 accent-sage-600"
-                />
-                ש-morning ישלח ללקוח/ה את המסמך במייל
-              </label>
-              {sendEmail && (
-                <Input
-                  type="email"
-                  dir="ltr"
-                  className="text-right"
-                  value={clientEmail}
-                  onChange={(e) => setClientEmail(e.target.value)}
-                  placeholder="כתובת המייל של הלקוח/ה"
-                />
-              )}
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {clientId && (
+      {info.hasItems && (
         <Card>
           <CardHeader>
-            <CardTitle>{info.hasItems ? "פירוט הכנסות" : "הפגישות שהקבלה עבורן"}</CardTitle>
-            <p className="text-xs text-ink-muted mt-1">
-              {info.hasItems
-                ? "מסמנים פגישות שהתקיימו ועוד לא חויבו, או מוסיפים שורה. מטבע: ₪ (שקל)."
-                : "לא חובה — הקבלה עצמה מציגה רק את התקבולים, אבל כך הפגישות מסומנות כמחויבות ומספר הקבלה נרשם בהן."}
-            </p>
+            <CardTitle>פירוט הכנסות</CardTitle>
+            <p className="text-xs text-ink-muted mt-1">השירות או המוצר שהמסמך עבורם.</p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {clientSessions.length > 0 ? (
-              <ul className="divide-y divide-cream-200 -mx-5 -mt-5 border-b border-cream-200">
-                {clientSessions.map((s) => (
-                  <li key={s.id}>
-                    <label className="flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-cream-100/60">
-                      <input
-                        type="checkbox"
-                        checked={pickedSessions.has(s.id)}
-                        onChange={() => toggleSession(s)}
-                        className="w-4 h-4 accent-sage-600"
-                      />
-                      <span className="flex-1 text-sm text-ink">{s.label}</span>
-                      {s.rate && <span className="text-sm text-ink-muted">₪{Number(s.rate)}</span>}
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-ink-muted">אין פגישות שהתקיימו ועוד לא חויבו.</p>
-            )}
-
-            {info.hasItems && (
-              <>
-                {items.length > 0 && (
-                  <div className="space-y-2">
-                    {items.map((it) => (
-                      <div key={it.key} className="grid grid-cols-12 gap-2 items-end rounded-xl bg-cream-100 p-2.5">
-                        <div className="col-span-12 sm:col-span-6">
-                          <Label className="text-xs">תיאור</Label>
-                          <Input
-                            value={it.description}
-                            onChange={(e) => updateItem(it.key, { description: e.target.value })}
-                            maxLength={200}
-                            className="h-10"
-                          />
-                        </div>
-                        <div className="col-span-3 sm:col-span-2">
-                          <Label className="text-xs">כמות</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.5"
-                            inputMode="decimal"
-                            value={it.quantity}
-                            onChange={(e) => updateItem(it.key, { quantity: e.target.value })}
-                            className="h-10"
-                          />
-                        </div>
-                        <div className="col-span-7 sm:col-span-3">
-                          <Label className="text-xs">מחיר (₪)</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            inputMode="decimal"
-                            value={it.unitPrice}
-                            onChange={(e) => updateItem(it.key, { unitPrice: e.target.value })}
-                            className="h-10"
-                          />
-                        </div>
-                        <div className="col-span-2 sm:col-span-1 flex justify-center pb-2">
-                          <button
-                            type="button"
-                            onClick={() => setItems((prev) => prev.filter((x) => x.key !== it.key))}
-                            className="text-ink-muted hover:text-terracotta-500 p-1"
-                            aria-label="הסרת השורה"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+            <div className="space-y-2">
+              {items.map((it) => (
+                <div key={it.key} className="grid grid-cols-12 gap-2 items-end rounded-xl bg-cream-100 p-2.5">
+                  <div className="col-span-12 sm:col-span-5">
+                    <Label className="text-xs">פירוט</Label>
+                    <Input
+                      value={it.description}
+                      onChange={(e) => updateItem(it.key, { description: e.target.value })}
+                      maxLength={200}
+                      className="h-10"
+                    />
                   </div>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    setItems((prev) => [
-                      ...prev,
-                      { key: nextKey(), description: "", quantity: "1", unitPrice: client?.rate ?? "" },
-                    ])
-                  }
-                >
-                  <Plus className="w-4 h-4" /> הוספת שורה
-                </Button>
-                {business.vatLiable && (
-                  <div className="inline-flex rounded-full border border-cream-300 bg-cream-100 p-1 text-sm">
-                    {[
-                      { v: true, label: "המחירים כוללים מע״מ" },
-                      { v: false, label: "לא כוללים מע״מ" },
-                    ].map((o) => (
+                  <div className="col-span-3 sm:col-span-2">
+                    <Label className="text-xs">כמות</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      inputMode="decimal"
+                      value={it.quantity}
+                      onChange={(e) => updateItem(it.key, { quantity: e.target.value })}
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="col-span-4 sm:col-span-2">
+                    <Label className="text-xs">מחיר ליחידה</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={it.unitPrice}
+                      onChange={(e) => updateItem(it.key, { unitPrice: e.target.value })}
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="col-span-4 sm:col-span-2">
+                    <Label className="text-xs">מטבע</Label>
+                    <Select
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value as DocCurrency)}
+                      className="h-10"
+                      aria-label="מטבע המסמך"
+                    >
+                      {DOC_CURRENCIES.map((c) => (
+                        <option key={c} value={c}>
+                          {DOC_CURRENCY_LABELS[c]}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="col-span-1 flex justify-center pb-2">
+                    {items.length > 1 && (
                       <button
-                        key={String(o.v)}
                         type="button"
-                        onClick={() => setVatIncluded(o.v)}
-                        className={cn(
-                          "px-3 py-1 rounded-full",
-                          vatIncluded === o.v ? "bg-white text-ink shadow-soft" : "text-ink-muted",
-                        )}
+                        onClick={() => setItems((prev) => prev.filter((x) => x.key !== it.key))}
+                        className="text-ink-muted hover:text-terracotta-500 p-1"
+                        aria-label="הסרת השורה"
                       >
-                        {o.label}
+                        <X className="w-4 h-4" />
                       </button>
-                    ))}
-                  </div>
-                )}
-                <div className="ms-auto max-w-xs space-y-1 text-sm">
-                  {business.vatLiable && (
-                    <>
-                      <div className="flex justify-between text-ink-muted">
-                        <span>לפני מע״מ</span>
-                        <span>{ils(totals.netAgorot)}</span>
-                      </div>
-                      <div className="flex justify-between text-ink-muted">
-                        <span>מע״מ {totals.vatPercent}%</span>
-                        <span>{ils(totals.vatAgorot)}</span>
-                      </div>
-                    </>
-                  )}
-                  <div className="flex justify-between font-semibold text-ink border-t border-cream-300 pt-1">
-                    <span>סה״כ</span>
-                    <span>{ils(totals.totalAgorot)}</span>
+                    )}
                   </div>
                 </div>
-              </>
+              ))}
+            </div>
+            {currency !== "ILS" && (
+              <p className="text-xs text-ink-muted">
+                המטבע משותף לכל שורות המסמך. דוחות ההכנסה בשקלים, ומסמך במטבע אחר לא נספר בהם.
+              </p>
             )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setItems((prev) => [...prev, emptyItem(client?.rate)])}
+            >
+              <Plus className="w-4 h-4" /> הוספת שורה
+            </Button>
+            {business.vatLiable && (
+              <div className="inline-flex rounded-full border border-cream-300 bg-cream-100 p-1 text-sm">
+                {[
+                  { v: true, label: "המחירים כוללים מע״מ" },
+                  { v: false, label: "לא כוללים מע״מ" },
+                ].map((o) => (
+                  <button
+                    key={String(o.v)}
+                    type="button"
+                    onClick={() => setVatIncluded(o.v)}
+                    className={cn(
+                      "px-3 py-1 rounded-full",
+                      vatIncluded === o.v ? "bg-white text-ink shadow-soft" : "text-ink-muted",
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="ms-auto max-w-xs space-y-1 text-sm">
+              {business.vatLiable && (
+                <>
+                  <div className="flex justify-between text-ink-muted">
+                    <span>לפני מע״מ</span>
+                    <span>{money(totals.netAgorot)}</span>
+                  </div>
+                  <div className="flex justify-between text-ink-muted">
+                    <span>מע״מ {totals.vatPercent}%</span>
+                    <span>{money(totals.vatAgorot)}</span>
+                  </div>
+                </>
+              )}
+              <div className="flex justify-between font-semibold text-ink border-t border-cream-300 pt-1">
+                <span>סה״כ</span>
+                <span>{money(totals.totalAgorot)}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {clientId && info.hasPayments && (
+      {info.hasPayments && (
         <Card>
           <CardHeader>
             <CardTitle>פירוט תקבולים</CardTitle>
@@ -701,7 +713,7 @@ export function DocumentForm({
                     />
                   </div>
                   <div className="sm:col-span-3">
-                    <Label className="text-xs">סכום (₪)</Label>
+                    <Label className="text-xs">סכום</Label>
                     <Input
                       type="number"
                       min="0"
@@ -780,28 +792,95 @@ export function DocumentForm({
             <div className="flex justify-between text-sm max-w-xs ms-auto">
               <span className="text-ink-muted">סה״כ תקבולים</span>
               <span className="font-semibold text-ink">
-                {ils(shownPayments.reduce((s, p) => s + (parseAgorot(p.amount) ?? 0), 0))}
+                {money(shownPayments.reduce((s, p) => s + (parseAgorot(p.amount) ?? 0), 0))}
               </span>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {clientId && (
+      {info.hasSessions && clientId && (
         <Card>
-          <CardContent className="space-y-2">
-            <Label htmlFor="doc-remarks">הערות שיופיעו במסמך</Label>
-            <Textarea
-              id="doc-remarks"
-              rows={2}
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              maxLength={1000}
-              placeholder="לא חובה"
-            />
-          </CardContent>
+          <CardHeader>
+            <CardTitle>שיוך לפגישות</CardTitle>
+            <p className="text-xs text-ink-muted mt-1">
+              פנימי בלבד, לא מופיע במסמך. בהפקה מספר המסמך נרשם בפרטי התשלום של הפגישות שסומנו.
+            </p>
+          </CardHeader>
+          {clientSessions.length > 0 ? (
+            <ul className="divide-y divide-cream-200">
+              {clientSessions.map((s) => (
+                <li key={s.id}>
+                  <label className="flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-cream-100/60">
+                    <input
+                      type="checkbox"
+                      checked={sessionIds.includes(s.id)}
+                      onChange={() => toggleSession(s.id)}
+                      className="w-4 h-4 accent-sage-600"
+                    />
+                    <span className="flex-1 text-sm text-ink">{s.label}</span>
+                    {s.rate && <span className="text-sm text-ink-muted">₪{Number(s.rate)}</span>}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <CardContent>
+              <p className="text-sm text-ink-muted">אין פגישות שעוד לא שויך אליהן תשלום.</p>
+            </CardContent>
+          )}
         </Card>
       )}
+
+      <Card>
+        <CardContent className="space-y-2">
+          <Label htmlFor="doc-remarks">הערות שיופיעו במסמך</Label>
+          <Textarea
+            id="doc-remarks"
+            rows={2}
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+            maxLength={1000}
+            placeholder="לא חובה"
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-2">
+          <Label htmlFor="doc-email-0">שליחה במייל</Label>
+          <p className="text-xs text-ink-muted">
+            {morningConnected
+              ? "בהפקה morning שולח את המסמך לכתובות האלה. בלי כתובת המסמך לא נשלח."
+              : "הכתובות נשמרות עם המסמך. השליחה נעשית בהפקה דרך morning."}
+          </p>
+          {emails.map((e, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                id={`doc-email-${i}`}
+                type="email"
+                dir="ltr"
+                className="text-right h-10"
+                value={e}
+                maxLength={200}
+                aria-label={`כתובת מייל ${i + 1}`}
+                onChange={(ev) => setEmails((prev) => prev.map((x, j) => (j === i ? ev.target.value : x)))}
+              />
+              <button
+                type="button"
+                onClick={() => setEmails((prev) => prev.filter((_, j) => j !== i))}
+                className="text-ink-muted hover:text-terracotta-500 p-1"
+                aria-label={`הסרת כתובת ${i + 1}`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+          <Button type="button" variant="ghost" size="sm" onClick={() => setEmails((prev) => [...prev, ""])}>
+            <Plus className="w-4 h-4" /> הוספת כתובת
+          </Button>
+        </CardContent>
+      </Card>
 
       {(problems.length > 0 || serverError) && (
         <div className="rounded-xl border border-terracotta-500/30 bg-terracotta-500/10 px-4 py-3 text-sm text-terracotta-600 space-y-1">
@@ -816,14 +895,20 @@ export function DocumentForm({
         </div>
       )}
 
-      <div className="flex items-center gap-3 justify-end">
-        <Link href="/invoices">
+      <div className="flex flex-wrap items-center gap-2 justify-end">
+        <Link href={stored ? `/invoices/${stored.id}` : "/invoices"}>
           <Button type="button" variant="ghost">
             ביטול
           </Button>
         </Link>
-        <Button type="submit">
+        <Button type="button" variant="secondary" onClick={() => save("draft")} disabled={pending}>
+          <Save className="w-4 h-4" /> {pending ? "שומר…" : "שמירה כטיוטה"}
+        </Button>
+        <Button type="submit" variant="secondary">
           <Eye className="w-4 h-4" /> תצוגה מקדימה
+        </Button>
+        <Button type="button" onClick={openPreview}>
+          <FileCheck className="w-4 h-4" /> הפקת מסמך
         </Button>
       </div>
     </form>

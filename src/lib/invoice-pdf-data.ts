@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { clientIdNumber } from "@/lib/sensitive-fields";
 import type { InvoicePDFData } from "@/components/invoices/invoice-pdf";
-import { docTypeLabel } from "@/lib/billing-docs";
+import { documentClientName, docTypeLabel } from "@/lib/billing-docs";
 
 export type LoadedInvoice = NonNullable<Awaited<ReturnType<typeof loadInvoiceWithRelations>>>;
 
@@ -42,15 +42,26 @@ export async function loadInvoicePdfData(
       email: invoice.user.email,
       vatLiable: invoice.user.vatLiable,
     },
-    client: {
-      firstName: invoice.client.firstName,
-      lastName: invoice.client.lastName,
-      idNumber: clientIdNumber(invoice.client),
-      address: invoice.client.address,
-      email: invoice.client.email,
-      phone: invoice.client.phone,
-    },
-    items: invoice.items.map((it) => ({
+    currency: invoice.currency,
+    // A one-off client is known only by the name printed on the document
+    client: invoice.client
+      ? {
+          firstName: invoice.client.firstName,
+          lastName: invoice.client.lastName,
+          idNumber: clientIdNumber(invoice.client),
+          address: invoice.client.address,
+          email: invoice.client.email,
+          phone: invoice.client.phone,
+        }
+      : {
+          firstName: documentClientName(invoice),
+          lastName: "",
+          idNumber: invoice.docClientTaxId,
+          address: null,
+          email: null,
+          phone: null,
+        },
+    items: invoice.items.filter((it) => !it.linkOnly).map((it) => ({
       description: it.description,
       quantity: Number(it.quantity),
       unitPrice: Number(it.unitPrice),

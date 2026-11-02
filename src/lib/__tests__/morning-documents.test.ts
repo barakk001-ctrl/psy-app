@@ -40,7 +40,7 @@ const draft: DocumentDraft = {
   kind: "TAX_INVOICE_RECEIPT",
   clientName: " דנה כהן ",
   clientTaxId: "000000018",
-  clientEmail: null,
+  clientEmails: [],
   date: "2026-10-14",
   vatIncluded: true,
   description: "",
@@ -101,7 +101,7 @@ describe("buildMorningDocumentPayload", () => {
 
   it("emails the document only when asked", () => {
     const p = buildMorningDocumentPayload(
-      { ...draft, clientEmail: "dana@example.com" },
+      { ...draft, clientEmails: ["dana@example.com"] },
       { vatLiable: true },
     ) as Record<string, any>;
     expect(p.client.emails).toEqual(["dana@example.com"]);

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Receipt, Wallet, CheckCircle2, Clock, FileText, MinusCircle } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { documentClientName } from "@/lib/billing-docs";
 import { Card, CardContent } from "@/components/ui/card";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { FollowUpFiltersBar, ShowMoreLink } from "@/components/follow-up/follow-up-filters";
@@ -240,7 +241,7 @@ export default async function CollectPage({
                     >
                       <div>
                         <div className="font-medium text-ink">
-                          {inv.client.firstName} {inv.client.lastName}
+                          {documentClientName(inv)}
                           <span className="text-ink-muted font-normal">
                             {" "}
                             · #{String(inv.number).padStart(4, "0")}
@@ -253,7 +254,7 @@ export default async function CollectPage({
                       </div>
                       <div className="text-left shrink-0">
                         <div className="font-display text-lg text-ink">
-                          {formatCurrency(balance)}
+                          {formatCurrency(balance, inv.currency)}
                         </div>
                         <div className="text-[10px] text-ink-muted">
                           יתרה לתשלום

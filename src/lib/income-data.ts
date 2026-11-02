@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { documentClientName } from "@/lib/billing-docs";
 import {
   incomeEntries,
   type IncomeEntry,
@@ -18,14 +19,18 @@ export async function loadInvoicePayments(
   to: Date,
 ): Promise<RawInvoicePayment[]> {
   const rows = await db.payment.findMany({
-    where: { invoice: { userId }, paidAt: { gte: from, lt: to } },
+    where: { invoice: { userId, currency: "ILS" }, paidAt: { gte: from, lt: to } },
     orderBy: { paidAt: "asc" },
     select: {
       amount: true,
       paidAt: true,
       method: true,
       invoice: {
-        select: { clientId: true, client: { select: { firstName: true, lastName: true } } },
+        select: {
+          clientId: true,
+          docClientName: true,
+          client: { select: { firstName: true, lastName: true } },
+        },
       },
     },
   });
@@ -33,8 +38,9 @@ export async function loadInvoicePayments(
     amount: Number(p.amount),
     paidAt: p.paidAt,
     method: p.method,
-    clientId: p.invoice.clientId,
-    clientName: name(p.invoice.client),
+    // One-off clients have no id; each name stands on its own in "by client"
+    clientId: p.invoice.clientId ?? `one-off:${documentClientName(p.invoice)}`,
+    clientName: documentClientName(p.invoice),
   }));
 }
 

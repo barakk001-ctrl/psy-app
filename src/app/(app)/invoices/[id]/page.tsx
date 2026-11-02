@@ -87,6 +87,10 @@ export default async function InvoiceDetailPage({
   const total = Number(invoice.total);
   const paid = Number(invoice.amountPaid);
   const balance = total - paid;
+  // Older app invoices always have a client; only the new documents can be one-off
+  const client = invoice.client;
+  if (!client) notFound();
+
   const morningConnected = !!(await getMorningCredentials(userId));
   const owner = await db.user.findUnique({
     where: { id: userId },
@@ -122,7 +126,7 @@ export default async function InvoiceDetailPage({
           {invoice.status !== "CANCELLED" && (
             <SendInvoiceEmailButton
               invoiceId={invoice.id}
-              clientEmail={invoice.client.email}
+              clientEmail={client.email}
             />
           )}
           {morningConnected &&
@@ -252,24 +256,24 @@ export default async function InvoiceDetailPage({
             </CardHeader>
             <CardContent className="text-sm space-y-2">
               <Link
-                href={`/clients/${invoice.client.id}`}
+                href={`/clients/${client.id}`}
                 className="flex items-center gap-2 text-ink hover:text-sage-600"
               >
                 <UserIcon className="w-4 h-4 text-ink-subtle" />
                 <span className="font-medium">
-                  {invoice.client.firstName} {invoice.client.lastName}
+                  {client.firstName} {client.lastName}
                 </span>
               </Link>
-              {clientIdNumber(invoice.client) && (
+              {clientIdNumber(client) && (
                 <div className="text-xs text-ink-muted">
-                  ת.ז: <span dir="ltr">{clientIdNumber(invoice.client)}</span>
+                  ת.ז: <span dir="ltr">{clientIdNumber(client)}</span>
                 </div>
               )}
-              {invoice.client.email && (
-                <div className="text-xs text-ink-muted" dir="ltr">{invoice.client.email}</div>
+              {client.email && (
+                <div className="text-xs text-ink-muted" dir="ltr">{client.email}</div>
               )}
-              {invoice.client.phone && (
-                <div className="text-xs text-ink-muted" dir="ltr">{invoice.client.phone}</div>
+              {client.phone && (
+                <div className="text-xs text-ink-muted" dir="ltr">{client.phone}</div>
               )}
             </CardContent>
           </Card>

@@ -8,8 +8,10 @@ import {
   DOC_KINDS,
   canCreditNote,
   docKindByCode,
+  documentClientName,
   documentProblems,
   parseAgorot,
+  splitEmails,
   type CardType,
   type DealType,
   type DocumentDraft,
@@ -47,15 +49,22 @@ export function draftFromInvoice(inv: InvoiceWithParts): DocumentDraft | null {
   if (!info) return null;
   return {
     kind: info.kind,
-    clientName: inv.docClientName ?? `${inv.client.firstName} ${inv.client.lastName}`.trim(),
+    // An unfinished one-off draft has no name yet
+    clientName: inv.docClientName ?? (inv.client ? documentClientName(inv) : ""),
     clientTaxId: inv.docClientTaxId,
-    clientEmail: inv.docClientEmail,
+    clientEmails: splitEmails(inv.docClientEmail),
     date: clinicDay(inv.issueDate),
     dueDate: inv.dueDate ? clinicDay(inv.dueDate) : null,
     vatIncluded: inv.vatIncluded,
+    currency: inv.currency,
+    sessionIds: [
+      ...inv.draftSessionIds,
+      ...inv.items.filter((it) => it.linkOnly && it.sessionId).map((it) => it.sessionId as string),
+    ],
     description: inv.description,
     remarks: inv.notes,
-    items: [...inv.items]
+    items: inv.items
+      .filter((it) => !it.linkOnly)
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((it) => ({
         description: it.description,
@@ -88,6 +97,65 @@ const SESSION_FIELDS: Partial<Record<number, readonly [string, string]>> = {
   320: ["morningInvoiceReceiptNumber", "morningInvoiceReceiptUrl"],
   400: ["morningReceiptNumber", "morningReceiptUrl"],
 };
+
+type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+
+/** Hebrew label of a meeting ticked on a document. */
+const linkedSessionLabel = (startsAt: Date) =>
+  `פגישה ${new Intl.DateTimeFormat("he-IL", {
+    day: "numeric",
+    month: "numeric",
+    year: "2-digit",
+    timeZone: "Asia/Jerusalem",
+  }).format(startsAt)}`;
+
+/**
+ * Turns the meetings ticked on a document into links, once it has a number:
+ * a linkOnly item (the meeting now counts as billed) and the number in the
+ * meeting's own field, unless one is already there. A meeting that was linked
+ * to something else in the meantime is left alone. Internal: nothing here
+ * reaches the document.
+ */
+export async function linkDraftSessions(
+  tx: Tx,
+  userId: string,
+  inv: { id: string; docType: number | null; draftSessionIds: string[]; items: { sessionId: string | null }[] },
+  number: string | null,
+  url: string | null,
+): Promise<void> {
+  const free = inv.draftSessionIds.length
+    ? await tx.session.findMany({
+        where: { id: { in: inv.draftSessionIds }, userId, invoiceItem: null },
+        select: { id: true, startsAt: true },
+      })
+    : [];
+  if (free.length) {
+    await tx.invoiceItem.createMany({
+      data: free.map((s) => ({
+        invoiceId: inv.id,
+        sessionId: s.id,
+        linkOnly: true,
+        description: linkedSessionLabel(s.startsAt),
+        quantity: 1,
+        unitPrice: 0,
+        amount: 0,
+      })),
+      skipDuplicates: true,
+    });
+  }
+  await tx.invoice.update({ where: { id: inv.id }, data: { draftSessionIds: [] } });
+  const fields = inv.docType != null ? SESSION_FIELDS[inv.docType] : undefined;
+  if (!fields || !number) return;
+  const [numberField, urlField] = fields;
+  const ids = [...inv.items.map((it) => it.sessionId), ...free.map((s) => s.id)];
+  for (const id of ids) {
+    if (!id) continue;
+    await tx.session.updateMany({
+      where: { id, userId, [numberField]: null },
+      data: { [numberField]: number, [urlField]: url },
+    });
+  }
+}
 
 /** How long an issue in progress blocks another attempt. */
 const ISSUE_CLAIM_MS = 2 * 60_000;
@@ -177,6 +245,16 @@ export async function issueStoredDocument(userId: string, invoiceId: string): Pr
   const built = await payloadFor(userId, inv);
   if ("error" in built) return { ok: false, error: built.error };
 
+  // Before anything goes to morning, not after it issued
+  if (inv.draftSessionIds.length) {
+    const taken = await db.session.count({
+      where: { id: { in: inv.draftSessionIds }, userId, invoiceItem: { isNot: null } },
+    });
+    if (taken > 0) {
+      return { ok: false, error: "אחת הפגישות שסומנו כבר משויכת למסמך אחר. מסירים אותה מהטיוטה ומנסים שוב." };
+    }
+  }
+
   const claim = await db.invoice.updateMany({
     where: {
       id: invoiceId,
@@ -225,17 +303,7 @@ export async function issueStoredDocument(userId: string, invoiceId: string): Pr
             : computeInvoiceStatus(inv.status === "DRAFT" ? "SENT" : inv.status, paid, total),
       },
     });
-    const fields = inv.docType != null ? SESSION_FIELDS[inv.docType] : undefined;
-    if (fields && number) {
-      const [numberField, urlField] = fields;
-      for (const it of inv.items) {
-        if (!it.sessionId) continue;
-        await tx.session.updateMany({
-          where: { id: it.sessionId, userId, [numberField]: null },
-          data: { [numberField]: number, [urlField]: url },
-        });
-      }
-    }
+    await linkDraftSessions(tx, userId, inv, number, url);
     // A credit note cancels its invoice and frees its meetings for billing again
     if (inv.docType === DOC_KINDS.CREDIT_NOTE.code && inv.relatedInvoiceId) {
       await tx.invoice.updateMany({

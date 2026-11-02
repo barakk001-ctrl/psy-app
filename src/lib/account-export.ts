@@ -418,7 +418,7 @@ ${noteText(path, s.note!)}
     csvEntry(
       tally,
       "חשבוניות ומסמכים.csv",
-      ["מזהה", "מספר", "סוג מסמך", "לקוח/ה", "שם על המסמך", "מספר זיהוי על המסמך", "תאריך", "תאריך לתשלום", "סטטוס", "סכום ביניים", "סה״כ", "שולם", "מספר ב-morning", "קישור ב-morning", "תיאור", "הערות"],
+      ["מזהה", "מספר", "סוג מסמך", "לקוח/ה", "שם על המסמך", "מספר זיהוי על המסמך", "תאריך", "תאריך לתשלום", "סטטוס", "סכום ביניים", "סה״כ", "שולם", "מספר ב-morning", "קישור ב-morning", "תיאור", "הערות", "מטבע", "מייל למשלוח", "פגישות שסומנו בטיוטה"],
       () => paged((c) => dbAll.invoice.findMany({ where: mine, ...orderPage, ...c })),
       (r) => [
         r.id,
@@ -437,12 +437,15 @@ ${noteText(path, s.note!)}
         r.morningDocUrl,
         r.description,
         r.notes,
+        r.currency,
+        r.docClientEmail,
+        r.draftSessionIds.join(" "),
       ],
     ),
     csvEntry(
       tally,
       "שורות חשבונית.csv",
-      ["מזהה", "מספר מסמך", "תיאור", "כמות", "מחיר ליחידה", "סכום", "מזהה פגישה"],
+      ["מזהה", "מספר מסמך", "תיאור", "כמות", "מחיר ליחידה", "סכום", "מזהה פגישה", "שיוך פנימי בלבד"],
       () =>
         paged((c) =>
           dbAll.invoiceItem.findMany({
@@ -452,7 +455,7 @@ ${noteText(path, s.note!)}
             ...c,
           }),
         ),
-      (r) => [r.id, r.invoice.number, r.description, r.quantity, r.unitPrice, r.amount, r.sessionId],
+      (r) => [r.id, r.invoice.number, r.description, r.quantity, r.unitPrice, r.amount, r.sessionId, r.linkOnly ? "כן" : ""],
     ),
     csvEntry(
       tally,

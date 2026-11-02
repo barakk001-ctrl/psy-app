@@ -477,8 +477,10 @@ model Invoice {
   id            String        @id @default(cuid())
   userId        String
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clientId      String
-  client        Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  // null = "לקוח מזדמן": a one-off client, known only by docClientName below.
+  // No Client row is created for them.
+  clientId      String?
+  client        Client?       @relation(fields: [clientId], references: [id], onDelete: Restrict)
 
   number        Int           // sequential per user
   issueDate     DateTime      @default(now())
@@ -512,6 +514,12 @@ model Invoice {
   docClientEmail   String?
   // "תיאור תכולת המסמך" (shown on receipts, which have no item lines)
   description      String?
+  // ISO code. Reports count ILS documents only: no exchange rate is stored.
+  currency         String    @default("ILS")
+  // Meetings ticked on an unissued document. Internal, never printed. They
+  // become links (linkOnly items + the number on the meeting) only when the
+  // document is issued, so a failed issue leaves nothing behind.
+  draftSessionIds  String[]  @default([])
   // The document this one refers to (same user): for a credit note (330) the
   // invoice it cancels, for a receipt (400) the tax invoice (305) it pays
   relatedInvoiceId String?
@@ -544,6 +552,8 @@ model InvoiceItem {
   // If this line item bills a session, link it (one item per session max)
   sessionId     String?   @unique
   session       Session?  @relation(fields: [sessionId], references: [id])
+  // Only ties a meeting to the document: never printed, not a line of it
+  linkOnly      Boolean   @default(false)
 
   description   String
   quantity      Decimal   @default(1) @db.Decimal(10, 2)

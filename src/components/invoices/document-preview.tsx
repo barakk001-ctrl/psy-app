@@ -5,8 +5,8 @@ import {
   PAYMENT_DETAIL_FIELDS,
   PAYMENT_DETAIL_LABELS,
   PAYMENT_KIND_LABELS,
-  agorotToDecimalString,
   documentTotals,
+  formatDocMoney,
   lineAgorot,
   type CardType,
   type DealType,
@@ -20,12 +20,6 @@ export type PreviewBusiness = {
   phone: string | null;
   vatLiable: boolean;
 };
-
-const ils = (agorot: number) =>
-  `₪${Number(agorotToDecimalString(agorot)).toLocaleString("he-IL", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
 
 function heDate(day: string | null | undefined): string {
   if (!day) return "";
@@ -54,6 +48,7 @@ export function DocumentPreview({
 }) {
   const info = DOC_KINDS[draft.kind];
   const t = documentTotals(draft, business.vatLiable);
+  const ils = (agorot: number) => formatDocMoney(agorot, draft.currency);
 
   return (
     <article className="relative rounded-2xl border border-cream-300 bg-white text-ink shadow-soft overflow-hidden">
@@ -91,7 +86,7 @@ export function DocumentPreview({
         <section>
           <div className="text-xs text-ink-muted">לכבוד</div>
           <div className="font-medium">{draft.clientName || "—"}</div>
-          {draft.clientTaxId && <div className="text-xs text-ink-muted">ת״ז / ח״פ: {draft.clientTaxId}</div>}
+          {draft.clientTaxId && <div className="text-xs text-ink-muted">ח.פ / ת.ז: {draft.clientTaxId}</div>}
           {draft.description && <p className="text-sm text-ink-soft mt-2">{draft.description}</p>}
         </section>
 

@@ -8,7 +8,7 @@ import { MorningDocsPanel } from "@/components/invoices/morning-docs-panel";
 import { DocKindSquares } from "@/components/invoices/doc-kind-squares";
 import { getMorningCredentials } from "@/lib/morning";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { docTypeLabel } from "@/lib/billing-docs";
+import { documentClientName, docTypeLabel } from "@/lib/billing-docs";
 
 // "ב-morning" kept on one line (the hyphen is a break point before the LTR word)
 const inMorning = (
@@ -151,7 +151,7 @@ export default async function InvoicesPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-ink truncate text-sm sm:text-base">
-                        {inv.client.firstName} {inv.client.lastName}
+                        {documentClientName(inv)}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[10px] sm:text-xs text-ink-muted">
@@ -165,11 +165,11 @@ export default async function InvoicesPage() {
                     <div className="text-end shrink-0">
                       <div className="font-medium text-ink text-sm sm:text-base">
                         {inv.docType === 330 ? "−" : ""}
-                        {formatCurrency(total)}
+                        {formatCurrency(total, inv.currency)}
                       </div>
                       {balance > 0 && balance !== total && (
                         <div className="text-[10px] sm:text-xs text-terracotta-600 mt-0.5">
-                          יתרה: {formatCurrency(balance)}
+                          יתרה: {formatCurrency(balance, inv.currency)}
                         </div>
                       )}
                     </div>

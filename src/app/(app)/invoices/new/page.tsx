@@ -4,8 +4,8 @@ import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getMorningCredentials } from "@/lib/morning";
-import { creatableKinds, defaultKind, docTypeLabel, DOC_KINDS, type DocKind } from "@/lib/billing-docs";
-import { clinicDay, loadCreditableInvoices } from "@/lib/billing-doc-data";
+import { creatableKinds, defaultKind, documentClientName, docTypeLabel, DOC_KINDS, type DocKind } from "@/lib/billing-docs";
+import { clinicDay, draftFromInvoice, loadCreditableInvoices } from "@/lib/billing-doc-data";
 import { formatCurrency } from "@/lib/format";
 import { DocumentForm } from "@/components/invoices/document-form";
 
@@ -27,12 +27,29 @@ export const metadata = { title: "מסמך חדש — מרפאה אישית" };
 export default async function NewDocumentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; sessionId?: string; kind?: string; forInvoice?: string }>;
+  searchParams: Promise<{ clientId?: string; sessionId?: string; kind?: string; forInvoice?: string; draft?: string }>;
 }) {
   const params = await searchParams;
   const session = await auth();
   const userId = session!.user.id;
   const now = new Date();
+
+  // A saved draft opened for editing: only one nothing was issued for
+  const storedRow = params.draft
+    ? await db.invoice.findFirst({
+        where: {
+          id: params.draft,
+          userId,
+          docType: { not: null },
+          morningDocId: null,
+          morningDocNumber: null,
+          relatedInvoiceId: null,
+          status: { not: "CANCELLED" },
+        },
+        include: { items: true, payments: true, client: true },
+      })
+    : null;
+  const stored = storedRow ? draftFromInvoice(storedRow) : null;
 
   const [owner, clients, sessions, creds] = await Promise.all([
     db.user.findUnique({
@@ -57,7 +74,8 @@ export default async function NewDocumentPage({
     db.session.findMany({
       where: {
         userId,
-        invoiceItem: null,
+        // A draft from before keeps the meetings already tied to its lines
+        AND: [{ OR: [{ invoiceItem: null }, ...(storedRow ? [{ invoiceItem: { invoiceId: storedRow.id } }] : [])] }],
         OR: [
           { status: { in: ["COMPLETED", "NO_SHOW"] } },
           { status: "SCHEDULED", startsAt: { lt: now } },
@@ -75,7 +93,7 @@ export default async function NewDocumentPage({
   const forInvoice = params.forInvoice
     ? await db.invoice.findFirst({
         where: { id: params.forInvoice, userId, docType: DOC_KINDS.TAX_INVOICE.code, status: { not: "CANCELLED" } },
-        select: { id: true, clientId: true, total: true, amountPaid: true, morningDocNumber: true, number: true },
+        select: { id: true, clientId: true, total: true, amountPaid: true, morningDocNumber: true, number: true, docClientName: true, docClientTaxId: true },
       })
     : null;
 
@@ -85,7 +103,7 @@ export default async function NewDocumentPage({
 
   const kinds = creatableKinds(vatLiable).map((k) => k.kind);
   const requested = kinds.find((k) => k === params.kind) as DocKind | undefined;
-  const initialKind = requested ?? defaultKind(vatLiable, owner?.morningDocType);
+  const initialKind = stored?.kind ?? requested ?? defaultKind(vatLiable, owner?.morningDocType);
   // The credit-note square opens a choice of invoice, not a form (see CreditNotePicker)
   const initialCredit = vatLiable && !forInvoice && params.kind === DOC_KINDS.CREDIT_NOTE.kind;
   const creditable = vatLiable && creds ? await loadCreditableInvoices(userId) : [];
@@ -104,7 +122,9 @@ export default async function NewDocumentPage({
         {forInvoice ? "חזרה לחשבונית" : "חזרה למסמכי הכנסות"}
       </Link>
       <header>
-        <h1 className="font-display text-3xl text-ink">{forInvoice ? "קבלה על חשבונית" : "מסמך חדש"}</h1>
+        <h1 className="font-display text-3xl text-ink">
+          {forInvoice ? "קבלה על חשבונית" : storedRow ? "עריכת טיוטה" : "מסמך חדש"}
+        </h1>
         <p className="text-ink-muted text-sm mt-1">
           {creds
             ? "ממלאים כמו ב-morning, בודקים בתצוגה המקדימה, והמסמך מופק ב-morning — המספר והקישור נשמרים כאן."
@@ -117,7 +137,7 @@ export default async function NewDocumentPage({
         creditableInvoices={creditable.map((inv) => ({
           id: inv.id,
           label: `${docTypeLabel(inv.docType)} ${inv.morningDocNumber ?? ""}`.trim(),
-          clientName: `${inv.client.firstName} ${inv.client.lastName}`.trim(),
+          clientName: documentClientName(inv),
           date: dayLabel(inv.issueDate),
           amount: formatCurrency(inv.total.toString()),
         }))}
@@ -147,6 +167,24 @@ export default async function NewDocumentPage({
         initial={{
           clientId: clientId ?? undefined,
           sessionIds: fromSession ? [fromSession.id] : undefined,
+          oneOffName: forInvoice && !forInvoice.clientId ? (forInvoice.docClientName ?? undefined) : undefined,
+          oneOffTaxId: forInvoice && !forInvoice.clientId ? (forInvoice.docClientTaxId ?? undefined) : undefined,
+          stored:
+            storedRow && stored
+              ? {
+                  id: storedRow.id,
+                  clientId: storedRow.clientId,
+                  draft: {
+                    ...stored,
+                    // Links from before they were kept apart from the lines
+                    sessionIds: [
+                      ...(stored.sessionIds ?? []),
+                      ...stored.items.map((it) => it.sessionId).filter((id): id is string => !!id),
+                    ],
+                    items: stored.items.map((it) => ({ ...it, sessionId: null })),
+                  },
+                }
+              : undefined,
           relatedInvoice:
             forInvoice && balance
               ? {

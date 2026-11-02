@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { documentClientName } from "@/lib/billing-docs";
 import {
   clinicMonthRange,
   expectedIncome,
@@ -58,7 +59,7 @@ export async function loadReportData(
       loadInvoicePayments(userId, trendFrom, trendTo),
       loadSessions(userId, trendFrom, trendTo),
       db.invoice.findMany({
-        where: { userId, status: { in: ["DRAFT", "SENT", "PARTIALLY_PAID"] } },
+        where: { userId, currency: "ILS", status: { in: ["DRAFT", "SENT", "PARTIALLY_PAID"] } },
         include: { client: { select: { firstName: true, lastName: true } } },
         orderBy: [{ dueDate: "asc" }, { issueDate: "asc" }],
       }),
@@ -85,7 +86,7 @@ export async function loadReportData(
   const outstandingInvoices = outstandingRows.map((inv) => ({
     id: inv.id,
     number: inv.number,
-    clientName: `${inv.client.firstName} ${inv.client.lastName}`,
+    clientName: documentClientName(inv),
     issueDate: inv.issueDate,
     dueDate: inv.dueDate,
     total: Number(inv.total),

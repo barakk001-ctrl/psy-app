@@ -30,6 +30,10 @@ export type DocKindInfo = {
   hasDueDate: boolean;
   /** only a VAT-liable business (עוסק מורשה) issues it */
   vatLiableOnly: boolean;
+  /** "ח.פ / ת.ז לקוח" is asked for in the form */
+  hasTaxId: boolean;
+  /** meetings can be linked to it (internal, never printed) */
+  hasSessions: boolean;
 };
 
 export const DOC_KINDS: Record<DocKind, DocKindInfo> = {
@@ -42,6 +46,8 @@ export const DOC_KINDS: Record<DocKind, DocKindInfo> = {
     hasPayments: false,
     hasDueDate: true,
     vatLiableOnly: true,
+    hasTaxId: true,
+    hasSessions: true,
   },
   TAX_INVOICE_RECEIPT: {
     kind: "TAX_INVOICE_RECEIPT",
@@ -52,6 +58,8 @@ export const DOC_KINDS: Record<DocKind, DocKindInfo> = {
     hasPayments: true,
     hasDueDate: false,
     vatLiableOnly: true,
+    hasTaxId: true,
+    hasSessions: true,
   },
   RECEIPT: {
     kind: "RECEIPT",
@@ -62,6 +70,8 @@ export const DOC_KINDS: Record<DocKind, DocKindInfo> = {
     hasPayments: true,
     hasDueDate: false,
     vatLiableOnly: false,
+    hasTaxId: false,
+    hasSessions: true,
   },
   CREDIT_NOTE: {
     kind: "CREDIT_NOTE",
@@ -72,6 +82,8 @@ export const DOC_KINDS: Record<DocKind, DocKindInfo> = {
     hasPayments: false,
     hasDueDate: false,
     vatLiableOnly: true,
+    hasTaxId: false,
+    hasSessions: false,
   },
 };
 
@@ -207,6 +219,30 @@ export const DEAL_TYPE_LABELS: Record<DealType, string> = {
 
 // ── Draft shape (what the form builds, the action stores, morning receives) ──
 
+/** The currencies offered on a document (morning takes these as ISO codes). */
+export const DOC_CURRENCIES = ["ILS", "USD", "EUR", "GBP"] as const;
+export type DocCurrency = (typeof DOC_CURRENCIES)[number];
+export const DOC_CURRENCY_LABELS: Record<DocCurrency, string> = {
+  ILS: "₪ שקל",
+  USD: "$ דולר",
+  EUR: "€ אירו",
+  GBP: "£ ליש״ט",
+};
+const CURRENCY_SYMBOLS: Record<DocCurrency, string> = { ILS: "₪", USD: "$", EUR: "€", GBP: "£" };
+
+export function isDocCurrency(v: string | null | undefined): v is DocCurrency {
+  return (DOC_CURRENCIES as readonly string[]).includes(v ?? "");
+}
+
+/** Agorot (or cents) → "₪1,200.00" in the document's currency. */
+export function formatDocMoney(agorot: number, currency: string = "ILS"): string {
+  const symbol = isDocCurrency(currency) ? CURRENCY_SYMBOLS[currency] : `${currency} `;
+  return `${symbol}${Number(agorotToDecimalString(agorot)).toLocaleString("he-IL", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 export type DraftItem = {
   description: string;
   /** quantity (up to 2 decimals) */
@@ -236,19 +272,53 @@ export type DocumentDraft = {
   kind: DocKind;
   clientName: string;
   clientTaxId?: string | null;
-  /** morning emails the issued document's link here (null = not sent) */
-  clientEmail?: string | null;
+  /** morning emails the issued document's link to these (empty = not sent) */
+  clientEmails?: string[];
   /** yyyy-mm-dd */
   date: string;
   /** yyyy-mm-dd, tax invoice only */
   dueDate?: string | null;
   /** prices include VAT (VAT-liable business only) */
   vatIncluded: boolean;
+  /** ISO code; missing = ILS */
+  currency?: string;
+  /** meetings linked to it: internal, never printed or sent to morning */
+  sessionIds?: string[];
   description?: string | null;
   items: DraftItem[];
   payments: DraftPayment[];
   remarks?: string | null;
 };
+
+/** Several addresses are kept in one text column, comma-separated. */
+export function joinEmails(emails: readonly string[] | null | undefined): string | null {
+  const clean = (emails ?? []).map((e) => e.trim()).filter(Boolean);
+  return clean.length ? clean.join(", ") : null;
+}
+
+export function splitEmails(stored: string | null | undefined): string[] {
+  return (stored ?? "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+}
+
+/** yyyy-mm-dd of the last day of that day's month ("לתשלום עד" starts there). */
+export function lastDayOfMonth(day: string): string {
+  const [y, m] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+}
+
+/** The name a document goes by; a one-off client has only the printed name. */
+export function documentClientName(inv: {
+  docClientName?: string | null;
+  client?: { firstName: string; lastName: string } | null;
+}): string {
+  const printed = inv.docClientName?.trim();
+  if (printed) return printed;
+  if (inv.client) return `${inv.client.firstName} ${inv.client.lastName}`.trim();
+  return "לקוח מזדמן";
+}
 
 // ── Money ───────────────────────────────────────────────────────────────────
 
@@ -350,6 +420,24 @@ export function documentTotals(draft: DocumentDraft, vatLiable: boolean): Docume
 // ── Validation ──────────────────────────────────────────────────────────────
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const EMAIL_RE = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
+
+/**
+ * What stops an unfinished form from being kept as a draft: only having
+ * nothing to keep. Everything else waits for preview and issuing, which go
+ * through documentProblems.
+ */
+export function draftSaveProblems(draft: DocumentDraft): string[] {
+  const hasContent =
+    !!draft.clientName.trim() ||
+    draft.items.some((it) => it.description.trim() || it.unitPriceAgorot > 0) ||
+    draft.payments.some((p) => p.amountAgorot > 0) ||
+    !!draft.remarks?.trim();
+  const problems: string[] = [];
+  if (!hasContent) problems.push("אין עדיין מה לשמור: ממלאים שם לקוח/ה או שורה במסמך.");
+  if (!DATE_RE.test(draft.date)) problems.push("חסר תאריך מסמך.");
+  return problems;
+}
 
 /** Hebrew problems that stop a document from being saved or issued (empty = fine). */
 export function documentProblems(draft: DocumentDraft, vatLiable: boolean): string[] {
@@ -361,6 +449,9 @@ export function documentProblems(draft: DocumentDraft, vatLiable: boolean): stri
   if (!draft.clientName.trim()) problems.push("חסר שם הלקוח/ה על המסמך.");
   if (!DATE_RE.test(draft.date)) problems.push("חסר תאריך מסמך.");
   if (draft.dueDate && !DATE_RE.test(draft.dueDate)) problems.push("תאריך התשלום אינו תקין.");
+  for (const e of draft.clientEmails ?? []) {
+    if (!EMAIL_RE.test(e.trim())) problems.push(`כתובת המייל ${e.trim()} אינה תקינה.`);
+  }
 
   if (info.hasItems) {
     if (draft.items.length === 0) problems.push("יש להוסיף לפחות שורה אחת בפירוט ההכנסות.");
@@ -393,7 +484,7 @@ export function documentProblems(draft: DocumentDraft, vatLiable: boolean): stri
   if (info.hasItems && totals.totalAgorot <= 0) problems.push("סכום המסמך חייב להיות גדול מאפס.");
   if (info.hasItems && info.hasPayments && totals.paymentsAgorot !== totals.totalAgorot) {
     problems.push(
-      `סכום התקבולים (₪${agorotToDecimalString(totals.paymentsAgorot)}) צריך להיות שווה לסכום המסמך (₪${agorotToDecimalString(totals.totalAgorot)}).`,
+      `סכום התקבולים (${formatDocMoney(totals.paymentsAgorot, draft.currency)}) צריך להיות שווה לסכום המסמך (${formatDocMoney(totals.totalAgorot, draft.currency)}).`,
     );
   }
   return problems;
@@ -413,11 +504,13 @@ export function morningNewDocumentUrl(kind: DocKind): string {
 export function morningCopyText(draft: DocumentDraft, vatLiable: boolean): string {
   const info = DOC_KINDS[draft.kind];
   const totals = documentTotals(draft, vatLiable);
-  const ils = (a: number) => `₪${agorotToDecimalString(a)}`;
+  const ils = (a: number) =>
+    `${isDocCurrency(draft.currency) ? CURRENCY_SYMBOLS[draft.currency] : "₪"}${agorotToDecimalString(a)}`;
   const lines: string[] = [`${info.label}`, `לקוח/ה: ${draft.clientName}`];
   if (draft.clientTaxId) lines.push(`ת״ז / ח״פ: ${draft.clientTaxId}`);
   lines.push(`תאריך: ${draft.date}`);
   if (info.hasDueDate && draft.dueDate) lines.push(`לתשלום עד: ${draft.dueDate}`);
+  if (draft.clientEmails?.length) lines.push(`מייל: ${draft.clientEmails.join(", ")}`);
   if (draft.description) lines.push(`תיאור: ${draft.description}`);
   if (info.hasItems) {
     lines.push(vatLiable ? (draft.vatIncluded ? "המחירים כוללים מע״מ" : "המחירים לא כוללים מע״מ") : "");

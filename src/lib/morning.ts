@@ -265,14 +265,14 @@ function nonEmpty(v: string | null | undefined): string | undefined {
   return t ? t : undefined;
 }
 
-function paymentRow(p: DraftPayment) {
+function paymentRow(p: DraftPayment, currency: string) {
   const code = PAYMENT_TYPE[p.method];
   if (!code) throw new Error(`Unsupported payment method: ${p.method}`);
   const row: Record<string, unknown> = {
     type: code.type,
     date: p.date,
     price: agorotToNumber(p.amountAgorot),
-    currency: "ILS",
+    currency,
   };
   if (code.appType) row.appType = code.appType;
   if (p.method === "BANK_TRANSFER" || p.method === "CHECK") {
@@ -313,14 +313,15 @@ export function buildMorningDocumentPayload(draft: DocumentDraft, opts: MorningP
   const info = DOC_KINDS[draft.kind];
   const totals = documentTotals(draft, opts.vatLiable);
   const itemVat = !opts.vatLiable || draft.vatIncluded ? ITEM_VAT_INCLUDED : ITEM_VAT_ADDED;
+  const currency = draft.currency ?? "ILS";
 
-  let income: { description: string; quantity: number; price: number; currency: "ILS"; vatType: number }[];
+  let income: { description: string; quantity: number; price: number; currency: string; vatType: number }[];
   if (info.hasItems) {
     income = draft.items.map((it) => ({
       description: it.description.trim(),
       quantity: it.quantity,
       price: agorotToNumber(it.unitPriceAgorot),
-      currency: "ILS" as const,
+      currency,
       vatType: itemVat,
     }));
   } else {
@@ -334,7 +335,7 @@ export function buildMorningDocumentPayload(draft: DocumentDraft, opts: MorningP
             description: it.description.trim(),
             quantity: it.quantity,
             price: agorotToNumber(it.unitPriceAgorot),
-            currency: "ILS" as const,
+            currency,
             vatType: ITEM_VAT_INCLUDED,
           }))
         : [
@@ -342,7 +343,7 @@ export function buildMorningDocumentPayload(draft: DocumentDraft, opts: MorningP
               description: nonEmpty(draft.description) ?? "תשלום עבור טיפול",
               quantity: 1,
               price: agorotToNumber(totals.paymentsAgorot),
-              currency: "ILS" as const,
+              currency,
               vatType: ITEM_VAT_INCLUDED,
             },
           ];
@@ -352,20 +353,20 @@ export function buildMorningDocumentPayload(draft: DocumentDraft, opts: MorningP
     type: info.code,
     date: draft.date,
     lang: "he",
-    currency: "ILS",
+    currency,
     vatType: 0, // by business type (עוסק פטור / מורשה)
     description: nonEmpty(draft.description),
     remarks: nonEmpty(draft.remarks),
     client: {
       name: draft.clientName.trim(),
       taxId: nonEmpty(draft.clientTaxId),
-      emails: nonEmpty(draft.clientEmail) ? [draft.clientEmail!.trim()] : undefined,
+      emails: draft.clientEmails?.length ? draft.clientEmails : undefined,
       add: false,
     },
     income,
   };
   if (info.hasDueDate && draft.dueDate) payload.dueDate = draft.dueDate;
-  if (info.hasPayments) payload.payment = draft.payments.map(paymentRow);
+  if (info.hasPayments) payload.payment = draft.payments.map((p) => paymentRow(p, currency));
   if (opts.linkedDocumentIds?.length) {
     payload.linkedDocumentIds = opts.linkedDocumentIds;
     if (opts.linkType) payload.linkType = opts.linkType;
@@ -442,7 +443,7 @@ export function legacyInvoiceDraft(input: MorningDocumentInput): DocumentDraft {
     kind,
     clientName: input.clientName,
     clientTaxId: input.clientTaxId,
-    clientEmail: input.clientEmail,
+    clientEmails: input.clientEmail ? [input.clientEmail] : [],
     // As before: the receipt is dated the day it is issued
     date: isoDate(new Date()),
     vatIncluded: true,

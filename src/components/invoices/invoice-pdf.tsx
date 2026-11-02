@@ -334,10 +334,10 @@ function rtl(s: string): string {
   return `${RLM}${s}${RLM}`;
 }
 
-function formatILS(n: number) {
+function formatMoney(n: number, currency = "ILS") {
   return new Intl.NumberFormat("he-IL", {
     style: "currency",
-    currency: "ILS",
+    currency,
     minimumFractionDigits: 2,
   }).format(n);
 }
@@ -353,6 +353,8 @@ function formatDate(d: Date) {
 export type InvoicePDFData = {
   /** a "מסמך חדש" draft: its type ("קבלה"…) — the PDF says it isn't a tax document */
   draftLabel?: string | null;
+  /** ISO code; missing = ILS */
+  currency?: string;
   number: number;
   issueDate: Date;
   dueDate: Date | null;
@@ -392,6 +394,7 @@ export type InvoicePDFData = {
 };
 
 export function InvoicePDF({ data }: { data: InvoicePDFData }) {
+  const formatILS = (n: number) => formatMoney(n, data.currency);
   const balance = data.total - data.amountPaid;
 
   return (

@@ -7,10 +7,16 @@ import {
   defaultKind,
   docKindSquares,
   docTypeLabel,
+  documentClientName,
   documentProblems,
   documentTotals,
+  draftSaveProblems,
+  formatDocMoney,
+  joinEmails,
+  lastDayOfMonth,
   lineAgorot,
   morningCopyText,
+  splitEmails,
   morningNewDocumentUrl,
   parseAgorot,
   type DocumentDraft,
@@ -211,5 +217,40 @@ describe("issuing by hand in morning", () => {
     expect(text).toContain("• העברה בנקאית ₪450.00 (2026-10-14) — בנק: לאומי, סניף: 800, מספר חשבון: 123456");
     expect(text).toContain("סה״כ: ₪450.00");
     expect(text).not.toContain("פגישת טיפול"); // a receipt has no item lines
+  });
+});
+
+describe("the document form's helpers", () => {
+  it("finds the last day of the month, leap years included", () => {
+    expect(lastDayOfMonth("2026-11-02")).toBe("2026-11-30");
+    expect(lastDayOfMonth("2026-12-31")).toBe("2026-12-31");
+    expect(lastDayOfMonth("2028-02-01")).toBe("2028-02-29");
+    expect(lastDayOfMonth("2027-02-15")).toBe("2027-02-28");
+  });
+  it("keeps several addresses in one column", () => {
+    expect(joinEmails(["a@x.co", " ", "b@x.co "])).toBe("a@x.co, b@x.co");
+    expect(joinEmails([])).toBeNull();
+    expect(splitEmails("a@x.co, b@x.co")).toEqual(["a@x.co", "b@x.co"]);
+    expect(splitEmails(null)).toEqual([]);
+  });
+  it("names a one-off client by the printed name", () => {
+    expect(documentClientName({ docClientName: "אורח", client: null })).toBe("אורח");
+    expect(documentClientName({ client: { firstName: "דנה", lastName: "לוי" } })).toBe("דנה לוי");
+    expect(documentClientName({ docClientName: " ", client: null })).toBe("לקוח מזדמן");
+  });
+  it("shows money in the document's currency", () => {
+    expect(formatDocMoney(35000)).toContain("₪");
+    expect(formatDocMoney(35000, "USD")).toContain("$");
+  });
+  const blank = { kind: "TAX_INVOICE" as const, clientName: "", date: "2026-11-02", vatIncluded: true, items: [], payments: [] };
+  it("keeps an unfinished draft, but not an empty one", () => {
+    expect(draftSaveProblems(blank)).toHaveLength(1);
+    expect(draftSaveProblems({ ...blank, clientName: "אורח" })).toEqual([]);
+    expect(draftSaveProblems({ ...blank, remarks: "להשלים" })).toEqual([]);
+  });
+  it("refuses a bad address only when the document is finished", () => {
+    const d = { ...blank, clientName: "אורח", clientEmails: ["not-an-address"] };
+    expect(draftSaveProblems(d)).toEqual([]);
+    expect(documentProblems(d, true).join(" ")).toContain("not-an-address");
   });
 });

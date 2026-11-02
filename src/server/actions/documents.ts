@@ -13,6 +13,8 @@ import {
   canCreditNote,
   documentProblems,
   documentTotals,
+  draftSaveProblems,
+  joinEmails,
   lineAgorot,
   parseAgorot,
   type DocumentDraft,
@@ -20,6 +22,7 @@ import {
 import {
   dayToDate,
   issueStoredDocument,
+  linkDraftSessions,
   previewStoredDocument,
   type IssueResult,
 } from "@/lib/billing-doc-data";
@@ -54,21 +57,24 @@ function toDraft(input: DocumentDraftInput): DocumentDraft {
     kind: input.kind,
     clientName: input.clientName,
     clientTaxId: blank(input.clientTaxId),
-    clientEmail: blank(input.clientEmail),
+    clientEmails: input.clientEmails.map((e) => e.trim()).filter(Boolean),
     date: input.date,
     dueDate: info.hasDueDate ? blank(input.dueDate) : null,
     vatIncluded: input.vatIncluded,
+    currency: input.currency,
+    sessionIds: info.hasSessions && blank(input.clientId) ? [...new Set(input.sessionIds)] : [],
     description: blank(input.description),
     remarks: blank(input.remarks),
-    // A receipt keeps only the meetings it covers (for linking), no free lines
-    items: input.items
-      .filter((it) => info.hasItems || !!it.sessionId)
-      .map((it) => ({
-        description: it.description,
-        quantity: it.quantity,
-        unitPriceAgorot: it.unitPrice,
-        sessionId: blank(it.sessionId),
-      })),
+    // A row left completely empty isn't a line
+    items: info.hasItems
+      ? input.items
+          .filter((it) => it.description || it.unitPrice > 0)
+          .map((it) => ({
+            description: it.description,
+            quantity: it.quantity,
+            unitPriceAgorot: it.unitPrice,
+          }))
+      : [],
     payments: info.hasPayments
       ? input.payments.map((p) => ({
           method: p.method,
@@ -100,8 +106,12 @@ type Parsed =
       relatedInvoice: RelatedInvoice | null;
     };
 
-/** Parses + checks the form's JSON against the rules and the user's own data. */
-async function parseDraft(userId: string, json: string): Promise<Parsed> {
+/**
+ * Parses + checks the form's JSON against the rules and the user's own data.
+ * `complete` is for preview and issuing; a draft may be unfinished. A receipt
+ * for an invoice is always complete, since saving it settles that invoice.
+ */
+async function parseDraft(userId: string, json: string, complete: boolean): Promise<Parsed> {
   let raw: unknown;
   try {
     raw = JSON.parse(json);
@@ -116,24 +126,33 @@ async function parseDraft(userId: string, json: string): Promise<Parsed> {
   const input = parsed.data;
   const draft = toDraft(input);
 
+  const clientId = blank(input.clientId);
+  const draftId = blank(input.draftId);
   const [owner, client] = await Promise.all([
     db.user.findUnique({ where: { id: userId }, select: { vatLiable: true } }),
-    db.client.findFirst({ where: { id: input.clientId, userId }, select: { id: true } }),
+    clientId ? db.client.findFirst({ where: { id: clientId, userId }, select: { id: true } }) : null,
   ]);
-  if (!client) return { ok: false, result: { error: "הלקוח/ה לא נמצא/ה." } };
+  if (clientId && !client) return { ok: false, result: { error: "הלקוח/ה לא נמצא/ה." } };
   const vatLiable = !!owner?.vatLiable;
 
-  const problems = documentProblems(draft, vatLiable);
+  const relId = blank(input.relatedInvoiceId);
+  const problems =
+    complete || relId
+      ? [...(clientId || draft.clientName.trim() ? [] : ["יש לבחור לקוח/ה או למלא שם של לקוח מזדמן."]), ...documentProblems(draft, vatLiable)]
+      : draftSaveProblems(draft);
   if (problems.length) return { ok: false, result: { error: "אי אפשר עדיין לשמור את המסמך:", problems } };
 
-  // Meetings: the user's, this client's, not billed yet, each once
-  const sessionIds = draft.items.map((it) => it.sessionId).filter((s): s is string => !!s);
-  if (new Set(sessionIds).size !== sessionIds.length) {
-    return { ok: false, result: { error: "אותה פגישה נבחרה פעמיים." } };
-  }
+  // Meetings: the user's, this client's, not billed yet (a draft being edited
+  // may hold links from before they were kept apart from the lines)
+  const sessionIds = draft.sessionIds ?? [];
   if (sessionIds.length) {
     const ok = await db.session.count({
-      where: { id: { in: sessionIds }, userId, clientId: input.clientId, invoiceItem: null },
+      where: {
+        id: { in: sessionIds },
+        userId,
+        clientId: clientId as string,
+        OR: [{ invoiceItem: null }, ...(draftId ? [{ invoiceItem: { invoiceId: draftId } }] : [])],
+      },
     });
     if (ok !== sessionIds.length) {
       return { ok: false, result: { error: "אחת הפגישות שנבחרו כבר חויבה במסמך אחר או אינה של הלקוח/ה." } };
@@ -141,10 +160,9 @@ async function parseDraft(userId: string, json: string): Promise<Parsed> {
   }
 
   let relatedInvoice: RelatedInvoice | null = null;
-  const relId = blank(input.relatedInvoiceId);
   if (relId) {
     const rel = await db.invoice.findFirst({
-      where: { id: relId, userId, clientId: input.clientId },
+      where: { id: relId, userId, clientId },
       select: { id: true, morningDocId: true, total: true, status: true, docType: true },
     });
     if (!rel || rel.docType !== DOC_KINDS.TAX_INVOICE.code || input.kind !== "RECEIPT") {
@@ -156,10 +174,10 @@ async function parseDraft(userId: string, json: string): Promise<Parsed> {
   return { ok: true, input, draft, vatLiable, relatedInvoice };
 }
 
-function revalidateDocument(id: string, clientId: string, sessionIds: (string | null)[]) {
+function revalidateDocument(id: string, clientId: string | null, sessionIds: (string | null)[]) {
   revalidatePath("/invoices");
   revalidatePath(`/invoices/${id}`);
-  revalidatePath(`/clients/${clientId}`);
+  if (clientId) revalidatePath(`/clients/${clientId}`);
   revalidatePath("/dashboard");
   revalidatePath("/reports");
   revalidatePath("/collect");
@@ -169,7 +187,8 @@ function revalidateDocument(id: string, clientId: string, sessionIds: (string | 
 /**
  * "מסמך חדש": saves the document (always — as a draft first) and, when asked
  * and morning is connected, issues it there. A failed issue leaves the draft
- * saved; the document page then shows why and offers to try again.
+ * saved; the document page then shows why and offers to try again. With
+ * `draftId` it updates that saved draft instead of adding a document.
  */
 export async function saveDocumentAction(
   json: string,
@@ -177,16 +196,85 @@ export async function saveDocumentAction(
 ): Promise<SaveDocumentResult> {
   const userId = await requireUserId();
   if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
-  const p = await parseDraft(userId, json);
+  const p = await parseDraft(userId, json, intent === "issue");
   if (!p.ok) return p.result;
   const { input, draft, vatLiable, relatedInvoice } = p;
+  const clientId = blank(input.clientId);
+  const draftId = blank(input.draftId);
   const info = DOC_KINDS[draft.kind];
   const totals = documentTotals(draft, vatLiable);
   const total = info.hasItems ? totals.totalAgorot : totals.paymentsAgorot;
   const subtotal = info.hasItems ? totals.linesAgorot : totals.paymentsAgorot;
   const paid = totals.paymentsAgorot;
 
-  const created = await db.$transaction(async (tx) => {
+  const fields = {
+    clientId,
+    docType: info.code,
+    issueDate: dayToDate(draft.date),
+    dueDate: draft.dueDate ? dayToDate(draft.dueDate) : null,
+    status: computeInvoiceStatus("DRAFT", paid, total),
+    subtotal: agorotToDecimalString(subtotal),
+    total: agorotToDecimalString(total),
+    amountPaid: agorotToDecimalString(paid),
+    notes: draft.remarks,
+    description: draft.description,
+    vatIncluded: draft.vatIncluded,
+    currency: draft.currency,
+    docClientName: draft.clientName || null,
+    docClientTaxId: draft.clientTaxId,
+    docClientEmail: joinEmails(draft.clientEmails),
+    draftSessionIds: draft.sessionIds ?? [],
+  };
+  const itemRows = draft.items.map((it) => ({
+    description: it.description,
+    quantity: String(it.quantity),
+    unitPrice: agorotToDecimalString(it.unitPriceAgorot),
+    amount: agorotToDecimalString(lineAgorot(it)),
+  }));
+  const paymentRows = draft.payments.map((pm) => ({
+    amount: agorotToDecimalString(pm.amountAgorot),
+    method: pm.method,
+    paidAt: dayToDate(pm.date),
+    reference: pm.reference,
+    bankName: pm.bankName,
+    bankBranch: pm.bankBranch,
+    bankAccount: pm.bankAccount,
+    chequeNumber: pm.chequeNumber,
+    cardType: pm.cardType,
+    cardLast4: pm.cardLast4,
+    dealType: pm.dealType,
+    installments: pm.installments,
+  }));
+
+  if (draftId) {
+    // Only a draft nothing was issued for, that isn't being issued right now,
+    // and that settles no invoice (saving those already moved money)
+    const editable = await db.invoice.updateMany({
+      where: {
+        id: draftId,
+        userId,
+        docType: { not: null },
+        morningDocId: null,
+        morningDocNumber: null,
+        relatedInvoiceId: null,
+        status: { not: "CANCELLED" },
+        OR: [{ morningIssuedAt: null }, { morningIssuedAt: { lt: new Date(Date.now() - 2 * 60_000) } }],
+      },
+      data: fields,
+    });
+    if (editable.count === 0) return { error: "אי אפשר לערוך את המסמך הזה: הוא כבר הופק או בוטל." };
+    await db.invoice.update({
+      where: { id: draftId },
+      data: {
+        items: { deleteMany: {}, create: itemRows },
+        payments: { deleteMany: {}, create: paymentRows },
+      },
+    });
+  }
+
+  const created = draftId
+    ? { id: draftId }
+    : await db.$transaction(async (tx) => {
     const updated = await tx.user.update({
       where: { id: userId },
       data: { nextInvoiceNumber: { increment: 1 } },
@@ -195,47 +283,11 @@ export async function saveDocumentAction(
     const inv = await tx.invoice.create({
       data: {
         userId,
-        clientId: input.clientId,
         number: updated.nextInvoiceNumber - 1,
-        docType: info.code,
-        issueDate: dayToDate(draft.date),
-        dueDate: draft.dueDate ? dayToDate(draft.dueDate) : null,
-        status: computeInvoiceStatus("DRAFT", paid, total),
-        subtotal: agorotToDecimalString(subtotal),
-        total: agorotToDecimalString(total),
-        amountPaid: agorotToDecimalString(paid),
-        notes: draft.remarks,
-        description: draft.description,
-        vatIncluded: draft.vatIncluded,
-        docClientName: draft.clientName,
-        docClientTaxId: draft.clientTaxId,
-        docClientEmail: draft.clientEmail,
+        ...fields,
         relatedInvoiceId: relatedInvoice?.id ?? null,
-        items: {
-          create: draft.items.map((it) => ({
-            description: it.description,
-            quantity: String(it.quantity),
-            unitPrice: agorotToDecimalString(it.unitPriceAgorot),
-            amount: agorotToDecimalString(lineAgorot(it)),
-            sessionId: it.sessionId ?? null,
-          })),
-        },
-        payments: {
-          create: draft.payments.map((pm) => ({
-            amount: agorotToDecimalString(pm.amountAgorot),
-            method: pm.method,
-            paidAt: dayToDate(pm.date),
-            reference: pm.reference,
-            bankName: pm.bankName,
-            bankBranch: pm.bankBranch,
-            bankAccount: pm.bankAccount,
-            chequeNumber: pm.chequeNumber,
-            cardType: pm.cardType,
-            cardLast4: pm.cardLast4,
-            dealType: pm.dealType,
-            installments: pm.installments,
-          })),
-        },
+        items: { create: itemRows },
+        payments: { create: paymentRows },
       },
       select: { id: true },
     });
@@ -268,7 +320,7 @@ export async function saveDocumentAction(
   let issue: IssueResult | undefined;
   if (intent === "issue") issue = await issueStoredDocument(userId, created.id);
 
-  revalidateDocument(created.id, input.clientId, draft.items.map((it) => it.sessionId ?? null));
+  revalidateDocument(created.id, clientId, draft.sessionIds ?? []);
   if (relatedInvoice) revalidatePath(`/invoices/${relatedInvoice.id}`);
   return { invoiceId: created.id, issue };
 }
@@ -281,7 +333,7 @@ export async function previewDraftInMorningAction(
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const creds = await getMorningCredentials(userId);
   if (!creds) return { error: "חשבון morning לא מחובר." };
-  const p = await parseDraft(userId, json);
+  const p = await parseDraft(userId, json, true);
   if (!p.ok) return { error: p.result.error, problems: p.result.problems };
   const link =
     p.relatedInvoice?.morningDocId != null
@@ -402,17 +454,12 @@ export async function setDocumentMorningNumberAction(
   if (!/^\d+$/.test(number)) return { error: "מספר המסמך ב-morning הוא מספר (ספרות בלבד)." };
   const inv = await db.invoice.findFirst({
     where: { id: invoiceId, userId },
-    select: { id: true, clientId: true, docType: true, morningDocId: true, status: true, total: true, amountPaid: true, items: { select: { sessionId: true } } },
+    select: { id: true, clientId: true, docType: true, morningDocId: true, status: true, total: true, amountPaid: true, draftSessionIds: true, items: { select: { sessionId: true } } },
   });
   if (!inv || inv.docType == null) return { error: "המסמך לא נמצא." };
   if (inv.morningDocId) return { error: "המסמך הופק דרך החיבור ל-morning — המספר כבר שמור." };
   const doc = await db.morningDocument.findFirst({ where: { userId, number }, select: { url: true } });
   const url = doc?.url ?? null;
-  const fields: Record<number, [string, string]> = {
-    305: ["morningDocNumber", "morningDocUrl"],
-    320: ["morningInvoiceReceiptNumber", "morningInvoiceReceiptUrl"],
-    400: ["morningReceiptNumber", "morningReceiptUrl"],
-  };
   await db.$transaction(async (tx) => {
     await tx.invoice.update({
       where: { id: inv.id },
@@ -429,17 +476,8 @@ export async function setDocumentMorningNumberAction(
             : inv.status,
       },
     });
-    const f = fields[inv.docType!];
-    if (f) {
-      for (const it of inv.items) {
-        if (!it.sessionId) continue;
-        await tx.session.updateMany({
-          where: { id: it.sessionId, userId, [f[0]]: null },
-          data: { [f[0]]: number, [f[1]]: url },
-        });
-      }
-    }
+    await linkDraftSessions(tx, userId, inv, number, url);
   });
-  revalidateDocument(inv.id, inv.clientId, inv.items.map((i) => i.sessionId));
+  revalidateDocument(inv.id, inv.clientId, [...inv.items.map((i) => i.sessionId), ...inv.draftSessionIds]);
   return { saved: true };
 }

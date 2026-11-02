@@ -61,6 +61,7 @@ function documentJson(p: {
   sessionId?: string;
   relatedInvoiceId?: string;
   kind?: string;
+  draftId?: string;
 }) {
   const receipt = p.kind === "RECEIPT";
   return JSON.stringify({
@@ -68,6 +69,8 @@ function documentJson(p: {
     clientId: p.clientId,
     clientName: "שם על מסמך",
     date: "2026-11-01",
+    sessionIds: p.sessionId ? [p.sessionId] : [],
+    draftId: p.draftId ?? "",
     vatIncluded: true,
     items: receipt
       ? []
@@ -76,7 +79,6 @@ function documentJson(p: {
             description: "פגישה",
             quantity: 1,
             unitPrice: "100",
-            ...(p.sessionId ? { sessionId: p.sessionId } : {}),
           },
         ],
     payments: [{ method: "CASH", date: "2026-11-01", amount: "100" }],
@@ -194,6 +196,8 @@ export const CASES: Record<string, Case> = {
           documentJson({ clientId: me.clientId, relatedInvoiceId: target.issuedDocId, kind: "RECEIPT" }),
           "issue",
         ),
+        // my client, written over their saved draft
+        await call(save, documentJson({ clientId: me.clientId, draftId: target.draftDocId }), "draft"),
       ];
     },
     control: "writes",

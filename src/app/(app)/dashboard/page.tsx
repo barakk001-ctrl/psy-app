@@ -64,7 +64,7 @@ export default async function DashboardPage() {
     loadIncome(userId, monthStart, monthEnd),
     db.invoice.aggregate({
       // Drafts count too — an unpaid invoice is a debt even before it's sent
-      where: { userId, status: { in: ["DRAFT", "SENT", "PARTIALLY_PAID"] } },
+      where: { userId, currency: "ILS", status: { in: ["DRAFT", "SENT", "PARTIALLY_PAID"] } },
       _sum: { total: true, amountPaid: true },
     }),
     db.todo.findMany({
