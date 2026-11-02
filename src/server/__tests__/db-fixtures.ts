@@ -21,6 +21,7 @@ export type Practice = {
   oldInvoiceId: string;
   paymentId: string;
   draftDocId: string;
+  expenseId: string;
   issuedDocId: string;
   inboxId: string;
   todoId: string;
@@ -141,6 +142,28 @@ export async function seedPractice(
       dataCiphertext: new Uint8Array(enc.ciphertext),
       dataIv: enc.iv,
       dataTag: enc.tag,
+    },
+  });
+  const expenseEnc = encryptBuffer(PDF_BYTES);
+  const expense = await db.expense.create({
+    data: {
+      userId,
+      status: "APPROVED",
+      docType: 305,
+      docDate: new Date(Date.UTC(2026, 9, 12)),
+      supplier: `ספק ${canary}`,
+      amount: 118,
+      vatAmount: 18,
+      nameCiphertext: encryptSecret(`הוצאה-${canary}.pdf`),
+      mimeType: "application/pdf",
+      size: PDF_BYTES.length,
+      blob: {
+        create: {
+          ciphertext: new Uint8Array(expenseEnc.ciphertext),
+          iv: expenseEnc.iv,
+          tag: expenseEnc.tag,
+        },
+      },
     },
   });
   const document = await db.clientDocument.create({
@@ -266,6 +289,7 @@ export async function seedPractice(
     oldInvoiceId: oldInvoice.id,
     paymentId: oldInvoice.payments[0].id,
     draftDocId: draftDoc.id,
+    expenseId: expense.id,
     issuedDocId: issuedDoc.id,
     inboxId: inbox.id,
     todoId: todo.id,
@@ -308,6 +332,8 @@ export async function fingerprint(db: PrismaClient, userId: string): Promise<str
     files,
     documents,
     blobs,
+    expenses,
+    expenseBlobs,
     invoices,
     items,
     payments,
@@ -330,6 +356,8 @@ export async function fingerprint(db: PrismaClient, userId: string): Promise<str
     db.sessionFile.findMany({ where: mine }),
     db.clientDocument.findMany({ where: mine }),
     db.clientDocumentBlob.findMany({ where: { document: mine } }),
+    db.expense.findMany({ where: mine }),
+    db.expenseBlob.findMany({ where: { expense: mine } }),
     db.invoice.findMany({ where: mine }),
     db.invoiceItem.findMany({ where: { invoice: mine } }),
     db.payment.findMany({ where: { invoice: mine } }),
@@ -353,6 +381,8 @@ export async function fingerprint(db: PrismaClient, userId: string): Promise<str
     files: sorted(files),
     documents: sorted(documents),
     blobs: [...blobs].sort((a, b) => a.documentId.localeCompare(b.documentId)),
+    expenses: sorted(expenses),
+    expenseBlobs: [...expenseBlobs].sort((a, b) => a.expenseId.localeCompare(b.expenseId)),
     invoices: sorted(invoices),
     items: sorted(items),
     payments: sorted(payments),

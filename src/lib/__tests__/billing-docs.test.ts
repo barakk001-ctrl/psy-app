@@ -244,6 +244,7 @@ describe("the document form's helpers", () => {
   it("shows money in the document's currency", () => {
     expect(formatDocMoney(35000)).toContain("₪");
     expect(formatDocMoney(35000, "USD")).toContain("$");
+    expect(formatDocMoney(-1800)).toBe("−₪18.00");
   });
   const blank = { kind: "TAX_INVOICE" as const, clientName: "", date: "2026-11-02", vatIncluded: true, items: [], payments: [] };
   it("keeps an unfinished draft, but not an empty one", () => {

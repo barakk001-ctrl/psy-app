@@ -148,6 +148,37 @@ async function binaries(run: Run) {
     },
   );
 
+  let afterExpense: string | undefined;
+  for (;;) {
+    const rows: { expenseId: string; iv: string }[] = await dbAll.expenseBlob.findMany({
+      select: { expenseId: true, iv: true },
+      take: PAGE,
+      orderBy: { expenseId: "asc" },
+      ...(afterExpense ? { skip: 1, cursor: { expenseId: afterExpense } } : {}),
+    });
+    if (rows.length === 0) break;
+    for (const r of rows) {
+      if (!isOld(run, r.iv)) continue;
+      tally(run, "ExpenseBlob.data");
+      try {
+        const full = await dbAll.expenseBlob.findUniqueOrThrow({ where: { expenseId: r.expenseId } });
+        const plain = decryptBuffer({ ciphertext: Buffer.from(full.ciphertext), iv: full.iv, tag: full.tag });
+        if (!run.apply) continue;
+        const next = encryptBuffer(plain);
+        const { count } = await dbAll.expenseBlob.updateMany({
+          where: { expenseId: r.expenseId, iv: full.iv },
+          data: { ciphertext: new Uint8Array(next.ciphertext), iv: next.iv, tag: next.tag },
+        });
+        if (count === 1) run.report.rewritten++;
+        else run.report.skipped++;
+      } catch {
+        run.report.failed.push(`ExpenseBlob ${r.expenseId}`);
+      }
+    }
+    if (rows.length < PAGE) break;
+    afterExpense = rows[rows.length - 1].expenseId;
+  }
+
   let after: string | undefined;
   for (;;) {
     const rows: { documentId: string; iv: string }[] = await dbAll.clientDocumentBlob.findMany({
@@ -258,6 +289,14 @@ async function packedColumns(run: Run) {
     (r) => r.fileNameCiphertext,
     (r, old, next) =>
       update(dbAll.sessionFile.updateMany({ where: { id: r.id, fileNameCiphertext: old }, data: { fileNameCiphertext: next } })),
+  );
+  await packedField(
+    run,
+    "Expense.nameCiphertext",
+    (after) => dbAll.expense.findMany({ select: { id: true, nameCiphertext: true }, ...pageArgs(after) }),
+    (r) => r.nameCiphertext,
+    (r, old, next) =>
+      update(dbAll.expense.updateMany({ where: { id: r.id, nameCiphertext: old }, data: { nameCiphertext: next } })),
   );
   await packedField(
     run,

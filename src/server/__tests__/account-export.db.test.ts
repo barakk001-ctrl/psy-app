@@ -106,6 +106,7 @@ describe.skipIf(!TEST_DATABASE_URL)("full account export (real Postgres)", () =>
     expect(csv("סיכומים.csv")).toContain(`סיכום ${a.canary}`);
     expect(csv("תשלומים.csv")).toContain("100");
     expect(csv("חשבוניות ומסמכים.csv")).toContain("9001");
+    expect(csv("הוצאות.csv")).toContain(`ספק ${a.canary}`);
     expect(csv("רשימת המתנה.csv")).toContain(`רקע ${a.canary}`);
     expect(csv("הודעות נכנסות.csv")).toContain(`הודעה ${a.canary}`);
 

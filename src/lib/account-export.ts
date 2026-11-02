@@ -14,6 +14,7 @@ import yazl from "yazl";
 import { dbAll } from "@/lib/db";
 import { decryptBuffer, decryptNote, decryptSecret } from "@/lib/crypto";
 import { PAYMENT_METHOD_LABELS } from "@/lib/income";
+import { expenseDocTypeLabel } from "@/lib/expenses";
 import { clientGeneralNotes, clientIdNumber, inboxText, sessionFileName } from "@/lib/sensitive-fields";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
 import {
@@ -447,6 +448,22 @@ ${noteText(path, s.note!)}
     ),
     csvEntry(
       tally,
+      "הוצאות.csv",
+      ["מזהה", "סטטוס", "סוג מסמך", "תאריך", "ספק", "מספר מסמך", "סכום", "מע״מ מתוך הסכום"],
+      () => paged((c) => dbAll.expense.findMany({ where: mine, ...orderPage, ...c })),
+      (r) => [
+        r.id,
+        r.status === "APPROVED" ? "מאושר" : "טיוטה",
+        expenseDocTypeLabel(r.docType),
+        day(r.docDate),
+        r.supplier,
+        r.docNumber,
+        r.amount,
+        r.vatAmount,
+      ],
+    ),
+    csvEntry(
+      tally,
       "שורות חשבונית.csv",
       ["מזהה", "מספר מסמך", "תיאור", "כמות", "מחיר ליחידה", "סכום", "מזהה פגישה", "שיוך פנימי בלבד"],
       () =>
@@ -533,6 +550,33 @@ ${noteText(path, s.note!)}
       (r) => [r.id, r.plan, r.sum, r.status, clock(r.createdAt), clock(r.appliedAt)],
     ),
   );
+
+  // Expense files (encrypted names and bytes)
+  for await (const rows of paged((c) =>
+    dbAll.expense.findMany({
+      where: mine,
+      select: { id: true, nameCiphertext: true },
+      ...orderPage,
+      ...c,
+    }),
+  )) {
+    for (const e of rows) {
+      let name = e.id;
+      try {
+        name = decryptSecret(e.nameCiphertext);
+      } catch {
+        tally.problems.push(`שם קובץ הוצאה שלא ניתן היה לפענח: ${e.id}`);
+      }
+      entries.push(
+        fileEntry(tally, place(`הוצאות/${safeFileName(name)}`), async () => {
+          const blob = await dbAll.expenseBlob.findFirst({ where: { expenseId: e.id, expense: mine } });
+          return blob
+            ? decryptBuffer({ ciphertext: Buffer.from(blob.ciphertext), iv: blob.iv, tag: blob.tag })
+            : null;
+        }),
+      );
+    }
+  }
 
   // Uploaded documents (encrypted names and bytes)
   for await (const rows of paged((c) =>

@@ -178,6 +178,20 @@ export const CASES: Record<string, Case> = {
     control: "writes",
   },
 
+  // ── מסמכי הוצאות ─────────────────────────────────────────────────────────
+  "expenses.saveExpenseAction": {
+    run: ({ call, target }) =>
+      call(
+        "expenses.saveExpenseAction",
+        form({ id: target.expenseId, intent: "draft", supplier: "ספק אחר", amount: "1" }),
+      ),
+    control: "writes",
+  },
+  "expenses.deleteExpenseAction": {
+    run: ({ call, target }) => call("expenses.deleteExpenseAction", form({ id: target.expenseId })),
+    control: "writes",
+  },
+
   // ── "מסמך חדש" and morning documents ─────────────────────────────────────
   "documents.saveDocumentAction": {
     run: async ({ call, target, me, mode }) => {
@@ -467,6 +481,13 @@ export const ROUTE_CASES: Record<string, Case> = {
       }),
     control: okResponse,
   },
+  "expenses/[id]": {
+    run: ({ hit, target }) =>
+      hit("expenses/[id]", `/api/expenses/${target.expenseId}?download=1`, {
+        params: { id: target.expenseId },
+      }),
+    control: okResponse,
+  },
   "documents/[id]": {
     run: ({ hit, target }) =>
       hit("documents/[id]", `/api/documents/${target.documentId}?download=1`, {
@@ -549,6 +570,7 @@ export const NO_ID_INPUT: Record<string, string> = {
   "settings.calendarFeedModeAction": "own account",
   "settings.acceptAgreementAction": "own account",
   "settings.updateBusinessInfoAction": "own account",
+  "expenses.uploadExpenseAction": "creates one of the caller's own, from a file",
   "settings.updateDocumentDefaultsAction": "own account",
   "documents.documentNextNumberAction": "a document type; the answer is morning's for the caller's own keys",
   "settings.updateSessionDefaultsAction": "own account",

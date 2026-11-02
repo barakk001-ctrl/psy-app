@@ -24,6 +24,7 @@ export const NO_CRAWL_PATHS = [
   "/clients",
   "/sessions",
   "/invoices",
+  "/expenses",
   "/document",
   "/collect",
   "/reports",

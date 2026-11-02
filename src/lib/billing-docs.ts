@@ -288,7 +288,7 @@ export function documentDefaults(user: {
 /** Agorot (or cents) → "₪1,200.00" in the document's currency. */
 export function formatDocMoney(agorot: number, currency: string = "ILS"): string {
   const symbol = isDocCurrency(currency) ? CURRENCY_SYMBOLS[currency] : `${currency} `;
-  return `${symbol}${Number(agorotToDecimalString(agorot)).toLocaleString("he-IL", {
+  return `${agorot < 0 ? "−" : ""}${symbol}${Number(agorotToDecimalString(Math.abs(agorot))).toLocaleString("he-IL", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;

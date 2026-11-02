@@ -148,6 +148,7 @@ model User {
   invoices        Invoice[]
   reminderJobs    ReminderJob[]
   morningDocuments MorningDocument[]
+  expenses         Expense[]
   inboxMessages    InboxMessage[]
   todos            Todo[]
   meetingTypes     MeetingType[]
@@ -469,6 +470,43 @@ model ClientDocument {
 model ClientDocumentBlob {
   documentId String         @id
   document   ClientDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  ciphertext Bytes
+  iv         String
+  tag        String
+}
+
+// An expense document she uploaded (src/lib/expenses.ts). DRAFT until she
+// approves it; the details are hers to type, nothing reads the file. Business
+// records, not clinical.
+model Expense {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status         String   @default("DRAFT") // DRAFT | APPROVED
+  docType        Int?     // EXPENSE_DOC_TYPES (morning's codes)
+  docDate        DateTime?
+  supplier       String?
+  docNumber      String?
+  amount         Decimal? @db.Decimal(10, 2)
+  vatAmount      Decimal? @db.Decimal(10, 2) // the VAT inside `amount`
+
+  nameCiphertext String   // file name, packed AES-256-GCM
+  mimeType       String   // from the file's bytes, never the browser's claim
+  size           Int      // plaintext bytes
+
+  blob           ExpenseBlob?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, status, docDate])
+}
+
+// The encrypted bytes of an Expense's file (expense-storage.ts)
+model ExpenseBlob {
+  expenseId  String  @id
+  expense    Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   ciphertext Bytes
   iv         String
   tag        String
