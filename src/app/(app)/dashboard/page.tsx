@@ -329,7 +329,7 @@ export default async function DashboardPage() {
               className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
             >
               <FileText className="w-4 h-4 text-sage-600" />
-              <span className="text-sm">חשבונית חדשה</span>
+              <span className="text-sm">מסמך חדש</span>
             </Link>
             <Link
               href="/import"
