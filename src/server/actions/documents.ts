@@ -11,6 +11,7 @@ import {
   DOC_KINDS,
   agorotToDecimalString,
   canCreditNote,
+  docKindByCode,
   documentProblems,
   documentTotals,
   draftSaveProblems,
@@ -20,6 +21,7 @@ import {
   type DocumentDraft,
 } from "@/lib/billing-docs";
 import {
+  applyCreditNote,
   dayToDate,
   issueStoredDocument,
   linkDraftSessions,
@@ -29,6 +31,7 @@ import {
 import {
   buildMorningDocumentPayload,
   getMorningCredentials,
+  morningNextNumber,
   previewMorningDocument,
 } from "@/lib/morning";
 import { documentDraftSchema, type DocumentDraftInput } from "@/server/validators/billing-document";
@@ -62,6 +65,9 @@ function toDraft(input: DocumentDraftInput): DocumentDraft {
     dueDate: info.hasDueDate ? blank(input.dueDate) : null,
     vatIncluded: input.vatIncluded,
     currency: input.currency,
+    lang: input.lang,
+    vatType: input.vatType,
+    rounding: input.rounding,
     sessionIds: info.hasSessions && blank(input.clientId) ? [...new Set(input.sessionIds)] : [],
     description: blank(input.description),
     remarks: blank(input.remarks),
@@ -110,6 +116,7 @@ type Parsed =
  * Parses + checks the form's JSON against the rules and the user's own data.
  * `complete` is for preview and issuing; a draft may be unfinished. A receipt
  * for an invoice is always complete, since saving it settles that invoice.
+ * A credit note linked to a document cancels all of it, so it must add up to it.
  */
 async function parseDraft(userId: string, json: string, complete: boolean): Promise<Parsed> {
   let raw: unknown;
@@ -137,9 +144,9 @@ async function parseDraft(userId: string, json: string, complete: boolean): Prom
 
   const relId = blank(input.relatedInvoiceId);
   const problems =
-    complete || relId
+    complete || (relId && input.kind === "RECEIPT")
       ? [...(clientId || draft.clientName.trim() ? [] : ["יש לבחור לקוח/ה או למלא שם של לקוח מזדמן."]), ...documentProblems(draft, vatLiable)]
-      : draftSaveProblems(draft);
+      : draftSaveProblems(draft, vatLiable);
   if (problems.length) return { ok: false, result: { error: "אי אפשר עדיין לשמור את המסמך:", problems } };
 
   // Meetings: the user's, this client's, not billed yet (a draft being edited
@@ -160,7 +167,36 @@ async function parseDraft(userId: string, json: string, complete: boolean): Prom
   }
 
   let relatedInvoice: RelatedInvoice | null = null;
-  if (relId) {
+  if (relId && input.kind === "CREDIT_NOTE") {
+    const rel = await db.invoice.findFirst({
+      where: { id: relId, userId, clientId },
+      select: { id: true, morningDocId: true, total: true, status: true, docType: true },
+    });
+    if (!rel || !canCreditNote(rel)) {
+      return { ok: false, result: { error: "אפשר לקשר רק חשבונית מס שהופקה ב-morning ולא בוטלה." } };
+    }
+    const live = await db.invoice.findFirst({
+      where: {
+        userId,
+        relatedInvoiceId: rel.id,
+        docType: DOC_KINDS.CREDIT_NOTE.code,
+        status: { not: "CANCELLED" },
+        ...(draftId ? { id: { not: draftId } } : {}),
+      },
+      select: { id: true },
+    });
+    if (live) return { ok: false, result: { error: "כבר קיימת חשבונית זיכוי למסמך הזה." } };
+    if (complete && (parseAgorot(rel.total.toString()) ?? 0) !== documentTotals(draft, vatLiable).totalAgorot) {
+      return {
+        ok: false,
+        result: {
+          error: "אי אפשר עדיין לשמור את המסמך:",
+          problems: ["חשבונית זיכוי שמקושרת למסמך מבטלת את כולו, אז הסכום צריך להיות זהה. לזיכוי חלקי מסירים את הקישור."],
+        },
+      };
+    }
+    relatedInvoice = { id: rel.id, morningDocId: rel.morningDocId, total: rel.total.toString(), status: rel.status };
+  } else if (relId) {
     const rel = await db.invoice.findFirst({
       where: { id: relId, userId, clientId },
       select: { id: true, morningDocId: true, total: true, status: true, docType: true },
@@ -220,6 +256,9 @@ export async function saveDocumentAction(
     description: draft.description,
     vatIncluded: draft.vatIncluded,
     currency: draft.currency,
+    lang: draft.lang,
+    vatType: draft.vatType,
+    rounding: draft.rounding,
     docClientName: draft.clientName || null,
     docClientTaxId: draft.clientTaxId,
     docClientEmail: joinEmails(draft.clientEmails),
@@ -248,7 +287,8 @@ export async function saveDocumentAction(
 
   if (draftId) {
     // Only a draft nothing was issued for, that isn't being issued right now,
-    // and that settles no invoice (saving those already moved money)
+    // and that settles no invoice (saving those already moved money). A credit
+    // note's link moves nothing until it is issued.
     const editable = await db.invoice.updateMany({
       where: {
         id: draftId,
@@ -256,11 +296,13 @@ export async function saveDocumentAction(
         docType: { not: null },
         morningDocId: null,
         morningDocNumber: null,
-        relatedInvoiceId: null,
         status: { not: "CANCELLED" },
-        OR: [{ morningIssuedAt: null }, { morningIssuedAt: { lt: new Date(Date.now() - 2 * 60_000) } }],
+        AND: [
+          { OR: [{ relatedInvoiceId: null }, { docType: DOC_KINDS.CREDIT_NOTE.code }] },
+          { OR: [{ morningIssuedAt: null }, { morningIssuedAt: { lt: new Date(Date.now() - 2 * 60_000) } }] },
+        ],
       },
-      data: fields,
+      data: { ...fields, relatedInvoiceId: draft.kind === "CREDIT_NOTE" ? (relatedInvoice?.id ?? null) : null },
     });
     if (editable.count === 0) return { error: "אי אפשר לערוך את המסמך הזה: הוא כבר הופק או בוטל." };
     await db.invoice.update({
@@ -293,7 +335,7 @@ export async function saveDocumentAction(
     });
     // A receipt for a tax invoice settles that invoice (the money itself is
     // counted once, on the receipt's payment lines)
-    if (relatedInvoice) {
+    if (relatedInvoice && draft.kind === "RECEIPT") {
       const relPaid = await tx.invoice.findUnique({
         where: { id: relatedInvoice.id },
         select: { amountPaid: true, total: true, status: true },
@@ -337,11 +379,27 @@ export async function previewDraftInMorningAction(
   if (!p.ok) return { error: p.result.error, problems: p.result.problems };
   const link =
     p.relatedInvoice?.morningDocId != null
-      ? { linkedDocumentIds: [p.relatedInvoice.morningDocId], linkType: "link" as const }
+      ? {
+          linkedDocumentIds: [p.relatedInvoice.morningDocId],
+          linkType: p.draft.kind === "CREDIT_NOTE" ? ("cancel" as const) : ("link" as const),
+        }
       : {};
   const payload = buildMorningDocumentPayload(p.draft, { vatLiable: p.vatLiable, ...link });
   const res = await previewMorningDocument(userId, creds, payload);
   return res.ok ? { pdfBase64: res.data } : { error: `התצוגה המקדימה של morning נכשלה: ${res.error}` };
+}
+
+/**
+ * The number morning says the next document of this type will get, for the
+ * issue confirmation. Null whenever it can't say; never made up.
+ */
+export async function documentNextNumberAction(kind: string): Promise<{ number: number | null }> {
+  const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { number: null };
+  const creds = await getMorningCredentials(userId);
+  const info = docKindByCode(Number(kind));
+  if (!creds || !info) return { number: null };
+  return { number: await morningNextNumber(userId, creds, info.code) };
 }
 
 /** morning's PDF of a saved draft (document page). */
@@ -454,7 +512,7 @@ export async function setDocumentMorningNumberAction(
   if (!/^\d+$/.test(number)) return { error: "מספר המסמך ב-morning הוא מספר (ספרות בלבד)." };
   const inv = await db.invoice.findFirst({
     where: { id: invoiceId, userId },
-    select: { id: true, clientId: true, docType: true, morningDocId: true, status: true, total: true, amountPaid: true, draftSessionIds: true, items: { select: { sessionId: true } } },
+    select: { id: true, clientId: true, docType: true, morningDocId: true, relatedInvoiceId: true, status: true, total: true, amountPaid: true, draftSessionIds: true, items: { select: { sessionId: true } } },
   });
   if (!inv || inv.docType == null) return { error: "המסמך לא נמצא." };
   if (inv.morningDocId) return { error: "המסמך הופק דרך החיבור ל-morning — המספר כבר שמור." };
@@ -477,6 +535,7 @@ export async function setDocumentMorningNumberAction(
       },
     });
     await linkDraftSessions(tx, userId, inv, number, url);
+    await applyCreditNote(tx, userId, inv);
   });
   revalidateDocument(inv.id, inv.clientId, [...inv.items.map((i) => i.sessionId), ...inv.draftSessionIds]);
   return { saved: true };

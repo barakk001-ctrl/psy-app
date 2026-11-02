@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   DOC_KINDS,
+  documentDefaults,
+  paymentDetailLabel,
   agorotToDecimalString,
   canCreditNote,
   creatableKinds,
@@ -59,14 +61,15 @@ describe("money", () => {
 describe("kinds", () => {
   it("offers tax documents only to a VAT-liable business", () => {
     expect(creatableKinds(false).map((k) => k.code)).toEqual([400]);
-    expect(creatableKinds(true).map((k) => k.code)).toEqual([320, 305, 400]);
+    expect(creatableKinds(true).map((k) => k.code)).toEqual([320, 305, 400, 330]);
   });
   it("shows all four document squares to a VAT-liable business, in her order", () => {
     expect(docKindSquares(true).map((k) => k.code)).toEqual([305, 320, 400, 330]);
     expect(docKindSquares(false).map((k) => k.code)).toEqual([400]);
   });
-  it("never makes a credit note something \"מסמך חדש\" can issue", () => {
-    expect(creatableKinds(true).map((k) => k.kind)).not.toContain("CREDIT_NOTE");
+  it("doesn't let the new credit-note kind change where the form starts", () => {
+    expect(defaultKind(true, null)).toBe("TAX_INVOICE_RECEIPT");
+    expect(defaultKind(false, null)).toBe("RECEIPT");
   });
   it("starts on the Settings preference when it's allowed", () => {
     expect(defaultKind(true, 400)).toBe("RECEIPT");
@@ -244,13 +247,46 @@ describe("the document form's helpers", () => {
   });
   const blank = { kind: "TAX_INVOICE" as const, clientName: "", date: "2026-11-02", vatIncluded: true, items: [], payments: [] };
   it("keeps an unfinished draft, but not an empty one", () => {
-    expect(draftSaveProblems(blank)).toHaveLength(1);
-    expect(draftSaveProblems({ ...blank, clientName: "אורח" })).toEqual([]);
-    expect(draftSaveProblems({ ...blank, remarks: "להשלים" })).toEqual([]);
+    expect(draftSaveProblems(blank, true)).toHaveLength(1);
+    expect(draftSaveProblems({ ...blank, clientName: "אורח" }, true)).toEqual([]);
+    expect(draftSaveProblems({ ...blank, remarks: "להשלים" }, true)).toEqual([]);
   });
   it("refuses a bad address only when the document is finished", () => {
     const d = { ...blank, clientName: "אורח", clientEmails: ["not-an-address"] };
-    expect(draftSaveProblems(d)).toEqual([]);
+    expect(draftSaveProblems(d, true)).toEqual([]);
     expect(documentProblems(d, true).join(" ")).toContain("not-an-address");
+  });
+});
+
+describe("per-document settings", () => {
+  it("starts from Settings, and an exempt business has no VAT type", () => {
+    expect(documentDefaults({})).toEqual({ currency: "ILS", lang: "he", vatType: 0, rounding: false });
+    expect(documentDefaults({ docCurrency: "USD", docLang: "en", docVatType: 1, docRounding: true, vatLiable: true })).toEqual({
+      currency: "USD",
+      lang: "en",
+      vatType: 1,
+      rounding: true,
+    });
+    expect(documentDefaults({ docVatType: 1, vatLiable: false }).vatType).toBe(0);
+    expect(documentDefaults({ docCurrency: "XXX" }).currency).toBe("ILS");
+  });
+  it("adds no VAT to a document marked exempt", () => {
+    const d = {
+      kind: "TAX_INVOICE" as const,
+      clientName: "א",
+      date: "2026-11-02",
+      vatIncluded: false,
+      vatType: 1,
+      items: [{ description: "x", quantity: 1, unitPriceAgorot: 10000 }],
+      payments: [],
+    };
+    const t = documentTotals(d, true);
+    expect(t.vatAgorot).toBe(0);
+    expect(t.totalAgorot).toBe(10000);
+    expect(documentTotals({ ...d, vatType: 0 }, true).vatAgorot).toBeGreaterThan(0);
+  });
+  it("calls a payment app's reference an approval number", () => {
+    expect(paymentDetailLabel("BIT", "reference")).toBe("מספר אישור");
+    expect(paymentDetailLabel("PAYPAL", "reference")).toBe("מספר אסמכתה");
   });
 });

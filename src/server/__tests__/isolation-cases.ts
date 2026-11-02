@@ -196,6 +196,12 @@ export const CASES: Record<string, Case> = {
           documentJson({ clientId: me.clientId, relatedInvoiceId: target.issuedDocId, kind: "RECEIPT" }),
           "issue",
         ),
+        // a credit note cancelling their invoice
+        await call(
+          save,
+          documentJson({ clientId: me.clientId, relatedInvoiceId: target.issuedDocId, kind: "CREDIT_NOTE" }),
+          "issue",
+        ),
         // my client, written over their saved draft
         await call(save, documentJson({ clientId: me.clientId, draftId: target.draftDocId }), "draft"),
       ];
@@ -543,6 +549,8 @@ export const NO_ID_INPUT: Record<string, string> = {
   "settings.calendarFeedModeAction": "own account",
   "settings.acceptAgreementAction": "own account",
   "settings.updateBusinessInfoAction": "own account",
+  "settings.updateDocumentDefaultsAction": "own account",
+  "documents.documentNextNumberAction": "a document type; the answer is morning's for the caller's own keys",
   "settings.updateSessionDefaultsAction": "own account",
   "settings.updateBrandingAction": "own account",
   "settings.setShowHolidaysAction": "own account",

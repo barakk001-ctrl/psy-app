@@ -7,6 +7,8 @@ import {
   DOC_KINDS,
   canCreditNote,
   documentClientName,
+  documentTotals,
+  formatDocMoney,
   docKindByCode,
   docTypeLabel,
   morningCopyText,
@@ -16,6 +18,7 @@ import { draftFromInvoice, type InvoiceWithParts } from "@/lib/billing-doc-data"
 import { cancelInvoiceAction } from "@/server/actions/invoices";
 import { formatDate } from "@/lib/format";
 import { DocumentPreview, type PreviewBusiness } from "./document-preview";
+import { IssueSuccess } from "./issue-success";
 import { DraftDocumentActions, IssuedDocumentActions } from "./document-actions";
 
 /** A document made in "מסמך חדש" (Invoice with docType): draft or issued in morning. */
@@ -112,7 +115,7 @@ export async function DocumentView({
           )}
           {!issued && !cancelled && (
             <>
-              {!invoice.relatedInvoiceId && (
+              {(!invoice.relatedInvoiceId || invoice.docType === DOC_KINDS.CREDIT_NOTE.code) && (
                 <Link href={`/invoices/new?draft=${invoice.id}`}>
                   <Button type="button" size="sm" variant="secondary">
                     <Pencil className="w-4 h-4" /> עריכה
@@ -136,10 +139,12 @@ export async function DocumentView({
       </header>
 
       {notice.issued && issued && (
-        <div className="rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700">
-          ה{info.label} הופקה ב-morning ✓ — מספר {invoice.morningDocNumber}.
-          {invoice.docClientEmail ? ` morning שולח אותה ל-${invoice.docClientEmail}.` : ""}
-        </div>
+        <IssueSuccess
+          label={info.label}
+          number={invoice.morningDocNumber}
+          url={invoice.morningDocUrl}
+          emails={invoice.docClientEmail}
+        />
       )}
       {notice.saved && !issued && (
         <div className="rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700">
@@ -151,6 +156,15 @@ export async function DocumentView({
         <DraftDocumentActions
           invoiceId={invoice.id}
           label={info.label}
+          summary={{
+            label: info.label,
+            code: info.code,
+            sender: business.name,
+            date: draft.date.split("-").reverse().join("/"),
+            client: draft.clientName,
+            amount: formatDocMoney(documentTotals(draft, business.vatLiable).totalAgorot, draft.currency),
+            emails: draft.clientEmails ?? [],
+          }}
           morningConnected={morningConnected}
           morningUrl={morningNewDocumentUrl(info.kind)}
           copyText={morningCopyText(draft, business.vatLiable)}

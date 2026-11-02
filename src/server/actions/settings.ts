@@ -2,6 +2,7 @@
 
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { isReadOnly, requireWritable } from "@/lib/subscription-server";
+import { documentDefaults } from "@/lib/billing-docs";
 import { canCreateAccount } from "@/lib/signup-policy";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -411,5 +412,29 @@ export async function updateIdleTimeoutAction(
     // the account is saved; the token follows at the next sign-in
   }
   revalidatePath("/", "layout");
+  return { saved: true };
+}
+
+/** Settings → ברירות מחדל למסמכים: where each new document's settings bar starts. */
+export async function updateDocumentDefaultsAction(
+  _prev: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
+  const owner = await db.user.findUnique({ where: { id: userId }, select: { vatLiable: true } });
+  const d = documentDefaults({
+    docCurrency: String(formData.get("docCurrency") ?? ""),
+    docLang: String(formData.get("docLang") ?? ""),
+    docVatType: Number(formData.get("docVatType") ?? 0),
+    docRounding: formData.get("docRounding") === "on",
+    vatLiable: owner?.vatLiable,
+  });
+  await db.user.update({
+    where: { id: userId },
+    data: { docCurrency: d.currency, docLang: d.lang, docVatType: d.vatType, docRounding: d.rounding },
+  });
+  revalidatePath("/settings");
+  revalidatePath("/invoices/new");
   return { saved: true };
 }

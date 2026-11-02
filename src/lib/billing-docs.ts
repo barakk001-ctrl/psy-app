@@ -77,7 +77,7 @@ export const DOC_KINDS: Record<DocKind, DocKindInfo> = {
     kind: "CREDIT_NOTE",
     code: 330,
     label: "חשבונית זיכוי",
-    hint: "ביטול (מלא) של חשבונית מס שכבר הופקה.",
+    hint: "זיכוי ללקוח/ה, עם קישור למסמך המקורי או בלעדיו.",
     hasItems: true,
     hasPayments: false,
     hasDueDate: false,
@@ -98,19 +98,15 @@ export function docTypeLabel(code: number | null | undefined): string {
 
 /**
  * The kinds offered in "מסמך חדש". An exempt business (עוסק פטור) issues
- * receipts only; a credit note is issued from the document it cancels.
+ * receipts only. The first one is where the form starts with no preference.
  */
 export function creatableKinds(vatLiable: boolean): DocKindInfo[] {
   return vatLiable
-    ? [DOC_KINDS.TAX_INVOICE_RECEIPT, DOC_KINDS.TAX_INVOICE, DOC_KINDS.RECEIPT]
+    ? [DOC_KINDS.TAX_INVOICE_RECEIPT, DOC_KINDS.TAX_INVOICE, DOC_KINDS.RECEIPT, DOC_KINDS.CREDIT_NOTE]
     : [DOC_KINDS.RECEIPT];
 }
 
-/**
- * The document-type squares, in the order the practitioner reads them. Unlike
- * creatableKinds this includes the credit note: its square leads to the invoice
- * being cancelled (a credit note is never issued from "מסמך חדש").
- */
+/** The document-type squares, in the order the practitioner reads them. */
 export function docKindSquares(vatLiable: boolean): DocKindInfo[] {
   return [
     DOC_KINDS.TAX_INVOICE,
@@ -187,6 +183,12 @@ export const PAYMENT_DETAIL_FIELDS: Record<PaymentKind, PaymentDetailField[]> = 
   CASH: [],
 };
 
+/** "מספר אישור" on a payment app, as the app calls it. */
+export function paymentDetailLabel(method: PaymentKind, field: PaymentDetailField): string {
+  if (field === "reference" && (method === "BIT" || method === "PAYBOX")) return "מספר אישור";
+  return PAYMENT_DETAIL_LABELS[field];
+}
+
 export const PAYMENT_DETAIL_LABELS: Record<PaymentDetailField, string> = {
   bankName: "בנק",
   bankBranch: "סניף",
@@ -232,6 +234,44 @@ const CURRENCY_SYMBOLS: Record<DocCurrency, string> = { ILS: "₪", USD: "$", EU
 
 export function isDocCurrency(v: string | null | undefined): v is DocCurrency {
   return (DOC_CURRENCIES as readonly string[]).includes(v ?? "");
+}
+
+export const DOC_LANGS = ["he", "en"] as const;
+export type DocLang = (typeof DOC_LANGS)[number];
+export const DOC_LANG_LABELS: Record<DocLang, string> = { he: "עברית", en: "אנגלית" };
+
+/** morning's document vatType. "Mixed" (2) needs a VAT choice per line, so isn't offered. */
+export const DOC_VAT_TYPES = [0, 1] as const;
+export type DocVatType = (typeof DOC_VAT_TYPES)[number];
+export const DOC_VAT_TYPE_LABELS: Record<DocVatType, string> = {
+  0: "לפי סוג העסק",
+  1: "פטור ממע״מ",
+};
+
+export const DOC_ROUNDING_LABELS = { off: "ללא עיגול", on: "עיגול סכומים" } as const;
+
+/** Where a new document's settings bar starts (from Settings, or these). */
+export type DocumentDefaults = {
+  currency: DocCurrency;
+  lang: DocLang;
+  vatType: DocVatType;
+  rounding: boolean;
+};
+
+export function documentDefaults(user: {
+  docCurrency?: string | null;
+  docLang?: string | null;
+  docVatType?: number | null;
+  docRounding?: boolean | null;
+  vatLiable?: boolean | null;
+}): DocumentDefaults {
+  return {
+    currency: isDocCurrency(user.docCurrency) ? user.docCurrency : "ILS",
+    lang: user.docLang === "en" ? "en" : "he",
+    // An exempt business has no VAT type to choose
+    vatType: user.vatLiable && user.docVatType === 1 ? 1 : 0,
+    rounding: !!user.docRounding,
+  };
 }
 
 /** Agorot (or cents) → "₪1,200.00" in the document's currency. */
@@ -282,6 +322,12 @@ export type DocumentDraft = {
   vatIncluded: boolean;
   /** ISO code; missing = ILS */
   currency?: string;
+  /** missing = Hebrew */
+  lang?: string;
+  /** morning's document vatType: 0 by business type (or missing), 1 exempt */
+  vatType?: number;
+  /** morning rounds the amounts */
+  rounding?: boolean;
   /** meetings linked to it: internal, never printed or sent to morning */
   sessionIds?: string[];
   description?: string | null;
@@ -385,7 +431,7 @@ export function documentTotals(draft: DocumentDraft, vatLiable: boolean): Docume
       vatPercent: VAT_PERCENT,
     };
   }
-  if (!vatLiable) {
+  if (!vatLiable || draft.vatType === 1) {
     return {
       linesAgorot,
       netAgorot: linesAgorot,
@@ -427,7 +473,11 @@ const EMAIL_RE = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
  * nothing to keep. Everything else waits for preview and issuing, which go
  * through documentProblems.
  */
-export function draftSaveProblems(draft: DocumentDraft): string[] {
+export function draftSaveProblems(draft: DocumentDraft, vatLiable: boolean): string[] {
+  const info = DOC_KINDS[draft.kind];
+  if (info.vatLiableOnly && !vatLiable) {
+    return [`${info.label} מפיק רק עוסק מורשה. בהגדרות העסק מסומן עוסק פטור.`];
+  }
   const hasContent =
     !!draft.clientName.trim() ||
     draft.items.some((it) => it.description.trim() || it.unitPriceAgorot > 0) ||

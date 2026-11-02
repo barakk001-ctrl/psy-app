@@ -5,6 +5,8 @@ import { BusinessInfoForm } from "@/components/settings/business-info-form";
 import { BrandingCard } from "@/components/settings/branding-card";
 import { PersonalDetailsForm } from "@/components/settings/personal-details-form";
 import { MorningSettingsForm } from "@/components/settings/morning-settings-form";
+import { DocumentDefaultsCard } from "@/components/settings/document-defaults-card";
+import { documentDefaults } from "@/lib/billing-docs";
 import { BiometricSettings } from "@/components/settings/biometric-settings";
 import { InboxSettings } from "@/components/settings/inbox-settings";
 import { MeetingTypesCard } from "@/components/settings/meeting-types-card";
@@ -76,6 +78,10 @@ export default async function SettingsPage({
       morningApiSecret: true,
       morningSandbox: true,
       morningDocType: true,
+      docCurrency: true,
+      docLang: true,
+      docVatType: true,
+      docRounding: true,
       calendarToken: true,
       calendarNameMode: true,
       idleTimeoutMinutes: true,
@@ -252,6 +258,8 @@ export default async function SettingsPage({
       {user.isAdmin && <AdminPendingClosuresCard rows={closures} now={new Date()} />}
 
       <AuditLogCard entries={auditEntries} />
+
+      <DocumentDefaultsCard defaults={documentDefaults(user)} vatLiable={user.vatLiable} />
 
       <MorningSettingsForm
         connected={morningConnected}

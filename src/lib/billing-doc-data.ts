@@ -57,6 +57,9 @@ export function draftFromInvoice(inv: InvoiceWithParts): DocumentDraft | null {
     dueDate: inv.dueDate ? clinicDay(inv.dueDate) : null,
     vatIncluded: inv.vatIncluded,
     currency: inv.currency,
+    lang: inv.lang,
+    vatType: inv.vatType,
+    rounding: inv.rounding,
     sessionIds: [
       ...inv.draftSessionIds,
       ...inv.items.filter((it) => it.linkOnly && it.sessionId).map((it) => it.sessionId as string),
@@ -157,6 +160,23 @@ export async function linkDraftSessions(
   }
 }
 
+/** A credit note linked to a document cancels it and frees its meetings for billing again. */
+export async function applyCreditNote(
+  tx: Tx,
+  userId: string,
+  inv: { docType: number | null; relatedInvoiceId: string | null },
+): Promise<void> {
+  if (inv.docType !== DOC_KINDS.CREDIT_NOTE.code || !inv.relatedInvoiceId) return;
+  await tx.invoice.updateMany({
+    where: { id: inv.relatedInvoiceId, userId },
+    data: { status: "CANCELLED" },
+  });
+  await tx.invoiceItem.updateMany({
+    where: { invoiceId: inv.relatedInvoiceId, invoice: { userId } },
+    data: { sessionId: null },
+  });
+}
+
 /** How long an issue in progress blocks another attempt. */
 const ISSUE_CLAIM_MS = 2 * 60_000;
 
@@ -168,10 +188,8 @@ async function linkOptions(
   userId: string,
   inv: { docType: number | null; relatedInvoiceId: string | null },
 ): Promise<Pick<MorningPayloadOptions, "linkedDocumentIds" | "linkType"> | { error: string }> {
-  if (!inv.relatedInvoiceId) {
-    if (inv.docType === DOC_KINDS.CREDIT_NOTE.code) return { error: "חסר המסמך שהזיכוי מבטל." };
-    return {};
-  }
+  // A credit note may stand alone; whether morning agrees isn't documented
+  if (!inv.relatedInvoiceId) return {};
   const rel = await db.invoice.findFirst({
     where: { id: inv.relatedInvoiceId, userId },
     select: { morningDocId: true, docType: true },
@@ -304,26 +322,17 @@ export async function issueStoredDocument(userId: string, invoiceId: string): Pr
       },
     });
     await linkDraftSessions(tx, userId, inv, number, url);
-    // A credit note cancels its invoice and frees its meetings for billing again
-    if (inv.docType === DOC_KINDS.CREDIT_NOTE.code && inv.relatedInvoiceId) {
-      await tx.invoice.updateMany({
-        where: { id: inv.relatedInvoiceId, userId },
-        data: { status: "CANCELLED" },
-      });
-      await tx.invoiceItem.updateMany({
-        where: { invoiceId: inv.relatedInvoiceId, invoice: { userId } },
-        data: { sessionId: null },
-      });
-    }
+    await applyCreditNote(tx, userId, inv);
   });
   return { ok: true, number, url };
 }
 
 /**
  * Issued tax invoices a credit note can still cancel, newest first: the same
- * test as the "ביטול בחשבונית זיכוי" button on the document page.
+ * test as the "ביטול בחשבונית זיכוי" button on the document page. `exceptCreditId`
+ * is the credit-note draft being edited, which mustn't rule out its own invoice.
  */
-export async function loadCreditableInvoices(userId: string) {
+export async function loadCreditableInvoices(userId: string, exceptCreditId?: string) {
   const invoices = await db.invoice.findMany({
     where: {
       userId,
@@ -333,7 +342,10 @@ export async function loadCreditableInvoices(userId: string) {
     },
     orderBy: [{ issueDate: "desc" }, { number: "desc" }],
     take: 100,
-    include: { client: { select: { firstName: true, lastName: true } } },
+    include: {
+      client: { select: { firstName: true, lastName: true } },
+      items: { where: { linkOnly: false }, orderBy: { id: "asc" } },
+    },
   });
   const credited = await db.invoice.findMany({
     where: {
@@ -341,6 +353,7 @@ export async function loadCreditableInvoices(userId: string) {
       docType: DOC_KINDS.CREDIT_NOTE.code,
       status: { not: "CANCELLED" },
       relatedInvoiceId: { in: invoices.map((i) => i.id) },
+      ...(exceptCreditId ? { id: { not: exceptCreditId } } : {}),
     },
     select: { relatedInvoiceId: true },
   });

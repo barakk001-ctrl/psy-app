@@ -1,6 +1,6 @@
 import "./zod-hebrew";
 import { z } from "zod";
-import { CARD_TYPES, DEAL_TYPES, DOC_CURRENCIES, PAYMENT_KINDS, parseAgorot } from "@/lib/billing-docs";
+import { CARD_TYPES, DEAL_TYPES, DOC_CURRENCIES, DOC_LANGS, PAYMENT_KINDS, parseAgorot } from "@/lib/billing-docs";
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "תאריך לא תקין");
 const optionalText = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
@@ -41,7 +41,7 @@ export const documentPaymentSchema = z.object({
 
 /** What the "מסמך חדש" form sends (as JSON). */
 export const documentDraftSchema = z.object({
-  kind: z.enum(["TAX_INVOICE", "TAX_INVOICE_RECEIPT", "RECEIPT"]),
+  kind: z.enum(["TAX_INVOICE", "TAX_INVOICE_RECEIPT", "RECEIPT", "CREDIT_NOTE"]),
   /** empty = a one-off client ("לקוח מזדמן"): the name is all there is */
   clientId: z.string().optional().or(z.literal("")),
   clientName: z.string().trim().max(120),
@@ -51,6 +51,9 @@ export const documentDraftSchema = z.object({
   dueDate: date.optional().or(z.literal("")),
   vatIncluded: z.boolean().default(true),
   currency: z.enum(DOC_CURRENCIES).default("ILS"),
+  lang: z.enum(DOC_LANGS).default("he"),
+  vatType: z.union([z.literal(0), z.literal(1)]).default(0),
+  rounding: z.boolean().default(false),
   description: optionalText(300),
   remarks: optionalText(1000),
   items: z.array(documentItemSchema).max(50).default([]),
@@ -59,7 +62,7 @@ export const documentDraftSchema = z.object({
   sessionIds: z.array(z.string().min(1)).max(100).default([]),
   /** the saved draft this form is editing */
   draftId: z.string().optional().or(z.literal("")),
-  /** a receipt for this tax invoice (305) */
+  /** a receipt: the tax invoice (305) it pays. A credit note: the document it cancels */
   relatedInvoiceId: z.string().optional().or(z.literal("")),
 });
 

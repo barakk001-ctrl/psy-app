@@ -19,8 +19,12 @@ import {
   DOC_CURRENCIES,
   DOC_CURRENCY_LABELS,
   DOC_KINDS,
+  DOC_LANGS,
+  DOC_LANG_LABELS,
+  DOC_ROUNDING_LABELS,
+  DOC_VAT_TYPES,
+  DOC_VAT_TYPE_LABELS,
   PAYMENT_DETAIL_FIELDS,
-  PAYMENT_DETAIL_LABELS,
   PAYMENT_KINDS,
   PAYMENT_KIND_LABELS,
   agorotToDecimalString,
@@ -31,16 +35,20 @@ import {
   morningCopyText,
   morningNewDocumentUrl,
   parseAgorot,
+  paymentDetailLabel,
   type DocCurrency,
   type DocKind,
+  type DocLang,
+  type DocVatType,
+  type DocumentDefaults,
   type DocumentDraft,
   type PaymentDetailField,
   type PaymentKind,
 } from "@/lib/billing-docs";
 import { saveDocumentAction, previewDraftInMorningAction } from "@/server/actions/documents";
-import { CreditNotePicker, type CreditableInvoice } from "./credit-note-picker";
 import { DocKindSquares } from "./doc-kind-squares";
 import { DocumentPreview, type PreviewBusiness } from "./document-preview";
+import { IssueConfirmDialog, type IssueSummary } from "./issue-confirm-dialog";
 import { MorningPdfPreview } from "./morning-pdf-link";
 
 export type DocClientOption = {
@@ -74,12 +82,25 @@ type PaymentRow = {
 let keySeq = 0;
 const nextKey = () => `r${++keySeq}`;
 
+/** An issued invoice a credit note can cancel, with what the form fills in from it. */
+export type CreditableInvoice = {
+  id: string;
+  /** "חשבונית מס 20345 · מיכל אברהם" */
+  label: string;
+  clientId: string | null;
+  clientName: string;
+  clientTaxId: string | null;
+  currency: string;
+  vatIncluded: boolean;
+  items: { description: string; quantity: string; unitPrice: string }[];
+};
+
 /** The select's value for a client who isn't on the list. */
 const ONE_OFF = "one-off";
 
 export function DocumentForm({
   initialKind,
-  initialCredit = false,
+  defaults,
   creditableInvoices,
   clients,
   sessions,
@@ -89,8 +110,7 @@ export function DocumentForm({
   initial,
 }: {
   initialKind: DocKind;
-  /** open on the credit-note square */
-  initialCredit?: boolean;
+  defaults: DocumentDefaults;
   creditableInvoices: CreditableInvoice[];
   clients: DocClientOption[];
   sessions: DocSessionOption[];
@@ -106,8 +126,10 @@ export function DocumentForm({
     /** the printed details when that invoice's client is one-off */
     oneOffName?: string;
     oneOffTaxId?: string;
+    /** the invoice's currency, for a receipt on it */
+    currency?: string;
     /** the saved draft being edited */
-    stored?: { id: string; clientId: string | null; draft: DocumentDraft };
+    stored?: { id: string; clientId: string | null; relatedInvoiceId: string | null; draft: DocumentDraft };
   };
 }) {
   const router = useRouter();
@@ -115,9 +137,6 @@ export function DocumentForm({
   const related = initial?.relatedInvoice;
 
   const [kind, setKind] = useState<DocKind>(related ? "RECEIPT" : initialKind);
-  // The credit-note square. Kept apart from `kind`, which is what gets saved:
-  // a credit note is issued from the invoice it cancels, never from this form.
-  const [crediting, setCrediting] = useState(initialCredit);
   const info = DOC_KINDS[kind];
   const stored = initial?.stored;
   const storedDraft = stored?.draft;
@@ -139,7 +158,18 @@ export function DocumentForm({
   const [date, setDate] = useState(storedDraft?.date ?? today);
   const [dueDate, setDueDate] = useState(storedDraft?.dueDate ?? lastDayOfMonth(today));
   const [vatIncluded, setVatIncluded] = useState(storedDraft?.vatIncluded ?? true);
-  const [currency, setCurrency] = useState<DocCurrency>((storedDraft?.currency as DocCurrency) ?? "ILS");
+  // The settings bar: from Settings, or what the draft was saved with
+  const [currency, setCurrency] = useState<DocCurrency>(
+    (storedDraft?.currency ?? initial?.currency ?? defaults.currency) as DocCurrency,
+  );
+  const [lang, setLang] = useState<DocLang>((storedDraft?.lang as DocLang) ?? defaults.lang);
+  const [vatType, setVatType] = useState<DocVatType>(
+    business.vatLiable ? ((storedDraft?.vatType as DocVatType) ?? defaults.vatType) : 0,
+  );
+  const [rounding, setRounding] = useState(storedDraft?.rounding ?? defaults.rounding);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // A credit note's optional link to the document it cancels
+  const [creditOf, setCreditOf] = useState(stored?.relatedInvoiceId ?? "");
   const [description, setDescription] = useState(
     storedDraft?.description ?? (related ? `קבלה עבור ${related.label}` : ""),
   );
@@ -193,11 +223,13 @@ export function DocumentForm({
   );
 
   const [showPreview, setShowPreview] = useState(false);
+  const [confirmIssue, setConfirmIssue] = useState<IssueSummary | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const clientSessions = sessions.filter((s) => s.clientId === clientId);
+  const linked = kind === "CREDIT_NOTE" && !!creditOf;
   const money = (agorot: number) => formatDocMoney(agorot, currency);
 
   // The draft as the rules (and morning) see it
@@ -211,6 +243,9 @@ export function DocumentForm({
       dueDate: info.hasDueDate ? dueDate || null : null,
       vatIncluded,
       currency,
+      lang,
+      vatType,
+      rounding,
       sessionIds: info.hasSessions && clientId ? sessionIds : [],
       description: description || null,
       remarks: remarks || null,
@@ -238,7 +273,7 @@ export function DocumentForm({
           }))
         : [],
     }),
-    [kind, info, clientId, clientName, clientTaxId, emails, date, dueDate, vatIncluded, currency, sessionIds, description, remarks, items, payments],
+    [kind, info, clientId, clientName, clientTaxId, emails, date, dueDate, vatIncluded, currency, lang, vatType, rounding, sessionIds, description, remarks, items, payments],
   );
   const totals = documentTotals(draft, business.vatLiable);
   // What the receipt lines should add up to (a receipt has no total of its own)
@@ -250,6 +285,9 @@ export function DocumentForm({
       ? { ...p, amount: agorotToDecimalString(targetAgorot) }
       : p,
   );
+
+  const receivedAgorot = shownPayments.reduce((s, p) => s + (parseAgorot(p.amount) ?? 0), 0);
+  const receiptsOff = info.hasPayments && receivedAgorot !== totals.totalAgorot;
 
   function pickClient(value: string) {
     const c = clients.find((x) => x.id === value);
@@ -263,6 +301,20 @@ export function DocumentForm({
     setItems((prev) =>
       prev.length === 1 && !prev[0].description ? [emptyItem(c?.rate)] : prev,
     );
+  }
+
+  /** Linking a document fills in its client and lines: the credit cancels all of it. */
+  function pickOriginal(id: string) {
+    setCreditOf(id);
+    const orig = creditableInvoices.find((i) => i.id === id);
+    if (!orig) return;
+    setClientId(orig.clientId ?? "");
+    setOneOff(!orig.clientId);
+    setClientName(orig.clientName);
+    setClientTaxId(orig.clientTaxId ?? "");
+    setCurrency(orig.currency as DocCurrency);
+    setVatIncluded(orig.vatIncluded);
+    setItems(orig.items.map((it) => ({ key: nextKey(), ...it })));
   }
 
   function toggleSession(id: string) {
@@ -283,6 +335,32 @@ export function DocumentForm({
 
   function submittable(): DocumentDraft {
     return { ...draft, payments: info.hasPayments ? draftPaymentsFrom(shownPayments, draft) : [] };
+  }
+
+  /** Checks the document and asks for the last confirmation before issuing. */
+  function askIssue() {
+    setServerError(null);
+    const d = submittable();
+    const found = documentProblems(d, business.vatLiable);
+    setProblems(found);
+    if (found.length) {
+      setShowPreview(false);
+      return;
+    }
+    if (!morningConnected) {
+      // Nothing can be issued from here: the preview offers the way through morning
+      openPreview();
+      return;
+    }
+    setConfirmIssue({
+      label: info.label,
+      code: info.code,
+      sender: business.name,
+      date: d.date.split("-").reverse().join("/"),
+      client: d.clientName,
+      amount: money(info.hasItems ? totals.totalAgorot : d.payments.reduce((s, p) => s + p.amountAgorot, 0)),
+      emails: d.clientEmails ?? [],
+    });
   }
 
   function openPreview() {
@@ -307,11 +385,14 @@ export function DocumentForm({
       dueDate: d.dueDate ?? "",
       vatIncluded: d.vatIncluded,
       currency: d.currency,
+      lang: d.lang,
+      vatType: d.vatType,
+      rounding: d.rounding,
       sessionIds: d.sessionIds ?? [],
       draftId: stored?.id ?? "",
       description: d.description ?? "",
       remarks: d.remarks ?? "",
-      relatedInvoiceId: related?.id ?? "",
+      relatedInvoiceId: related?.id ?? (kind === "CREDIT_NOTE" ? creditOf : ""),
       items: d.items.map((it) => ({
         description: it.description,
         quantity: it.quantity,
@@ -340,6 +421,7 @@ export function DocumentForm({
       try {
         const r = await saveDocumentAction(payloadJson(), intent);
         if (!r.invoiceId) {
+          setConfirmIssue(null);
           setShowPreview(false);
           setServerError(r.error ?? "השמירה נכשלה.");
           setProblems(r.problems ?? []);
@@ -352,6 +434,7 @@ export function DocumentForm({
             : `issueError=${encodeURIComponent(r.issue.error)}${r.issue.uncertain ? "&uncertain=1" : ""}`;
         router.push(`/invoices/${r.invoiceId}?${q}`);
       } catch {
+        setConfirmIssue(null);
         setServerError("אין חיבור — המסמך לא נשמר. נסו שוב.");
       }
     });
@@ -366,6 +449,15 @@ export function DocumentForm({
       setCopied(false);
     }
   }
+
+  const issueDialog = confirmIssue && (
+    <IssueConfirmDialog
+      summary={confirmIssue}
+      pending={pending}
+      onConfirm={() => save("issue")}
+      onClose={() => setConfirmIssue(null)}
+    />
+  );
 
   // ── Preview step ──────────────────────────────────────────────────────────
   if (showPreview) {
@@ -385,6 +477,7 @@ export function DocumentForm({
           )}
         </div>
 
+        {issueDialog}
         <DocumentPreview draft={submittable()} business={business} status="draft" />
 
         {serverError && <p className="text-sm text-terracotta-600">{serverError}</p>}
@@ -400,9 +493,8 @@ export function DocumentForm({
                 <Button type="button" variant="secondary" onClick={() => save("draft")} disabled={pending}>
                   <Save className="w-4 h-4" /> שמירה כטיוטה
                 </Button>
-                <Button type="button" onClick={() => save("issue")} disabled={pending}>
-                  <FileCheck className="w-4 h-4" />
-                  {pending ? "מפיק ב-morning…" : `הפקת ${info.label} ב-morning`}
+                <Button type="button" onClick={askIssue} disabled={pending}>
+                  <FileCheck className="w-4 h-4" /> {`הפקת ${info.label} ב-morning`}
                 </Button>
               </>
             ) : (
@@ -439,11 +531,8 @@ export function DocumentForm({
       <CardContent>
         <DocKindSquares
           vatLiable={business.vatLiable}
-          selected={crediting ? "CREDIT_NOTE" : kind}
-          onPick={(k) => {
-            setCrediting(k === "CREDIT_NOTE");
-            if (k !== "CREDIT_NOTE") setKind(k);
-          }}
+          selected={kind}
+          onPick={setKind}
         />
         {!business.vatLiable && (
           <p className="text-xs text-ink-muted mt-2">
@@ -455,16 +544,6 @@ export function DocumentForm({
     </Card>
   );
 
-  // Also a <form>, so the squares stay the same elements and keep focus
-  if (crediting) {
-    return (
-      <form className="space-y-6" noValidate onSubmit={(e) => e.preventDefault()}>
-        {typeChoice}
-        <CreditNotePicker invoices={creditableInvoices} morningConnected={morningConnected} />
-      </form>
-    );
-  }
-
   return (
     <form
       className="space-y-6"
@@ -474,19 +553,120 @@ export function DocumentForm({
         openPreview();
       }}
     >
+      {issueDialog}
       {typeChoice}
+
+      <Card>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <p className="text-sm text-ink-soft">
+              {DOC_CURRENCY_LABELS[currency]} · {DOC_LANG_LABELS[lang]}
+              {business.vatLiable ? ` · מע״מ: ${DOC_VAT_TYPE_LABELS[vatType]}` : ""} ·{" "}
+              {DOC_ROUNDING_LABELS[rounding ? "on" : "off"]}
+            </p>
+            <button
+              type="button"
+              aria-expanded={settingsOpen}
+              onClick={() => setSettingsOpen((o) => !o)}
+              className="text-sm text-sage-600 hover:text-sage-700 hover:underline"
+            >
+              לעריכת ההגדרות
+            </button>
+          </div>
+          {settingsOpen && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <Label className="text-xs" htmlFor="doc-set-currency">מטבע</Label>
+                <Select
+                  id="doc-set-currency"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value as DocCurrency)}
+                  className="h-10"
+                >
+                  {DOC_CURRENCIES.map((c) => (
+                    <option key={c} value={c}>
+                      {DOC_CURRENCY_LABELS[c]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs" htmlFor="doc-set-lang">שפה</Label>
+                <Select
+                  id="doc-set-lang"
+                  value={lang}
+                  onChange={(e) => setLang(e.target.value as DocLang)}
+                  className="h-10"
+                >
+                  {DOC_LANGS.map((l) => (
+                    <option key={l} value={l}>
+                      {DOC_LANG_LABELS[l]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              {business.vatLiable && (
+                <div>
+                  <Label className="text-xs" htmlFor="doc-set-vat">סוג מע״מ</Label>
+                  <Select
+                    id="doc-set-vat"
+                    value={String(vatType)}
+                    onChange={(e) => setVatType(Number(e.target.value) as DocVatType)}
+                    className="h-10"
+                  >
+                    {DOC_VAT_TYPES.map((v) => (
+                      <option key={v} value={v}>
+                        {DOC_VAT_TYPE_LABELS[v]}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
+              <div>
+                <Label className="text-xs" htmlFor="doc-set-rounding">עיגול סכומים</Label>
+                <Select
+                  id="doc-set-rounding"
+                  value={rounding ? "on" : "off"}
+                  onChange={(e) => setRounding(e.target.value === "on")}
+                  className="h-10"
+                >
+                  <option value="off">{DOC_ROUNDING_LABELS.off}</option>
+                  <option value="on">{DOC_ROUNDING_LABELS.on}</option>
+                </Select>
+              </div>
+            </div>
+          )}
+          {rounding && <p className="text-xs text-ink-muted">העיגול נעשה ב-morning בהפקה, ולא מוצג כאן בסכומים.</p>}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>פרטי המסמך</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {kind === "CREDIT_NOTE" && creditableInvoices.length > 0 && (
+            <div>
+              <Label htmlFor="doc-credit-of">מסמך מקורי (לא חובה)</Label>
+              <Select id="doc-credit-of" value={creditOf} onChange={(e) => pickOriginal(e.target.value)}>
+                <option value="">ללא קישור למסמך</option>
+                {creditableInvoices.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.label}
+                  </option>
+                ))}
+              </Select>
+              <p className="text-xs text-ink-muted mt-1">
+                מסמך מקושר מתבטל במלואו, והשורות שלו ממולאות כאן. לזיכוי חלקי משאירים ללא קישור.
+              </p>
+            </div>
+          )}
           <div>
             <Label htmlFor="doc-client">לקוח/ה *</Label>
             <Select
               id="doc-client"
               value={oneOff ? ONE_OFF : clientId}
-              disabled={!!related}
+              disabled={!!related || linked}
               onChange={(e) => pickClient(e.target.value)}
             >
               <option value="">בחירת לקוח/ה מהרשימה</option>
@@ -635,7 +815,7 @@ export function DocumentForm({
             >
               <Plus className="w-4 h-4" /> הוספת שורה
             </Button>
-            {business.vatLiable && (
+            {business.vatLiable && vatType === 0 && (
               <div className="inline-flex rounded-full border border-cream-300 bg-cream-100 p-1 text-sm">
                 {[
                   { v: true, label: "המחירים כוללים מע״מ" },
@@ -656,7 +836,7 @@ export function DocumentForm({
               </div>
             )}
             <div className="ms-auto max-w-xs space-y-1 text-sm">
-              {business.vatLiable && (
+              {business.vatLiable && vatType === 0 && (
                 <>
                   <div className="flex justify-between text-ink-muted">
                     <span>לפני מע״מ</span>
@@ -689,8 +869,8 @@ export function DocumentForm({
             {shownPayments.map((p, idx) => (
               <div key={p.key} className="rounded-xl bg-cream-100 p-3 space-y-3">
                 <div className="grid grid-cols-2 sm:grid-cols-12 gap-2 items-end">
-                  <div className="col-span-2 sm:col-span-4">
-                    <Label className="text-xs">אמצעי תשלום</Label>
+                  <div className="col-span-2 sm:col-span-3">
+                    <Label className="text-xs">סוג התקבול *</Label>
                     <Select
                       value={p.method}
                       onChange={(e) => updatePayment(p.key, { method: e.target.value as PaymentKind })}
@@ -703,8 +883,8 @@ export function DocumentForm({
                       ))}
                     </Select>
                   </div>
-                  <div className="sm:col-span-4">
-                    <Label className="text-xs">תאריך</Label>
+                  <div className="sm:col-span-3">
+                    <Label className="text-xs">תאריך *</Label>
                     <Input
                       type="date"
                       value={p.date}
@@ -713,7 +893,7 @@ export function DocumentForm({
                     />
                   </div>
                   <div className="sm:col-span-3">
-                    <Label className="text-xs">סכום</Label>
+                    <Label className="text-xs">סכום *</Label>
                     <Input
                       type="number"
                       min="0"
@@ -724,7 +904,22 @@ export function DocumentForm({
                       className="h-10"
                     />
                   </div>
-                  <div className="col-span-2 sm:col-span-1 flex justify-center pb-2">
+                  <div className="sm:col-span-2">
+                    <Label className="text-xs">מטבע *</Label>
+                    <Select
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value as DocCurrency)}
+                      className="h-10"
+                      aria-label="מטבע המסמך"
+                    >
+                      {DOC_CURRENCIES.map((c) => (
+                        <option key={c} value={c}>
+                          {DOC_CURRENCY_LABELS[c]}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="col-span-1 flex justify-center pb-2">
                     {shownPayments.length > 1 && (
                       <button
                         type="button"
@@ -742,7 +937,7 @@ export function DocumentForm({
                     {PAYMENT_DETAIL_FIELDS[p.method].map((f) => (
                       <div key={f}>
                         <Label className="text-xs">
-                          {PAYMENT_DETAIL_LABELS[f]}
+                          {paymentDetailLabel(p.method, f)}
                           {p.method === "CHECK" && f !== "reference" ? " *" : ""}
                         </Label>
                         {f === "cardType" || f === "dealType" ? (
@@ -789,10 +984,15 @@ export function DocumentForm({
             >
               <Plus className="w-4 h-4" /> הוספת תקבול
             </Button>
+            {info.hasItems && receiptsOff && (
+              <p role="status" className="rounded-lg border border-gold-400 bg-gold-200/40 px-3 py-2 text-sm text-ink">
+                סכום התקבולים ({money(receivedAgorot)}) שונה מסכום המסמך ({money(totals.totalAgorot)}). הם חייבים להיות שווים כדי להפיק.
+              </p>
+            )}
             <div className="flex justify-between text-sm max-w-xs ms-auto">
               <span className="text-ink-muted">סה״כ תקבולים</span>
               <span className="font-semibold text-ink">
-                {money(shownPayments.reduce((s, p) => s + (parseAgorot(p.amount) ?? 0), 0))}
+                {money(receivedAgorot)}
               </span>
             </div>
           </CardContent>
@@ -907,7 +1107,7 @@ export function DocumentForm({
         <Button type="submit" variant="secondary">
           <Eye className="w-4 h-4" /> תצוגה מקדימה
         </Button>
-        <Button type="button" onClick={openPreview}>
+        <Button type="button" onClick={askIssue}>
           <FileCheck className="w-4 h-4" /> הפקת מסמך
         </Button>
       </div>

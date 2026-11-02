@@ -114,7 +114,7 @@ export function DocumentPreview({
               </tbody>
             </table>
             <div className="mt-3 ms-auto max-w-xs space-y-1 text-sm">
-              {business.vatLiable && (
+              {business.vatLiable && draft.vatType !== 1 && (
                 <>
                   <div className="flex justify-between">
                     <span className="text-ink-muted">סכום לפני מע״מ</span>

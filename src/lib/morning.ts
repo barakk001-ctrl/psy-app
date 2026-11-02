@@ -70,6 +70,7 @@ const DEAL_TYPE: Record<DealType, number> = { REGULAR: 1, INSTALLMENTS: 2, CREDI
 // income[].vatType — 0 VAT added on top, 1 included in the price
 const ITEM_VAT_ADDED = 0;
 const ITEM_VAT_INCLUDED = 1;
+const ITEM_VAT_EXEMPT = 2;
 
 // Credentials come from one place (manual paste today, morning's partner
 // program later) — see morning-credentials.ts. Re-exported for callers.
@@ -312,7 +313,12 @@ export type MorningPayloadOptions = {
 export function buildMorningDocumentPayload(draft: DocumentDraft, opts: MorningPayloadOptions) {
   const info = DOC_KINDS[draft.kind];
   const totals = documentTotals(draft, opts.vatLiable);
-  const itemVat = !opts.vatLiable || draft.vatIncluded ? ITEM_VAT_INCLUDED : ITEM_VAT_ADDED;
+  const itemVat =
+    draft.vatType === 1
+      ? ITEM_VAT_EXEMPT
+      : !opts.vatLiable || draft.vatIncluded
+        ? ITEM_VAT_INCLUDED
+        : ITEM_VAT_ADDED;
   const currency = draft.currency ?? "ILS";
 
   let income: { description: string; quantity: number; price: number; currency: string; vatType: number }[];
@@ -352,9 +358,10 @@ export function buildMorningDocumentPayload(draft: DocumentDraft, opts: MorningP
   const payload: Record<string, unknown> = {
     type: info.code,
     date: draft.date,
-    lang: "he",
+    lang: draft.lang ?? "he",
     currency,
-    vatType: 0, // by business type (עוסק פטור / מורשה)
+    vatType: draft.vatType ?? 0, // 0 = by business type (עוסק פטור / מורשה), 1 = exempt
+    rounding: draft.rounding ? true : undefined,
     description: nonEmpty(draft.description),
     remarks: nonEmpty(draft.remarks),
     client: {
@@ -397,6 +404,19 @@ export async function createMorningDocument(
     method: "POST",
     body: payload,
   });
+}
+
+/**
+ * The number morning says the next document of this type will get, or null.
+ * Read-only and only a forecast: another document issued first takes it.
+ */
+export async function morningNextNumber(
+  owner: string,
+  creds: MorningCredentials,
+  docType: number,
+): Promise<number | null> {
+  const res = await morningRequest<{ number?: number }>(creds, owner, `/documents/info?type=${docType}`);
+  return res.ok && typeof res.data.number === "number" ? res.data.number : null;
 }
 
 /** morning's own PDF of the document, before issuing (base64). */

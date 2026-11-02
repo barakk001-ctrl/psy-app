@@ -351,9 +351,9 @@ export async function buildExportEntries(userId: string): Promise<ExportEntry[]>
           if (rows.length === 0) return;
           let out = "";
           for (const s of rows) {
-            out += `--- ${clock(s.startsAt)} · ${s.treatmentType} ---
-${noteText(path, s.note!)}
-
+            out += `--- ${clock(s.startsAt)} · ${s.treatmentType} ---
+${noteText(path, s.note!)}
+
 `;
           }
           yield Buffer.from(out, "utf8");
@@ -418,7 +418,7 @@ ${noteText(path, s.note!)}
     csvEntry(
       tally,
       "חשבוניות ומסמכים.csv",
-      ["מזהה", "מספר", "סוג מסמך", "לקוח/ה", "שם על המסמך", "מספר זיהוי על המסמך", "תאריך", "תאריך לתשלום", "סטטוס", "סכום ביניים", "סה״כ", "שולם", "מספר ב-morning", "קישור ב-morning", "תיאור", "הערות", "מטבע", "מייל למשלוח", "פגישות שסומנו בטיוטה"],
+      ["מזהה", "מספר", "סוג מסמך", "לקוח/ה", "שם על המסמך", "מספר זיהוי על המסמך", "תאריך", "תאריך לתשלום", "סטטוס", "סכום ביניים", "סה״כ", "שולם", "מספר ב-morning", "קישור ב-morning", "תיאור", "הערות", "מטבע", "שפה", "סוג מע״מ", "עיגול", "מייל למשלוח", "פגישות שסומנו בטיוטה"],
       () => paged((c) => dbAll.invoice.findMany({ where: mine, ...orderPage, ...c })),
       (r) => [
         r.id,
@@ -438,6 +438,9 @@ ${noteText(path, s.note!)}
         r.description,
         r.notes,
         r.currency,
+        r.lang,
+        r.vatType,
+        r.rounding ? "כן" : "",
         r.docClientEmail,
         r.draftSessionIds.join(" "),
       ],

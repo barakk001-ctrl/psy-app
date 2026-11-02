@@ -4,9 +4,8 @@ import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getMorningCredentials } from "@/lib/morning";
-import { creatableKinds, defaultKind, documentClientName, docTypeLabel, DOC_KINDS, type DocKind } from "@/lib/billing-docs";
+import { creatableKinds, defaultKind, documentClientName, documentDefaults, docTypeLabel, DOC_KINDS, type DocKind } from "@/lib/billing-docs";
 import { clinicDay, draftFromInvoice, loadCreditableInvoices } from "@/lib/billing-doc-data";
-import { formatCurrency } from "@/lib/format";
 import { DocumentForm } from "@/components/invoices/document-form";
 
 const dayLabel = (d: Date) =>
@@ -43,8 +42,8 @@ export default async function NewDocumentPage({
           docType: { not: null },
           morningDocId: null,
           morningDocNumber: null,
-          relatedInvoiceId: null,
           status: { not: "CANCELLED" },
+          OR: [{ relatedInvoiceId: null }, { docType: DOC_KINDS.CREDIT_NOTE.code }],
         },
         include: { items: true, payments: true, client: true },
       })
@@ -62,6 +61,10 @@ export default async function NewDocumentPage({
         phone: true,
         vatLiable: true,
         morningDocType: true,
+        docCurrency: true,
+        docLang: true,
+        docVatType: true,
+        docRounding: true,
       },
     }),
     db.client.findMany({
@@ -93,7 +96,7 @@ export default async function NewDocumentPage({
   const forInvoice = params.forInvoice
     ? await db.invoice.findFirst({
         where: { id: params.forInvoice, userId, docType: DOC_KINDS.TAX_INVOICE.code, status: { not: "CANCELLED" } },
-        select: { id: true, clientId: true, total: true, amountPaid: true, morningDocNumber: true, number: true, docClientName: true, docClientTaxId: true },
+        select: { id: true, clientId: true, total: true, amountPaid: true, morningDocNumber: true, number: true, docClientName: true, docClientTaxId: true, currency: true },
       })
     : null;
 
@@ -104,9 +107,8 @@ export default async function NewDocumentPage({
   const kinds = creatableKinds(vatLiable).map((k) => k.kind);
   const requested = kinds.find((k) => k === params.kind) as DocKind | undefined;
   const initialKind = stored?.kind ?? requested ?? defaultKind(vatLiable, owner?.morningDocType);
-  // The credit-note square opens a choice of invoice, not a form (see CreditNotePicker)
-  const initialCredit = vatLiable && !forInvoice && params.kind === DOC_KINDS.CREDIT_NOTE.kind;
-  const creditable = vatLiable && creds ? await loadCreditableInvoices(userId) : [];
+  const creditable =
+    vatLiable && creds ? await loadCreditableInvoices(userId, storedRow?.id) : [];
 
   const balance = forInvoice
     ? (Number(forInvoice.total.toString()) - Number(forInvoice.amountPaid.toString())).toFixed(2)
@@ -133,13 +135,20 @@ export default async function NewDocumentPage({
       </header>
       <DocumentForm
         initialKind={initialKind}
-        initialCredit={initialCredit}
+        defaults={documentDefaults(owner ?? {})}
         creditableInvoices={creditable.map((inv) => ({
           id: inv.id,
-          label: `${docTypeLabel(inv.docType)} ${inv.morningDocNumber ?? ""}`.trim(),
+          label: `${docTypeLabel(inv.docType)} ${inv.morningDocNumber ?? ""} · ${documentClientName(inv)}`,
+          clientId: inv.clientId,
           clientName: documentClientName(inv),
-          date: dayLabel(inv.issueDate),
-          amount: formatCurrency(inv.total.toString()),
+          clientTaxId: inv.docClientTaxId,
+          currency: inv.currency,
+          vatIncluded: inv.vatIncluded,
+          items: inv.items.map((it) => ({
+            description: it.description,
+            quantity: it.quantity.toString(),
+            unitPrice: it.unitPrice.toString(),
+          })),
         }))}
         today={clinicDay(now)}
         morningConnected={!!creds}
@@ -169,11 +178,13 @@ export default async function NewDocumentPage({
           sessionIds: fromSession ? [fromSession.id] : undefined,
           oneOffName: forInvoice && !forInvoice.clientId ? (forInvoice.docClientName ?? undefined) : undefined,
           oneOffTaxId: forInvoice && !forInvoice.clientId ? (forInvoice.docClientTaxId ?? undefined) : undefined,
+          currency: forInvoice?.currency,
           stored:
             storedRow && stored
               ? {
                   id: storedRow.id,
                   clientId: storedRow.clientId,
+                  relatedInvoiceId: storedRow.relatedInvoiceId,
                   draft: {
                     ...stored,
                     // Links from before they were kept apart from the lines

@@ -13,6 +13,7 @@ import {
   previewStoredInMorningAction,
   setDocumentMorningNumberAction,
 } from "@/server/actions/documents";
+import { IssueConfirmDialog, type IssueSummary } from "./issue-confirm-dialog";
 import { MorningPdfPreview } from "./morning-pdf-link";
 
 const PANEL = "rounded-2xl border px-4 py-4 space-y-3";
@@ -21,6 +22,7 @@ const PANEL = "rounded-2xl border px-4 py-4 space-y-3";
 export function DraftDocumentActions({
   invoiceId,
   label,
+  summary,
   morningConnected,
   morningUrl,
   copyText,
@@ -29,6 +31,8 @@ export function DraftDocumentActions({
 }: {
   invoiceId: string;
   label: string;
+  /** what the issue confirmation shows */
+  summary: IssueSummary;
   morningConnected: boolean;
   /** morning's new-document screen for this type */
   morningUrl: string;
@@ -109,20 +113,16 @@ export function DraftDocumentActions({
       {morningConnected ? (
         <div className="flex flex-wrap items-start gap-2">
           <MorningPdfPreview load={() => previewStoredInMorningAction(invoiceId)} />
-          {confirming ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-sage-300 bg-white px-3 py-2">
-              <span className="text-sm text-ink">להפיק עכשיו? אחרי ההפקה אי אפשר לערוך.</span>
-              <Button type="button" size="sm" onClick={issue} disabled={pending}>
-                {pending ? "מפיק…" : "כן, להפיק"}
-              </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setConfirming(false)} disabled={pending}>
-                ביטול
-              </Button>
-            </div>
-          ) : (
-            <Button type="button" size="sm" onClick={() => setConfirming(true)}>
-              <FileCheck className="w-4 h-4" /> הפקת {label} ב-morning
-            </Button>
+          <Button type="button" size="sm" onClick={() => setConfirming(true)}>
+            <FileCheck className="w-4 h-4" /> הפקת {label} ב-morning
+          </Button>
+          {confirming && (
+            <IssueConfirmDialog
+              summary={summary}
+              pending={pending}
+              onConfirm={issue}
+              onClose={() => setConfirming(false)}
+            />
           )}
         </div>
       ) : (
