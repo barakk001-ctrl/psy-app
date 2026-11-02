@@ -3,7 +3,9 @@ import { FileText } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Prisma } from "@prisma/client";
 import { IncomeDocFilters } from "@/components/invoices/income-doc-filters";
+import { ViewTabs } from "@/components/ui/view-tabs";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { MorningDocsPanel } from "@/components/invoices/morning-docs-panel";
 import { DocKindSquares } from "@/components/invoices/doc-kind-squares";
@@ -19,7 +21,6 @@ import {
   isCreditNote,
   parseDocListFilters,
 } from "@/lib/income-doc-list";
-import { cn } from "@/lib/utils";
 
 // "ב-morning" kept on one line (the hyphen is a break point before the LTR word)
 const inMorning = (
@@ -43,24 +44,22 @@ export default async function InvoicesPage({
   const filters = parseDocListFilters(await searchParams);
   const today = clinicDay(new Date());
 
-  const [invoices, draftCount, documentCount] = await Promise.all([
+  // Both tabs' lists come together, so switching between them is instant
+  const list = (where: Prisma.InvoiceWhereInput) =>
     db.invoice.findMany({
-      where: docListWhere(userId, filters, today),
+      where,
       orderBy: [{ issueDate: "desc" }, { number: "desc" }],
       take: MAX_ROWS,
       include: {
         client: { select: { firstName: true, lastName: true } },
       },
-    }),
+    });
+  const [invoices, draftRows, draftCount, documentCount] = await Promise.all([
+    list(docListWhere(userId, { ...filters, view: "documents" }, today)),
+    list(draftsWhere(userId)),
     db.invoice.count({ where: draftsWhere(userId) }),
     db.invoice.count({ where: { userId, OR: [{ docType: null }, { morningDocNumber: { not: null } }] } }),
   ]);
-  const months = groupByMonth(invoices, (inv) => clinicDay(inv.issueDate));
-  const drafts = filters.view === "drafts";
-  const tabs = [
-    { key: "documents", label: `מסמכי הכנסות (${documentCount})`, href: docListHref({ ...filters, view: "documents" }) },
-    { key: "drafts", label: `טיוטות מסמכי הכנסות (${draftCount})`, href: docListHref({ ...filters, view: "drafts" }) },
-  ];
 
   const morningConnected = !!(await getMorningCredentials(userId));
   const owner = await db.user.findUnique({
@@ -135,36 +134,70 @@ export default async function InvoicesPage({
         />
       )}
 
-      <div className="space-y-3">
-        <div className="inline-flex bg-cream-100 border border-cream-300 rounded-full p-1 flex-wrap">
-          {tabs.map((t) => (
-            <Link
-              key={t.key}
-              href={t.href}
-              aria-current={filters.view === t.key ? "page" : undefined}
-              className={cn(
-                "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-                filters.view === t.key ? "bg-white text-ink shadow-soft" : "text-ink-muted hover:text-ink",
-              )}
-            >
-              {t.label}
-            </Link>
-          ))}
-        </div>
-        {!drafts && <IncomeDocFilters key={docListHref(filters)} filters={filters} />}
+      <div>
+        <ViewTabs
+          key={filters.view}
+          active={filters.view}
+          tabs={[
+            {
+              key: "documents",
+              label: `מסמכי הכנסות (${documentCount})`,
+              href: docListHref({ ...filters, view: "documents" }),
+              panel: (
+                <>
+                  <div className="mt-3">
+                    <IncomeDocFilters key={docListHref({ ...filters, view: "documents" })} filters={filters} />
+                  </div>
+                  <DocumentMonths rows={invoices} drafts={false} anyDocuments={documentCount > 0} />
+                </>
+              ),
+            },
+            {
+              key: "drafts",
+              label: `טיוטות מסמכי הכנסות (${draftCount})`,
+              href: docListHref({ ...filters, view: "drafts" }),
+              panel: (
+                <div className="mt-3 space-y-6">
+                  <DocumentMonths rows={draftRows} drafts anyDocuments={documentCount > 0} />
+                </div>
+              ),
+            },
+          ]}
+        />
       </div>
+    </div>
+  );
+}
 
+type DocumentRow = Prisma.InvoiceGetPayload<{
+  include: { client: { select: { firstName: true; lastName: true } } };
+}>;
+
+/** One tab's documents, under their months. */
+function DocumentMonths({
+  rows,
+  drafts,
+  anyDocuments,
+}: {
+  rows: DocumentRow[];
+  drafts: boolean;
+  anyDocuments: boolean;
+}) {
+  const months = groupByMonth(rows, (inv) => clinicDay(inv.issueDate));
+  const tab = drafts ? "drafts" : "documents";
+  return (
+    <>
       {months.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
             <FileText className="w-12 h-12 mx-auto text-ink-subtle mb-4" strokeWidth={1.25} />
             <h2 className="font-display text-xl text-ink">
-              {drafts ? "אין טיוטות" : documentCount > 0 ? "אין מסמכים לפי הסינון הזה" : "עדיין אין מסמכים"}
+              {drafts ? "אין טיוטות" : anyDocuments ? "אין מסמכים לפי הסינון הזה" : "עדיין אין מסמכים"}
             </h2>
             <p className="text-ink-muted text-sm mt-1 max-w-sm mx-auto">
               {drafts
                 ? "מסמך שנשמר ב״שמירה כטיוטה״ מופיע כאן עד שמפיקים אותו."
-                : documentCount > 0
+                : anyDocuments
                   ? "אפשר לשנות את התקופה, הסוג או הסטטוס."
                   : "חשבונית או קבלה על פגישות שהתקיימו — בוחרים למעלה את סוג המסמך, מסמנים את הפגישות, בודקים בתצוגה המקדימה ומפיקים."}
             </p>
@@ -172,8 +205,8 @@ export default async function InvoicesPage({
         </Card>
       ) : (
         months.map((m) => (
-          <section key={m.key} aria-labelledby={`month-${m.key}`} className="space-y-2">
-            <h2 id={`month-${m.key}`} className="font-display text-lg text-ink">
+          <section key={m.key} aria-labelledby={`${tab}-${m.key}`} className="space-y-2">
+            <h2 id={`${tab}-${m.key}`} className="font-display text-lg text-ink">
               {m.label}
             </h2>
             <Card>
@@ -238,9 +271,9 @@ export default async function InvoicesPage({
           </section>
         ))
       )}
-      {invoices.length === MAX_ROWS && (
+      {rows.length === MAX_ROWS && (
         <p className="text-xs text-ink-muted text-center">מוצגים {MAX_ROWS} המסמכים האחרונים. אפשר לצמצם בסינון.</p>
       )}
-    </div>
+    </>
   );
 }

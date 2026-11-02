@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { Prisma } from "@prisma/client";
+import { ViewTabs, type ViewTab } from "@/components/ui/view-tabs";
 import { auth } from "@/auth";
 import { db, dbAll } from "@/lib/db";
 import { Button } from "@/components/ui/button";
@@ -42,16 +44,13 @@ export default async function ClientsPage({
   if (view === "TRASH") await purgeExpiredClients(now, userId);
 
   // `db` leaves clients in the recycle bin out; the bin itself reads `dbAll`
-  const [clients, activeCount, inactiveCount, trashCount, waitlistCount] = await Promise.all([
-    view === "TRASH" || view === "WAITLIST"
-      ? Promise.resolve([])
-      : db.client.findMany({
-          where: { userId, status: view },
-          orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-          include: { _count: { select: { sessions: true } } },
-        }),
-    db.client.count({ where: { userId, status: "ACTIVE" } }),
-    db.client.count({ where: { userId, status: "INACTIVE" } }),
+  // Active and inactive come together, so switching between them is instant
+  const [allClients, trashCount, waitlistCount] = await Promise.all([
+    db.client.findMany({
+      where: { userId },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      include: { _count: { select: { sessions: true } } },
+    }),
     dbAll.client.count({ where: { userId, deletedAt: { not: null } } }),
     db.waitlistEntry.count({ where: { userId } }),
   ]);
@@ -90,12 +89,73 @@ export default async function ClientsPage({
         })
       : [];
 
-  const VIEWS = [
-    { key: "ACTIVE", href: "/clients", label: `פעילים (${activeCount})` },
-    { key: "INACTIVE", href: "/clients?view=inactive", label: `לא פעילים (${inactiveCount})` },
-    { key: "WAITLIST", href: "/clients?view=waitlist", label: `רשימת המתנה (${waitlistCount})` },
+  const active = allClients.filter((c) => c.status === "ACTIVE");
+  const inactive = allClients.filter((c) => c.status === "INACTIVE");
+
+  const trashPanel = (
+    <Card>
+      <p className="px-5 pt-4 pb-3 text-sm text-ink-muted leading-relaxed border-b border-cream-200">
+        תיקים שנמחקו נשמרים כאן {TRASH_DAYS} יום — מוסתרים מכל מקום ובלי תזכורות — ואז
+        נמחקים לצמיתות עם כל הפגישות, הסיכומים והקבצים שלהם. שחזור מחזיר את התיק בדיוק
+        כפי שהיה, כלא פעיל.
+      </p>
+      {trashed.length === 0 ? (
+        <p className="px-5 py-10 text-center text-sm text-ink-subtle">סל המחזור ריק.</p>
+      ) : (
+        <ul className="divide-y divide-cream-200">
+          {trashed.map((c) => (
+            <li key={c.id} className="flex flex-wrap items-center">
+              <div className="flex-1 min-w-0 flex items-center gap-4 ps-5 pe-2 py-4">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-display text-base shrink-0 bg-cream-200 text-ink-subtle">
+                  {c.firstName[0]}
+                  {c.lastName[0]}
+                </div>
+                <div className="min-w-0">
+                  <div className="font-medium text-ink-muted">
+                    {c.firstName} {c.lastName}
+                  </div>
+                  <div className="text-xs text-ink-subtle mt-1">
+                    נמחק/ה ב-{formatDate(c.deletedAt!)} · מחיקה לצמיתות{" "}
+                    {daysLeftText(trashDaysLeft(c.deletedAt!, now))}
+                  </div>
+                </div>
+              </div>
+              <TrashRowActions clientId={c.id} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+
+  const tabs: ViewTab[] = [
+    {
+      key: "ACTIVE",
+      href: "/clients",
+      label: `פעילים (${active.length})`,
+      panel: <ClientRows clients={active} view="ACTIVE" />,
+    },
+    {
+      key: "INACTIVE",
+      href: "/clients?view=inactive",
+      label: `לא פעילים (${inactive.length})`,
+      panel: <ClientRows clients={inactive} view="INACTIVE" />,
+    },
+    {
+      key: "WAITLIST",
+      href: "/clients?view=waitlist",
+      label: `רשימת המתנה (${waitlistCount})`,
+      panel: view === "WAITLIST" ? <WaitlistPanel entries={waitlist} /> : undefined,
+    },
     ...(trashCount > 0 || view === "TRASH"
-      ? [{ key: "TRASH", href: "/clients?view=trash", label: `סל מחזור (${trashCount})` }]
+      ? [
+          {
+            key: "TRASH",
+            href: "/clients?view=trash",
+            label: `סל מחזור (${trashCount})`,
+            panel: view === "TRASH" ? trashPanel : undefined,
+          },
+        ]
       : []),
   ];
 
@@ -116,64 +176,19 @@ export default async function ClientsPage({
         </Link>
       </header>
 
-      {/* View filter */}
-      {/* Always shown: the waiting list is reachable even before the first client */}
-      {(
-        <div className="inline-flex bg-cream-100 border border-cream-300 rounded-full p-1 flex-wrap">
-          {VIEWS.map((v) => (
-            <Link
-              key={v.key}
-              href={v.href}
-              className={cn(
-                "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-                view === v.key
-                  ? "bg-white text-ink shadow-soft"
-                  : "text-ink-muted hover:text-ink",
-              )}
-            >
-              {v.label}
-            </Link>
-          ))}
-        </div>
-      )}
+      <div className="space-y-6">
+        {/* Always shown: the waiting list is reachable even before the first client */}
+        <ViewTabs key={view} active={view} tabs={tabs} />
+      </div>
+    </div>
+  );
+}
 
-      {view === "WAITLIST" ? (
-        <WaitlistPanel entries={waitlist} />
-      ) : view === "TRASH" ? (
-        <Card>
-          <p className="px-5 pt-4 pb-3 text-sm text-ink-muted leading-relaxed border-b border-cream-200">
-            תיקים שנמחקו נשמרים כאן {TRASH_DAYS} יום — מוסתרים מכל מקום ובלי תזכורות — ואז
-            נמחקים לצמיתות עם כל הפגישות, הסיכומים והקבצים שלהם. שחזור מחזיר את התיק בדיוק
-            כפי שהיה, כלא פעיל.
-          </p>
-          {trashed.length === 0 ? (
-            <p className="px-5 py-10 text-center text-sm text-ink-subtle">סל המחזור ריק.</p>
-          ) : (
-            <ul className="divide-y divide-cream-200">
-              {trashed.map((c) => (
-                <li key={c.id} className="flex flex-wrap items-center">
-                  <div className="flex-1 min-w-0 flex items-center gap-4 ps-5 pe-2 py-4">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-display text-base shrink-0 bg-cream-200 text-ink-subtle">
-                      {c.firstName[0]}
-                      {c.lastName[0]}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-medium text-ink-muted">
-                        {c.firstName} {c.lastName}
-                      </div>
-                      <div className="text-xs text-ink-subtle mt-1">
-                        נמחק/ה ב-{formatDate(c.deletedAt!)} · מחיקה לצמיתות{" "}
-                        {daysLeftText(trashDaysLeft(c.deletedAt!, now))}
-                      </div>
-                    </div>
-                  </div>
-                  <TrashRowActions clientId={c.id} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      ) : clients.length === 0 ? (
+type ClientRow = Prisma.ClientGetPayload<{ include: { _count: { select: { sessions: true } } } }>;
+
+function ClientRows({ clients, view }: { clients: ClientRow[]; view: "ACTIVE" | "INACTIVE" }) {
+  if (clients.length === 0) {
+    return (
         <Card>
           <CardContent className="py-16 text-center">
             <Users className="w-12 h-12 mx-auto text-ink-subtle mb-4" strokeWidth={1.25} />
@@ -195,7 +210,9 @@ export default async function ClientsPage({
             )}
           </CardContent>
         </Card>
-      ) : (
+    );
+  }
+  return (
         <Card>
           <ul className="divide-y divide-cream-200">
             {clients.map((c) => (
@@ -255,7 +272,5 @@ export default async function ClientsPage({
             ))}
           </ul>
         </Card>
-      )}
-    </div>
   );
 }

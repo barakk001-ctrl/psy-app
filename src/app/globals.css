@@ -36,6 +36,33 @@
     }
   }
 
+  /* Date and time fields line up with the other inputs. iOS Safari draws them
+     its own way: the value high in the box and centred across it. The
+     touch-callout test matches iOS only, so other browsers keep their own
+     field, calendar icon included. Tapping still opens the native picker. */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    text-align: start;
+  }
+  @supports (-webkit-touch-callout: none) {
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"] {
+      -webkit-appearance: none;
+      appearance: none;
+      display: flex;
+      align-items: center;
+    }
+    input::-webkit-date-and-time-value {
+      flex: 1;
+      margin: 0;
+      min-height: 1.5em;
+      line-height: 1.5;
+      text-align: inherit;
+    }
+  }
+
   body {
     font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "ss01", "kern";

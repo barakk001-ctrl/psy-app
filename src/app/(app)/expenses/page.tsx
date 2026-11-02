@@ -5,13 +5,13 @@ import { db } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { PdfButton } from "@/components/ui/pdf-button";
 import { ExpenseUpload } from "@/components/expenses/expense-upload";
+import { ViewTabs } from "@/components/ui/view-tabs";
 import { clinicDay } from "@/lib/billing-doc-data";
 import { decryptSecret } from "@/lib/crypto";
 import { expenseDocTypeLabel, expenseMonthAgorot, monthTotalAgorot } from "@/lib/expenses";
 import { formatDocMoney, parseAgorot } from "@/lib/billing-docs";
 import { formatDate } from "@/lib/format";
 import { groupByMonth } from "@/lib/income-doc-list";
-import { cn } from "@/lib/utils";
 
 export const metadata = { title: "מסמכי הוצאות — מרפאה אישית" };
 
@@ -32,28 +32,25 @@ export default async function ExpensesPage({
   const userId = session!.user.id;
   const drafts = (await searchParams).view === "drafts";
 
-  const [rows, approvedCount, draftCount] = await Promise.all([
+  // Both tabs' lists come together, so switching between them is instant
+  const [approvedRows, draftRows] = await Promise.all([
     db.expense.findMany({
-      where: { userId, status: drafts ? "DRAFT" : "APPROVED" },
-      orderBy: drafts ? [{ createdAt: "desc" }] : [{ docDate: "desc" }, { createdAt: "desc" }],
+      where: { userId, status: "APPROVED" },
+      orderBy: [{ docDate: "desc" }, { createdAt: "desc" }],
     }),
-    db.expense.count({ where: { userId, status: "APPROVED" } }),
-    db.expense.count({ where: { userId, status: "DRAFT" } }),
+    db.expense.findMany({ where: { userId, status: "DRAFT" }, orderBy: [{ createdAt: "desc" }] }),
   ]);
-  const shaped = rows.map((e) => ({
+  const shape = (e: (typeof approvedRows)[number]) => ({
     ...e,
     name: fileName(e.nameCiphertext),
     amountAgorot: parseAgorot(e.amount?.toString() ?? "0") ?? 0,
     day: clinicDay(e.docDate ?? e.createdAt),
-  }));
-  const months = drafts ? [] : groupByMonth(shaped, (e) => e.day);
+  });
+  const approved = approvedRows.map(shape);
+  const shapedDrafts = draftRows.map(shape);
+  const months = groupByMonth(approved, (e) => e.day);
 
-  const tabs = [
-    { key: "approved", href: "/expenses", label: `מסמכים קיימים (${approvedCount})`, on: !drafts },
-    { key: "drafts", href: "/expenses?view=drafts", label: `טיוטות לאישור/הסרה (${draftCount})`, on: drafts },
-  ];
-
-  const row = (e: (typeof shaped)[number]) => (
+  const row = (e: ReturnType<typeof shape>) => (
     <li key={e.id} className="flex items-center gap-2 pe-3 sm:pe-4 hover:bg-cream-100/60 transition-colors">
       <Link href={`/expenses/${e.id}`} className="flex-1 min-w-0 flex items-center gap-3 px-4 sm:px-5 py-3">
         <div className="flex-1 min-w-0">
@@ -84,55 +81,70 @@ export default async function ExpensesPage({
 
       <ExpenseUpload />
 
-      <div className="inline-flex bg-cream-100 border border-cream-300 rounded-full p-1 flex-wrap">
-        {tabs.map((t) => (
-          <Link
-            key={t.key}
-            href={t.href}
-            aria-current={t.on ? "page" : undefined}
-            className={cn(
-              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-              t.on ? "bg-white text-ink shadow-soft" : "text-ink-muted hover:text-ink",
-            )}
-          >
-            {t.label}
-          </Link>
-        ))}
+      <div>
+        <ViewTabs
+          key={drafts ? "drafts" : "approved"}
+          active={drafts ? "drafts" : "approved"}
+          tabs={[
+            {
+              key: "approved",
+              href: "/expenses",
+              label: `מסמכים קיימים (${approved.length})`,
+              panel: (
+                <div className="mt-6 space-y-6">
+                  {approved.length === 0 ? (
+                    <Empty title="עדיין אין הוצאות מאושרות" text="מסמך הוצאה שמאשרים מופיע כאן, לפי החודש שבו הוא נכתב." />
+                  ) : (
+                    months.map((m) => (
+                      <section key={m.key} aria-labelledby={`month-${m.key}`} className="space-y-2">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <h2 id={`month-${m.key}`} className="font-display text-lg text-ink">
+                            {m.label}
+                          </h2>
+                          <div className="text-sm text-ink-muted">
+                            סה״כ <span className="font-semibold text-ink">{formatDocMoney(monthTotalAgorot(m.rows))}</span>
+                          </div>
+                        </div>
+                        <Card>
+                          <ul className="divide-y divide-cream-200">{m.rows.map(row)}</ul>
+                        </Card>
+                      </section>
+                    ))
+                  )}
+                </div>
+              ),
+            },
+            {
+              key: "drafts",
+              href: "/expenses?view=drafts",
+              label: `טיוטות לאישור/הסרה (${shapedDrafts.length})`,
+              panel: (
+                <div className="mt-6">
+                  {shapedDrafts.length === 0 ? (
+                    <Empty title="אין טיוטות" text="מסמך שהועלה ועוד לא אושר מופיע כאן." />
+                  ) : (
+                    <Card>
+                      <ul className="divide-y divide-cream-200">{shapedDrafts.map(row)}</ul>
+                    </Card>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+        />
       </div>
-
-      {shaped.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <FileOutput className="w-12 h-12 mx-auto text-ink-subtle mb-4" strokeWidth={1.25} />
-            <h2 className="font-display text-xl text-ink">{drafts ? "אין טיוטות" : "עדיין אין הוצאות מאושרות"}</h2>
-            <p className="text-ink-muted text-sm mt-1 max-w-sm mx-auto">
-              {drafts
-                ? "מסמך שהועלה ועוד לא אושר מופיע כאן."
-                : "מסמך הוצאה שמאשרים מופיע כאן, לפי החודש שבו הוא נכתב."}
-            </p>
-          </CardContent>
-        </Card>
-      ) : drafts ? (
-        <Card>
-          <ul className="divide-y divide-cream-200">{shaped.map(row)}</ul>
-        </Card>
-      ) : (
-        months.map((m) => (
-          <section key={m.key} aria-labelledby={`month-${m.key}`} className="space-y-2">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 id={`month-${m.key}`} className="font-display text-lg text-ink">
-                {m.label}
-              </h2>
-              <div className="text-sm text-ink-muted">
-                סה״כ <span className="font-semibold text-ink">{formatDocMoney(monthTotalAgorot(m.rows))}</span>
-              </div>
-            </div>
-            <Card>
-              <ul className="divide-y divide-cream-200">{m.rows.map(row)}</ul>
-            </Card>
-          </section>
-        ))
-      )}
     </div>
+  );
+}
+
+function Empty({ title, text }: { title: string; text: string }) {
+  return (
+    <Card>
+      <CardContent className="py-16 text-center">
+        <FileOutput className="w-12 h-12 mx-auto text-ink-subtle mb-4" strokeWidth={1.25} />
+        <h2 className="font-display text-xl text-ink">{title}</h2>
+        <p className="text-ink-muted text-sm mt-1 max-w-sm mx-auto">{text}</p>
+      </CardContent>
+    </Card>
   );
 }

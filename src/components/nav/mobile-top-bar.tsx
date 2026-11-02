@@ -41,8 +41,12 @@ export function MobileTopBar({
 
   return (
     <>
-      <header className="lg:hidden sticky top-0 z-30 glass border-b border-cream-200/60 px-4 h-14 flex items-center justify-between">
-        <BrandMark branding={branding} size="sm" />
+      {/* The button is on the side the drawer opens from. Right padding clears a
+          landscape notch, where env() is set at all. */}
+      <header
+        className="lg:hidden sticky top-0 z-30 glass border-b border-cream-200/60 px-4 h-14 flex items-center justify-between"
+        style={{ paddingRight: "max(1rem, env(safe-area-inset-right, 0px))" }}
+      >
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -52,6 +56,7 @@ export function MobileTopBar({
         >
           <Menu className="w-6 h-6" />
         </button>
+        <BrandMark branding={branding} size="sm" />
       </header>
 
       {/* Drawer overlay */}
@@ -89,8 +94,10 @@ export function MobileTopBar({
             : "transform 300ms ease-out, visibility 0s linear 300ms",
         }}
       >
-        <div className="p-4 flex items-center justify-between border-b border-cream-300">
-          <span className="font-display text-lg text-ink">תפריט</span>
+        <div
+          className="p-4 flex items-center justify-between border-b border-cream-300"
+          style={{ paddingRight: "max(1rem, env(safe-area-inset-right, 0px))" }}
+        >
           <button
             type="button"
             onClick={() => setOpen(false)}
@@ -99,6 +106,7 @@ export function MobileTopBar({
           >
             <X className="w-5 h-5" />
           </button>
+          <span className="font-display text-lg text-ink">תפריט</span>
         </div>
 
         <nav className="flex-1 p-3 overflow-y-auto">

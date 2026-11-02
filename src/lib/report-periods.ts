@@ -25,10 +25,10 @@ export type PeriodKey =
   | "last-year";
 
 const PERIOD_LABELS: Record<PeriodKey, string> = {
-  "this-month": "החודש",
-  "last-month": "החודש שעבר",
-  "this-quarter": "הרבעון",
-  "this-year": "השנה",
+  "this-month": "חודש",
+  "last-month": "חודש שעבר",
+  "this-quarter": "רבעון",
+  "this-year": "שנה",
   "last-year": "שנה שעברה",
 };
 
