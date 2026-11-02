@@ -94,6 +94,20 @@ export function creatableKinds(vatLiable: boolean): DocKindInfo[] {
     : [DOC_KINDS.RECEIPT];
 }
 
+/**
+ * The document-type squares, in the order the practitioner reads them. Unlike
+ * creatableKinds this includes the credit note: its square leads to the invoice
+ * being cancelled (a credit note is never issued from "מסמך חדש").
+ */
+export function docKindSquares(vatLiable: boolean): DocKindInfo[] {
+  return [
+    DOC_KINDS.TAX_INVOICE,
+    DOC_KINDS.TAX_INVOICE_RECEIPT,
+    DOC_KINDS.RECEIPT,
+    DOC_KINDS.CREDIT_NOTE,
+  ].filter((k) => vatLiable || !k.vatLiableOnly);
+}
+
 /** The kind "מסמך חדש" starts on: the Settings preference if allowed. */
 export function defaultKind(vatLiable: boolean, preferredCode: number | null | undefined): DocKind {
   const allowed = creatableKinds(vatLiable);

@@ -55,7 +55,7 @@ export function MobileTabBar() {
                 <Icon className="w-5 h-5" strokeWidth={active ? 2 : 1.75} />
                 <span
                   className={cn(
-                    "text-[10px]",
+                    "text-[10px] whitespace-nowrap",
                     active ? "font-medium" : "font-normal",
                   )}
                 >

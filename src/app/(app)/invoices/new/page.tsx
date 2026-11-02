@@ -4,8 +4,9 @@ import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getMorningCredentials } from "@/lib/morning";
-import { creatableKinds, defaultKind, DOC_KINDS, type DocKind } from "@/lib/billing-docs";
-import { clinicDay } from "@/lib/billing-doc-data";
+import { creatableKinds, defaultKind, docTypeLabel, DOC_KINDS, type DocKind } from "@/lib/billing-docs";
+import { clinicDay, loadCreditableInvoices } from "@/lib/billing-doc-data";
+import { formatCurrency } from "@/lib/format";
 import { DocumentForm } from "@/components/invoices/document-form";
 
 const dayLabel = (d: Date) =>
@@ -85,6 +86,9 @@ export default async function NewDocumentPage({
   const kinds = creatableKinds(vatLiable).map((k) => k.kind);
   const requested = kinds.find((k) => k === params.kind) as DocKind | undefined;
   const initialKind = requested ?? defaultKind(vatLiable, owner?.morningDocType);
+  // The credit-note square opens a choice of invoice, not a form (see CreditNotePicker)
+  const initialCredit = vatLiable && !forInvoice && params.kind === DOC_KINDS.CREDIT_NOTE.kind;
+  const creditable = vatLiable && creds ? await loadCreditableInvoices(userId) : [];
 
   const balance = forInvoice
     ? (Number(forInvoice.total.toString()) - Number(forInvoice.amountPaid.toString())).toFixed(2)
@@ -97,7 +101,7 @@ export default async function NewDocumentPage({
         className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"
       >
         <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
-        {forInvoice ? "חזרה לחשבונית" : "חזרה לחשבוניות וקבלות"}
+        {forInvoice ? "חזרה לחשבונית" : "חזרה למסמכי הכנסות"}
       </Link>
       <header>
         <h1 className="font-display text-3xl text-ink">{forInvoice ? "קבלה על חשבונית" : "מסמך חדש"}</h1>
@@ -108,8 +112,15 @@ export default async function NewDocumentPage({
         </p>
       </header>
       <DocumentForm
-        kinds={kinds}
         initialKind={initialKind}
+        initialCredit={initialCredit}
+        creditableInvoices={creditable.map((inv) => ({
+          id: inv.id,
+          label: `${docTypeLabel(inv.docType)} ${inv.morningDocNumber ?? ""}`.trim(),
+          clientName: `${inv.client.firstName} ${inv.client.lastName}`.trim(),
+          date: dayLabel(inv.issueDate),
+          amount: formatCurrency(inv.total.toString()),
+        }))}
         today={clinicDay(now)}
         morningConnected={!!creds}
         business={{

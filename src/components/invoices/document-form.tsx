@@ -34,6 +34,8 @@ import {
   type PaymentKind,
 } from "@/lib/billing-docs";
 import { saveDocumentAction, previewDraftInMorningAction } from "@/server/actions/documents";
+import { CreditNotePicker, type CreditableInvoice } from "./credit-note-picker";
+import { DocKindSquares } from "./doc-kind-squares";
 import { DocumentPreview, type PreviewBusiness } from "./document-preview";
 import { MorningPdfPreview } from "./morning-pdf-link";
 
@@ -75,8 +77,9 @@ const ils = (agorot: number) =>
   })}`;
 
 export function DocumentForm({
-  kinds,
   initialKind,
+  initialCredit = false,
+  creditableInvoices,
   clients,
   sessions,
   business,
@@ -84,8 +87,10 @@ export function DocumentForm({
   today,
   initial,
 }: {
-  kinds: DocKind[];
   initialKind: DocKind;
+  /** open on the credit-note square */
+  initialCredit?: boolean;
+  creditableInvoices: CreditableInvoice[];
   clients: DocClientOption[];
   sessions: DocSessionOption[];
   business: PreviewBusiness;
@@ -104,6 +109,9 @@ export function DocumentForm({
   const related = initial?.relatedInvoice;
 
   const [kind, setKind] = useState<DocKind>(related ? "RECEIPT" : initialKind);
+  // The credit-note square. Kept apart from `kind`, which is what gets saved:
+  // a credit note is issued from the invoice it cancels, never from this form.
+  const [crediting, setCrediting] = useState(initialCredit);
   const info = DOC_KINDS[kind];
   const [clientId, setClientId] = useState(initial?.clientId ?? "");
   const client = clients.find((c) => c.id === clientId);
@@ -373,6 +381,44 @@ export function DocumentForm({
   }
 
   // ── Form ──────────────────────────────────────────────────────────────────
+  const typeChoice = related ? (
+    <div className="rounded-2xl border border-cream-300 bg-cream-100 px-4 py-3 text-sm text-ink-soft">
+      קבלה על <b>{related.label}</b>. כשהקבלה תופק ב-morning, החשבונית תיסגר שם.
+    </div>
+  ) : (
+    <Card>
+      <CardHeader>
+        <CardTitle>סוג המסמך</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <DocKindSquares
+          vatLiable={business.vatLiable}
+          selected={crediting ? "CREDIT_NOTE" : kind}
+          onPick={(k) => {
+            setCrediting(k === "CREDIT_NOTE");
+            if (k !== "CREDIT_NOTE") setKind(k);
+          }}
+        />
+        {!business.vatLiable && (
+          <p className="text-xs text-ink-muted mt-2">
+            בהגדרות העסק מסומן עוסק פטור, ולכן מפיקים קבלות. עוסק מורשה? מסמנים זאת ב״פרטי
+            העסק״ ואז מופיעות גם חשבונית מס וחשבונית מס/קבלה.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  // Also a <form>, so the squares stay the same elements and keep focus
+  if (crediting) {
+    return (
+      <form className="space-y-6" noValidate onSubmit={(e) => e.preventDefault()}>
+        {typeChoice}
+        <CreditNotePicker invoices={creditableInvoices} morningConnected={morningConnected} />
+      </form>
+    );
+  }
+
   return (
     <form
       className="space-y-6"
@@ -382,53 +428,7 @@ export function DocumentForm({
         openPreview();
       }}
     >
-      {related ? (
-        <div className="rounded-2xl border border-cream-300 bg-cream-100 px-4 py-3 text-sm text-ink-soft">
-          קבלה על <b>{related.label}</b>. כשהקבלה תופק ב-morning, החשבונית תיסגר שם.
-        </div>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>סוג המסמך</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div role="radiogroup" className="grid sm:grid-cols-3 gap-2">
-              {kinds.map((k) => {
-                const ki = DOC_KINDS[k];
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    role="radio"
-                    aria-checked={kind === k}
-                    onClick={() => setKind(k)}
-                    className={cn(
-                      "rounded-xl border px-3 py-2.5 text-start transition-colors",
-                      kind === k
-                        ? "border-sage-500 bg-sage-50 ring-2 ring-sage-500/20"
-                        : "border-cream-300 bg-white/60 hover:bg-white",
-                    )}
-                  >
-                    <div className="font-medium text-ink text-sm">{ki.label}</div>
-                    <div className="text-xs text-ink-muted mt-0.5 leading-snug">{ki.hint}</div>
-                  </button>
-                );
-              })}
-            </div>
-            {kinds.length === 1 && (
-              <p className="text-xs text-ink-muted mt-2">
-                בהגדרות העסק מסומן עוסק פטור, ולכן מפיקים קבלות. עוסק מורשה? מסמנים זאת ב״פרטי
-                העסק״ ואז מופיעות גם חשבונית מס וחשבונית מס/קבלה.
-              </p>
-            )}
-            {business.vatLiable && (
-              <p className="text-xs text-ink-muted mt-2">
-                חשבונית זיכוי מפיקים מתוך החשבונית שמבטלים — בעמוד שלה, ״ביטול בחשבונית זיכוי״.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {typeChoice}
 
       <Card>
         <CardHeader>

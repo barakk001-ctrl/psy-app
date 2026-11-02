@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { FileText, Plus } from "lucide-react";
+import { FileText } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { MorningDocsPanel } from "@/components/invoices/morning-docs-panel";
+import { DocKindSquares } from "@/components/invoices/doc-kind-squares";
 import { getMorningCredentials } from "@/lib/morning";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { docTypeLabel } from "@/lib/billing-docs";
@@ -17,7 +17,7 @@ const inMorning = (
   </span>
 );
 
-export const metadata = { title: "חשבוניות — מרפאה אישית" };
+export const metadata = { title: "מסמכי הכנסות — מרפאה אישית" };
 
 export default async function InvoicesPage() {
   const session = await auth();
@@ -32,6 +32,10 @@ export default async function InvoicesPage() {
   });
 
   const morningConnected = !!(await getMorningCredentials(userId));
+  const owner = await db.user.findUnique({
+    where: { id: userId },
+    select: { vatLiable: true },
+  });
   const unassignedDocs = morningConnected
     ? await db.morningDocument.findMany({
         where: { userId, clientId: null },
@@ -54,17 +58,17 @@ export default async function InvoicesPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl text-ink">חשבוניות וקבלות</h1>
+          <h1 className="font-display text-3xl text-ink">מסמכי הכנסות</h1>
           {/* What this page is — and isn't (Keren asked whether it issues into morning) */}
           <p className="text-ink-muted mt-1 text-sm max-w-2xl">
             {morningConnected ? (
               <>
-                ״מסמך חדש״ מפיק חשבונית מס, חשבונית מס/קבלה או קבלה {inMorning} — שם הם
+                מסמך חדש מפיק חשבונית מס, חשבונית מס/קבלה או קבלה {inMorning} — שם הם
                 מסמכים רשמיים — והמספר והקישור נשמרים כאן.
               </>
             ) : (
               <>
-                ״מסמך חדש״ מכין את המסמך ושומר טיוטה (לא מסמך מס); את המסמך הרשמי מפיקים{" "}
+                מסמך חדש מכין את המסמך ושומר טיוטה (לא מסמך מס); את המסמך הרשמי מפיקים{" "}
                 {inMorning}. כדי שיופק מכאן אוטומטית, מחברים את morning ב
                 <Link href="/settings" className="text-sage-600 hover:text-sage-700 hover:underline">
                   הגדרות
@@ -77,12 +81,16 @@ export default async function InvoicesPage() {
             )}
           </p>
         </div>
-        <Link href="/invoices/new">
-          <Button>
-            <Plus className="w-4 h-4" /> מסמך חדש
-          </Button>
-        </Link>
       </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>מסמך חדש</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DocKindSquares vatLiable={!!owner?.vatLiable} />
+        </CardContent>
+      </Card>
 
       {morningConnected && (
         <MorningDocsPanel
@@ -105,13 +113,9 @@ export default async function InvoicesPage() {
             <FileText className="w-12 h-12 mx-auto text-ink-subtle mb-4" strokeWidth={1.25} />
             <h2 className="font-display text-xl text-ink">עדיין אין מסמכים</h2>
             <p className="text-ink-muted text-sm mt-1 max-w-sm mx-auto">
-              חשבונית או קבלה על פגישות שהתקיימו — בוחרים את הפגישות, בודקים בתצוגה המקדימה ומפיקים.
+              חשבונית או קבלה על פגישות שהתקיימו — בוחרים למעלה את סוג המסמך, מסמנים את הפגישות,
+              בודקים בתצוגה המקדימה ומפיקים.
             </p>
-            <Link href="/invoices/new" className="inline-block mt-5">
-              <Button>
-                <Plus className="w-4 h-4" /> מסמך ראשון
-              </Button>
-            </Link>
           </CardContent>
         </Card>
       ) : (

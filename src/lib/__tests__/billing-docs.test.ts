@@ -5,6 +5,7 @@ import {
   canCreditNote,
   creatableKinds,
   defaultKind,
+  docKindSquares,
   docTypeLabel,
   documentProblems,
   documentTotals,
@@ -53,6 +54,13 @@ describe("kinds", () => {
   it("offers tax documents only to a VAT-liable business", () => {
     expect(creatableKinds(false).map((k) => k.code)).toEqual([400]);
     expect(creatableKinds(true).map((k) => k.code)).toEqual([320, 305, 400]);
+  });
+  it("shows all four document squares to a VAT-liable business, in her order", () => {
+    expect(docKindSquares(true).map((k) => k.code)).toEqual([305, 320, 400, 330]);
+    expect(docKindSquares(false).map((k) => k.code)).toEqual([400]);
+  });
+  it("never makes a credit note something \"מסמך חדש\" can issue", () => {
+    expect(creatableKinds(true).map((k) => k.kind)).not.toContain("CREDIT_NOTE");
   });
   it("starts on the Settings preference when it's allowed", () => {
     expect(defaultKind(true, 400)).toBe("RECEIPT");

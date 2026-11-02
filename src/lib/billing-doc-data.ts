@@ -6,6 +6,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
   DOC_KINDS,
+  canCreditNote,
   docKindByCode,
   documentProblems,
   parseAgorot,
@@ -248,4 +249,33 @@ export async function issueStoredDocument(userId: string, invoiceId: string): Pr
     }
   });
   return { ok: true, number, url };
+}
+
+/**
+ * Issued tax invoices a credit note can still cancel, newest first: the same
+ * test as the "ביטול בחשבונית זיכוי" button on the document page.
+ */
+export async function loadCreditableInvoices(userId: string) {
+  const invoices = await db.invoice.findMany({
+    where: {
+      userId,
+      docType: { in: [DOC_KINDS.TAX_INVOICE.code, DOC_KINDS.TAX_INVOICE_RECEIPT.code] },
+      morningDocId: { not: null },
+      status: { not: "CANCELLED" },
+    },
+    orderBy: [{ issueDate: "desc" }, { number: "desc" }],
+    take: 100,
+    include: { client: { select: { firstName: true, lastName: true } } },
+  });
+  const credited = await db.invoice.findMany({
+    where: {
+      userId,
+      docType: DOC_KINDS.CREDIT_NOTE.code,
+      status: { not: "CANCELLED" },
+      relatedInvoiceId: { in: invoices.map((i) => i.id) },
+    },
+    select: { relatedInvoiceId: true },
+  });
+  const taken = new Set(credited.map((c) => c.relatedInvoiceId));
+  return invoices.filter((i) => canCreditNote(i) && !taken.has(i.id));
 }

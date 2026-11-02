@@ -61,7 +61,7 @@ export async function DocumentView({
     <div className="max-w-4xl space-y-6">
       <Link href="/invoices" className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink">
         <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
-        חזרה לחשבוניות וקבלות
+        חזרה למסמכי הכנסות
       </Link>
 
       <header className="flex flex-wrap items-start justify-between gap-4">

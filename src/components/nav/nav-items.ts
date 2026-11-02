@@ -13,7 +13,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "בית", icon: Home, primaryMobile: true },
   { href: "/calendar", label: "יומן", icon: Calendar, primaryMobile: true },
   { href: "/clients", label: "לקוחות", icon: Users, primaryMobile: true },
-  { href: "/invoices", label: "חשבוניות", icon: FileText, primaryMobile: true },
+  { href: "/invoices", label: "מסמכי הכנסות", icon: FileText, primaryMobile: true },
   { href: "/reports", label: "פילוח ודוחות", icon: BarChart3 },
   { href: "/subscription", label: "מנוי ומסלולים", icon: CreditCard },
   { href: "/settings", label: "הגדרות", icon: Settings },
