@@ -211,3 +211,18 @@ describe("clientBreakdown", () => {
     ]);
   });
 });
+
+describe("a credit note in the breakdowns", () => {
+  const entries = () =>
+    incomeEntries(
+      [payment({ amount: 500, clientId: "c2" }), payment({ amount: -500, method: "CREDIT_NOTE", clientId: "c3", clientName: "אורח" })],
+      [],
+    );
+  it("keeps a client whose only line is a credit, so the rows add up to the total", () => {
+    const rows = clientBreakdown([], entries());
+    expect(rows.map((r) => r.received).sort((a, b) => a - b)).toEqual([-500, 500]);
+  });
+  it("leaves out a client with nothing at all", () => {
+    expect(clientBreakdown([], [])).toEqual([]);
+  });
+});

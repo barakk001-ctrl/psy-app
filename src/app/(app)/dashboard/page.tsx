@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { formatDateTime, formatCurrency } from "@/lib/format";
 import { fromZonedDateTimeLocal, toZonedDateTimeLocal } from "@/lib/timezone";
 import { expectedIncome, sumAmounts } from "@/lib/income";
-import { loadIncome } from "@/lib/income-data";
+import { loadIncome, loadOpenDocuments } from "@/lib/income-data";
 import { getPeriodRange, periodLabel } from "@/lib/report-periods";
 import {
   Calendar,
@@ -62,11 +62,7 @@ export default async function DashboardPage() {
       },
     }),
     loadIncome(userId, monthStart, monthEnd),
-    db.invoice.aggregate({
-      // Drafts count too — an unpaid invoice is a debt even before it's sent
-      where: { userId, currency: "ILS", status: { in: ["DRAFT", "SENT", "PARTIALLY_PAID"] } },
-      _sum: { total: true, amountPaid: true },
-    }),
+    loadOpenDocuments(userId, { currency: "ILS" }),
     db.todo.findMany({
       where: { userId },
       orderBy: [{ done: "asc" }, { createdAt: "desc" }],
@@ -83,8 +79,7 @@ export default async function DashboardPage() {
   // Received: app-invoice payments + meetings marked paid (src/lib/income.ts)
   const monthIncome = sumAmounts(monthData.entries);
   const monthExpected = expectedIncome(monthData.sessions);
-  const outstandingAmount =
-    Number(outstanding._sum.total ?? 0) - Number(outstanding._sum.amountPaid ?? 0);
+  const outstandingAmount = sumAmounts(outstanding.map((inv) => ({ amount: inv.balance })));
 
   const nowMs = now.getTime();
   const isInProgress = (s: { startsAt: Date; endsAt: Date }) =>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DOC_KINDS,
   documentDefaults,
+  isUnissuedDocument,
   paymentDetailLabel,
   agorotToDecimalString,
   canCreditNote,
@@ -289,5 +290,17 @@ describe("per-document settings", () => {
   it("calls a payment app's reference an approval number", () => {
     expect(paymentDetailLabel("BIT", "reference")).toBe("מספר אישור");
     expect(paymentDetailLabel("PAYPAL", "reference")).toBe("מספר אסמכתה");
+  });
+});
+
+describe("when a document counts as money", () => {
+  it("is once morning issued it, or she typed its number", () => {
+    const d = { docType: 305, morningDocId: null, morningDocNumber: null };
+    expect(isUnissuedDocument(d)).toBe(true);
+    expect(isUnissuedDocument({ ...d, morningDocId: "x" })).toBe(false);
+    expect(isUnissuedDocument({ ...d, morningDocNumber: "20500" })).toBe(false);
+  });
+  it("leaves older app invoices alone", () => {
+    expect(isUnissuedDocument({ docType: null, morningDocId: null, morningDocNumber: null })).toBe(false);
   });
 });

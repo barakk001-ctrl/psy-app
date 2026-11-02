@@ -6,7 +6,8 @@
 //   2. The quick per-meeting payment record of the Morning-first workflow
 //      (Session.paymentStatus = PAID + paidAmount, dated by the meeting)
 // A meeting billed through an app invoice is counted only through (1), so
-// nothing is counted twice.
+// nothing is counted twice. Drafts count as nothing. A credit note is a negative
+// entry on its own date (see loadCreditNoteRefunds in income-data.ts).
 //
 // Month/period boundaries follow the clinic's wall clock (Asia/Jerusalem) —
 // the server runs in UTC, so `new Date(y, m, 1)` would be 2–3 hours off.
@@ -52,6 +53,7 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CREDIT_CARD: "כרטיס אשראי",
   PAYPAL: "PayPal",
   OTHER: "אחר",
+  CREDIT_NOTE: "חשבונית זיכוי",
 };
 
 /** What a meeting's quick payment record adds to income. A meeting marked
@@ -261,6 +263,6 @@ export function clientBreakdown(
   const round = (n: number) => Math.round(n * 100) / 100;
   return Array.from(rows.values())
     .map((r) => ({ ...r, expected: round(r.expected), received: round(r.received) }))
-    .filter((r) => r.held > 0 || r.expected > 0 || r.received > 0)
+    .filter((r) => r.held > 0 || r.expected > 0 || r.received !== 0)
     .sort((a, b) => b.received - a.received || b.expected - a.expected);
 }

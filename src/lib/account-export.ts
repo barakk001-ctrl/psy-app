@@ -14,6 +14,7 @@ import yazl from "yazl";
 import { dbAll } from "@/lib/db";
 import { decryptBuffer, decryptNote, decryptSecret } from "@/lib/crypto";
 import { PAYMENT_METHOD_LABELS } from "@/lib/income";
+import { isUnissuedDocument } from "@/lib/billing-docs";
 import { expenseDocTypeLabel } from "@/lib/expenses";
 import { clientGeneralNotes, clientIdNumber, inboxText, sessionFileName } from "@/lib/sensitive-fields";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
@@ -369,14 +370,18 @@ ${noteText(path, s.note!)}
     csvEntry(
       tally,
       "תשלומים.csv",
-      ["מזהה", "מקור", "לקוח/ה", "תאריך", "סכום", "אמצעי תשלום", "אסמכתה", "הערות", "מספר מסמך"],
+      ["מזהה", "מקור", "לקוח/ה", "תאריך", "סכום", "אמצעי תשלום", "אסמכתה", "הערות", "מספר מסמך", "מסמך שטרם הופק"],
       () =>
         (async function* () {
           // Recorded on invoices…
           for await (const rows of paged((c) =>
             dbAll.payment.findMany({
               where: { invoice: mine },
-              include: { invoice: { select: { clientId: true, number: true } } },
+              include: {
+                invoice: {
+                  select: { clientId: true, number: true, docType: true, morningDocId: true, morningDocNumber: true },
+                },
+              },
               ...orderPage,
               ...c,
             }),
@@ -391,6 +396,8 @@ ${noteText(path, s.note!)}
               reference: r.reference,
               notes: r.notes,
               doc: r.invoice.number as unknown,
+              // Kept, as everything is, but this line isn't income until it's issued
+              unissued: isUnissuedDocument(r.invoice) ? "כן" : "",
             }));
           }
           // …and on meetings, the morning-first way
@@ -411,10 +418,11 @@ ${noteText(path, s.note!)}
               reference: null,
               notes: r.paymentNote,
               doc: (r.morningReceiptNumber ?? r.morningInvoiceReceiptNumber ?? r.morningDocNumber) as unknown,
+              unissued: "",
             }));
           }
         })(),
-      (r) => [r.id, r.source, r.client, r.at, r.amount, r.how, r.reference, r.notes, r.doc],
+      (r) => [r.id, r.source, r.client, r.at, r.amount, r.how, r.reference, r.notes, r.doc, r.unissued],
     ),
     csvEntry(
       tally,

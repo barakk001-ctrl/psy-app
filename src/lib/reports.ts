@@ -1,4 +1,3 @@
-import { db } from "@/lib/db";
 import { documentClientName } from "@/lib/billing-docs";
 import {
   clinicMonthRange,
@@ -7,7 +6,7 @@ import {
   lastMonths,
   monthlyTotals,
 } from "@/lib/income";
-import { loadInvoicePayments, loadSessions } from "@/lib/income-data";
+import { loadInvoicePayments, loadOpenDocuments, loadSessions } from "@/lib/income-data";
 import {
   getPeriodRange,
   summarizeIncome,
@@ -58,9 +57,8 @@ export async function loadReportData(
       loadSessions(userId, from, to),
       loadInvoicePayments(userId, trendFrom, trendTo),
       loadSessions(userId, trendFrom, trendTo),
-      db.invoice.findMany({
-        where: { userId, currency: "ILS", status: { in: ["DRAFT", "SENT", "PARTIALLY_PAID"] } },
-        include: { client: { select: { firstName: true, lastName: true } } },
+      loadOpenDocuments(userId, {
+        currency: "ILS",
         orderBy: [{ dueDate: "asc" }, { issueDate: "asc" }],
       }),
     ]);
@@ -90,8 +88,8 @@ export async function loadReportData(
     issueDate: inv.issueDate,
     dueDate: inv.dueDate,
     total: Number(inv.total),
-    paid: Number(inv.amountPaid),
-    balance: Number(inv.total) - Number(inv.amountPaid),
+    paid: inv.paid,
+    balance: inv.balance,
   }));
   const outstanding = outstandingInvoices.reduce((s, i) => s + i.balance, 0);
 

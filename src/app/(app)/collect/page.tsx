@@ -3,6 +3,7 @@ import { Receipt, Wallet, CheckCircle2, Clock, FileText, MinusCircle } from "luc
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { documentClientName } from "@/lib/billing-docs";
+import { loadOpenDocuments } from "@/lib/income-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { FollowUpFiltersBar, ShowMoreLink } from "@/components/follow-up/follow-up-filters";
@@ -84,16 +85,7 @@ export default async function CollectPage({
       orderBy: [{ status: "asc" }, { lastName: "asc" }, { firstName: "asc" }],
     }),
     // Open invoices are open whatever the period; the client filter applies.
-    db.invoice.findMany({
-      where: {
-        userId,
-        status: { in: ["DRAFT", "SENT", "PARTIALLY_PAID"] },
-        ...(filters.clientId ? { clientId: filters.clientId } : {}),
-      },
-      orderBy: [{ issueDate: "asc" }],
-      take: 50,
-      include: { client: { select: { firstName: true, lastName: true } } },
-    }),
+    loadOpenDocuments(userId, { clientId: filters.clientId ?? undefined, take: 50 }),
   ]);
 
   // Meetings still waiting for a payment update first
@@ -232,7 +224,7 @@ export default async function CollectPage({
           <Card>
             <ul className="divide-y divide-cream-200">
               {invoices.map((inv) => {
-                const balance = Number(inv.total) - Number(inv.amountPaid);
+                const balance = inv.balance;
                 return (
                   <li key={inv.id}>
                     <Link

@@ -137,6 +137,31 @@ export function canCreditNote(doc: {
 }
 
 /**
+ * A "מסמך חדש" document counts as money only once it is issued: morning gave
+ * it an id, or she typed the number she got there. Older app invoices have no
+ * issued state and count as they always did.
+ */
+export function isUnissuedDocument(doc: {
+  docType: number | null;
+  morningDocId: string | null;
+  morningDocNumber: string | null;
+}): boolean {
+  return doc.docType != null && !doc.morningDocId && !doc.morningDocNumber;
+}
+
+/** The same test for a query. Goes under `AND`, since it holds an `OR` of its own. */
+export const COUNTS_AS_MONEY = {
+  OR: [{ docType: null }, { morningDocId: { not: null } }, { morningDocNumber: { not: null } }],
+};
+
+/** The query form of isUnissuedDocument. */
+export const UNISSUED_DOCUMENT = {
+  docType: { not: null },
+  morningDocId: null,
+  morningDocNumber: null,
+};
+
+/**
  * A meeting that has no payment link yet, which is what "מסמך חדש" suggests:
  * on no document, and no document number typed or written on it either way.
  */
