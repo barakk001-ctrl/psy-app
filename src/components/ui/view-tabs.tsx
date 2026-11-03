@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,8 @@ export type ViewTab = {
   /** Already loaded: the tab switches in place. Without one, it's a link. */
   panel?: ReactNode;
 };
+
+const viewIn = (href: string) => new URL(href, "http://x").searchParams.get("view");
 
 /**
  * The pill switch between lists on a page (clients, income, expenses). Every
@@ -31,6 +33,18 @@ export function ViewTabs({
 }) {
   const [current, setCurrent] = useState(active);
   const panels = useRef<HTMLDivElement>(null);
+
+  // A navigation to this page with another tab in its address
+  useEffect(() => setCurrent(active), [active]);
+
+  // Coming back can restore a page older than its address: the address wins
+  useEffect(() => {
+    const view = new URLSearchParams(window.location.search).get("view");
+    const tab = tabs.find((t) => t.panel && viewIn(t.href) === view);
+    if (tab) setCurrent(tab.key);
+    // Only on arrival: after that a tab is what changes the address
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function pick(e: MouseEvent<HTMLAnchorElement>, tab: ViewTab) {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;

@@ -602,5 +602,6 @@ export const NO_ID_ROUTES: Record<string, string> = {
   "cron/reminders": "system job behind CRON_SECRET",
   "csp-report": "nothing read, nothing stored",
   health: "SELECT 1, returns no data",
+  "invoices/documents": "filters only, scoped by the session user (income-doc-list.db.test.ts)",
   "reports/income": "dates only, scoped by the session user (own test in isolation.db.test.ts)",
 };

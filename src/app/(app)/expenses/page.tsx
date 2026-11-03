@@ -83,7 +83,6 @@ export default async function ExpensesPage({
 
       <div>
         <ViewTabs
-          key={drafts ? "drafts" : "approved"}
           active={drafts ? "drafts" : "approved"}
           tabs={[
             {

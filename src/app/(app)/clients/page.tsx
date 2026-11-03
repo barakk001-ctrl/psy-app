@@ -45,27 +45,20 @@ export default async function ClientsPage({
 
   // `db` leaves clients in the recycle bin out; the bin itself reads `dbAll`
   // Active and inactive come together, so switching between them is instant
-  const [allClients, trashCount, waitlistCount] = await Promise.all([
+  const [allClients] = await Promise.all([
     db.client.findMany({
       where: { userId },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       include: { _count: { select: { sessions: true } } },
     }),
-    dbAll.client.count({ where: { userId, deletedAt: { not: null } } }),
-    db.waitlistEntry.count({ where: { userId } }),
   ]);
-  const trashed =
-    view === "TRASH"
-      ? await dbAll.client.findMany({
-          where: { userId, deletedAt: { not: null } },
-          orderBy: { deletedAt: "desc" },
-          select: { id: true, firstName: true, lastName: true, deletedAt: true },
-        })
-      : [];
+  const trashed = await dbAll.client.findMany({
+    where: { userId, deletedAt: { gt: new Date(now.getTime() - TRASH_DAYS * 86_400_000) } },
+    orderBy: { deletedAt: "desc" },
+    select: { id: true, firstName: true, lastName: true, deletedAt: true },
+  });
   // Waiting longest first
-  const waitlist: WaitlistRow[] =
-    view === "WAITLIST"
-      ? (
+  const waitlist: WaitlistRow[] = (
           await db.waitlistEntry.findMany({
             where: { userId },
             orderBy: { createdAt: "asc" },
@@ -86,8 +79,7 @@ export default async function ClientsPage({
             addedOn: formatDate(e.createdAt),
             waiting: waitingText(e.createdAt, now),
           };
-        })
-      : [];
+        });
 
   const active = allClients.filter((c) => c.status === "ACTIVE");
   const inactive = allClients.filter((c) => c.status === "INACTIVE");
@@ -144,16 +136,16 @@ export default async function ClientsPage({
     {
       key: "WAITLIST",
       href: "/clients?view=waitlist",
-      label: `רשימת המתנה (${waitlistCount})`,
-      panel: view === "WAITLIST" ? <WaitlistPanel entries={waitlist} /> : undefined,
+      label: `רשימת המתנה (${waitlist.length})`,
+      panel: <WaitlistPanel entries={waitlist} />,
     },
-    ...(trashCount > 0 || view === "TRASH"
+    ...(trashed.length > 0 || view === "TRASH"
       ? [
           {
             key: "TRASH",
             href: "/clients?view=trash",
-            label: `סל מחזור (${trashCount})`,
-            panel: view === "TRASH" ? trashPanel : undefined,
+            label: `סל מחזור (${trashed.length})`,
+            panel: trashPanel,
           },
         ]
       : []),
@@ -178,7 +170,7 @@ export default async function ClientsPage({
 
       <div className="space-y-6">
         {/* Always shown: the waiting list is reachable even before the first client */}
-        <ViewTabs key={view} active={view} tabs={tabs} />
+        <ViewTabs active={view} tabs={tabs} />
       </div>
     </div>
   );
