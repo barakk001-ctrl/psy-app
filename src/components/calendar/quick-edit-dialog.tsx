@@ -189,7 +189,7 @@ export function QuickEditDialog({
           <input type="hidden" name="id" value={data.id} />
 
           <div>
-            <Label htmlFor="qeClient">מטופל/ת</Label>
+            <Label htmlFor="qeClient">לקוח/ה</Label>
             <Select
               id="qeClient"
               name="clientId"

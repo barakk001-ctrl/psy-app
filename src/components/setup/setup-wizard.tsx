@@ -144,7 +144,7 @@ export function SetupWizard({ step, brand, business, meetingTypes, defaultMinute
                 className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-sage-500 to-sage-600 px-5 text-sm font-medium text-cream-50 shadow-glow"
               >
                 <UserPlus className="h-5 w-5" />
-                הוספת מטופל/ת ראשון/ה
+                הוספת לקוח/ה ראשון/ה
               </Link>
               <Link
                 href="/dashboard"

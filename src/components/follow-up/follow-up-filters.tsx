@@ -126,7 +126,7 @@ export function FollowUpFiltersBar<S extends string>({
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="follow-up-client">מטופל/ת</Label>
+            <Label htmlFor="follow-up-client">לקוח/ה</Label>
             <ClientCombobox
               id="follow-up-client"
               clients={clients}

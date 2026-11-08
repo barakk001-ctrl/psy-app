@@ -9,7 +9,7 @@ const ACTION_LABELS: Record<string, string> = {
   NOTE_SAVE: "שמירת סיכום",
   NOTE_DELETE: "מחיקת סיכום",
   NOTE_APPEND: "צירוף הודעה לסיכום",
-  SESSIONS_BULK_DELETE: "מחיקת הפגישות העתידיות של מטופל/ת",
+  SESSIONS_BULK_DELETE: "מחיקת הפגישות העתידיות של לקוח/ה",
   RECORD_EXPORT: "ייצוא סיכומי פגישות ל-PDF",
   ACCOUNT_EXPORT: "הורדת כל נתוני החשבון",
   ACCOUNT_CLOSE: "סגירת החשבון",

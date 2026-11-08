@@ -6,7 +6,7 @@ import { matchClients, type ClientChoice } from "@/lib/follow-up-filters";
 import { cn } from "@/lib/utils";
 
 /**
- * Searchable client picker (type-ahead on the name). Empty = "כל המטופלים".
+ * Searchable client picker (type-ahead on the name). Empty = "כל הלקוחות".
  * The list is the user's own clients (a solo practice: at most a few
  * hundred names), so matching happens in the browser; what the choice
  * filters is queried server-side by the page.
@@ -66,9 +66,9 @@ export function ClientCombobox({
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
-          aria-label="סינון לפי מטופל/ת"
+          aria-label="סינון לפי לקוח/ה"
           autoComplete="off"
-          placeholder={selected ? selected.name : "כל המטופלים — הקלידו שם לסינון"}
+          placeholder={selected ? selected.name : "כל הלקוחות — הקלידו שם לסינון"}
           value={selected && !open ? selected.name : query}
           onFocus={() => {
             setOpen(true);
@@ -111,8 +111,8 @@ export function ClientCombobox({
           <button
             type="button"
             onClick={() => choose(null)}
-            aria-label="הצגת כל המטופלים"
-            title="הצגת כל המטופלים"
+            aria-label="הצגת כל הלקוחות"
+            title="הצגת כל הלקוחות"
             className="absolute end-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full grid place-items-center text-ink-muted hover:bg-cream-200 hover:text-ink"
           >
             <X className="w-4 h-4" />
@@ -137,7 +137,7 @@ export function ClientCombobox({
                   !selected ? "text-sage-700 font-medium" : "text-ink",
                 )}
               >
-                כל המטופלים
+                כל הלקוחות
               </button>
             </li>
           )}
@@ -160,7 +160,7 @@ export function ClientCombobox({
             </li>
           ))}
           {query && matches.length === 0 && (
-            <li className="px-3.5 py-2.5 text-sm text-ink-muted">לא נמצא/ה מטופל/ת בשם הזה.</li>
+            <li className="px-3.5 py-2.5 text-sm text-ink-muted">לא נמצא/ה לקוח/ה בשם הזה.</li>
           )}
         </ul>
       )}

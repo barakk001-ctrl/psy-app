@@ -133,7 +133,7 @@ export function SupportForm({
         <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
         <p>
           <strong className="font-semibold">שמירה על פרטיות:</strong> אין לכתוב בפנייה שמות או
-          פרטים מזהים של מטופלים. אם מצרפים צילום מסך — כדאי לוודא שלא מופיעים בו פרטי מטופלים.
+          פרטים מזהים של לקוחות. אם מצרפים צילום מסך — כדאי לוודא שלא מופיעים בו פרטי לקוחות.
         </p>
       </div>
 

@@ -211,7 +211,7 @@ export default async function CollectPage({
                 className="w-8 h-8 mx-auto text-ink-subtle"
                 strokeWidth={1.5}
               />
-              <p>{selectedClient ? "אין חשבוניות פתוחות למטופל/ת זו." : "אין חשבוניות פתוחות — הכול שולם 🎉"}</p>
+              <p>{selectedClient ? "אין חשבוניות פתוחות ללקוח/ה שנבחר/ה." : "אין חשבוניות פתוחות — הכול שולם 🎉"}</p>
               <Link
                 href="/invoices/new"
                 className="inline-block text-sage-600 hover:text-sage-700"

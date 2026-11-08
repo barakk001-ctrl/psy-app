@@ -696,7 +696,7 @@ export async function quickEditSessionAction(
   let following: FollowingCounts | null = null;
   if (cancelFollowing) {
     if (clientId !== existing.clientId) {
-      return { error: "אי אפשר להחליף מטופל/ת ולבטל את הפגישות הבאות באותה שמירה." };
+      return { error: "אי אפשר להחליף לקוח/ה ולבטל את הפגישות הבאות באותה שמירה." };
     }
     followingPlan = await loadFutureDeletePlan(
       userId,

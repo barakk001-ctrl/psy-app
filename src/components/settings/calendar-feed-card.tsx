@@ -71,7 +71,7 @@ export function CalendarFeedCard({
             <form action={calendarFeedModeAction} className="flex items-end gap-2">
               <div className="flex-1">
                 <label className="f-mono text-[10px] uppercase tracking-[0.2em] opacity-55 block mb-1">
-                  איך יוצגו שמות המטופלים ביומן
+                  איך יוצגו שמות הלקוחות ביומן
                 </label>
                 <Select name="mode" defaultValue={mode}>
                   <option value="FIRST">שם פרטי בלבד (מומלץ)</option>
