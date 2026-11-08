@@ -19,7 +19,6 @@ const mocks = vi.hoisted(() => {
     actor: { id: null as string | null },
     ip: { value: 1 },
     emails: [] as unknown[],
-    morningCalls: [] as string[],
   };
 });
 
@@ -40,35 +39,13 @@ vi.mock("@/lib/email", () => ({
     return { ok: true };
   },
 }));
-// No real morning call, ever: requests stop here and are counted
-vi.mock("@/lib/morning", async (original) => {
-  const real = await original<typeof import("@/lib/morning")>();
-  return {
-    ...real,
-    createMorningDocument: async () => {
-      mocks.morningCalls.push("create");
-      const n = mocks.morningCalls.length;
-      return { ok: true, data: { id: `issued-${n}`, number: 5000 + n, url: {} } };
-    },
-    previewMorningDocument: async () => {
-      mocks.morningCalls.push("preview");
-      return { ok: true, data: "cGRm" };
-    },
-    searchMorningDocuments: async () => {
-      mocks.morningCalls.push("search");
-      return { ok: true, data: [] };
-    },
-    testMorningConnection: async () => ({ ok: true }),
-  };
-});
-
 const ACTION_MODULES: Record<string, () => Promise<Record<string, unknown>>> = {
   clients: () => import("@/server/actions/clients"),
   "client-documents": () => import("@/server/actions/client-documents"),
   files: () => import("@/server/actions/files"),
   expenses: () => import("@/server/actions/expenses"),
   documents: () => import("@/server/actions/documents"),
-  "morning-docs": () => import("@/server/actions/morning-docs"),
+  "document-numbers": () => import("@/server/actions/document-numbers"),
   invoices: () => import("@/server/actions/invoices"),
   payments: () => import("@/server/actions/payments"),
   notes: () => import("@/server/actions/notes"),
@@ -149,7 +126,6 @@ describe.skipIf(!TEST_DATABASE_URL)("isolation between practices (real Postgres)
     b = await seedPractice(db, "B");
     admin = await seedPractice(db, "Z", { isAdmin: true });
     mocks.emails.length = 0;
-    mocks.morningCalls.length = 0;
   });
 
   afterEach(() => {
@@ -166,7 +142,6 @@ describe.skipIf(!TEST_DATABASE_URL)("isolation between practices (real Postgres)
     expect(await fingerprint(db, a.userId)).toBe(before);
     expect(await crossLinks(db)).toEqual([]);
     expect(mocks.emails).toEqual([]);
-    expect(mocks.morningCalls).toEqual([]);
   }
 
   async function worksForOwner(c: Case) {

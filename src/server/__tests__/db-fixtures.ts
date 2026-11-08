@@ -66,8 +66,8 @@ export async function seedPractice(
       calendarToken: `calendar-token-of-practice-${tag}-0000`,
       inboxToken: `public-link-of-practice-${tag}`,
       inboxApiToken: `api-key-of-practice-${tag}`,
-      morningApiKeyId: `key-${tag}`,
-      morningApiSecret: encryptSecret(`secret-${tag}`),
+      // a packed secret on the User row (2FA not switched on), for the rotation tests
+      totpSecret: encryptSecret(`secret-${tag}`),
       onboardingCompletedAt: new Date(),
     },
   });

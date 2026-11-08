@@ -250,7 +250,7 @@ describe.skipIf(!TEST_DATABASE_URL)("encrypted fields and key rotation (real Pos
         "SessionFile.data",
         "ClientDocumentBlob.data",
         "SupportRequest.attachment",
-        "User.morningApiSecret",
+        "User.totpSecret",
         "Client.idNumberCiphertext",
         "Client.generalNotesCiphertext",
         "SessionFile.fileNameCiphertext",
@@ -277,7 +277,7 @@ describe.skipIf(!TEST_DATABASE_URL)("encrypted fields and key rotation (real Pos
         const blob = await db.clientDocumentBlob.findUniqueOrThrow({ where: { documentId: a.documentId } });
         expect(decryptBuffer({ ciphertext: Buffer.from(blob.ciphertext), iv: blob.iv, tag: blob.tag }).equals(PDF_BYTES)).toBe(true);
         const u = await db.user.findUniqueOrThrow({ where: { id: a.userId } });
-        expect(decryptSecret(u.morningApiSecret!)).toBe("secret-A");
+        expect(decryptSecret(u.totpSecret!)).toBe("secret-A");
       } finally {
         process.env.NOTES_ENCRYPTION_KEY = oldKey;
       }

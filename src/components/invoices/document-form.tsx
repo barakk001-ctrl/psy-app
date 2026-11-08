@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Eye, FileCheck, Plus, Save, X, ExternalLink } from "lucide-react";
+import { Copy, Eye, FileCheck, Plus, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,18 +24,15 @@ import {
   DOC_ROUNDING_LABELS,
   DOC_VAT_TYPES,
   DOC_VAT_TYPE_LABELS,
-  MANUAL_ONLY_PAYMENT_KINDS,
   PAYMENT_DETAIL_FIELDS,
   PAYMENT_KINDS,
   PAYMENT_KIND_LABELS,
   agorotToDecimalString,
+  documentCopyText,
   documentProblems,
   documentTotals,
-  morningPaymentProblems,
   formatDocMoney,
   lastDayOfMonth,
-  morningCopyText,
-  morningNewDocumentUrl,
   parseAgorot,
   paymentDetailLabel,
   type DocCurrency,
@@ -47,11 +44,10 @@ import {
   type PaymentDetailField,
   type PaymentKind,
 } from "@/lib/billing-docs";
-import { saveDocumentAction, previewDraftInMorningAction } from "@/server/actions/documents";
+import { saveDocumentAction } from "@/server/actions/documents";
 import { DocKindSquares } from "./doc-kind-squares";
-import { DocumentPreview, type PreviewBusiness } from "./document-preview";
-import { IssueConfirmDialog, type IssueSummary } from "./issue-confirm-dialog";
-import { MorningPdfPreview } from "./morning-pdf-link";
+import { DocumentPreview, producedAtNow, type PreviewBusiness } from "./document-preview";
+import { IssueComingSoon } from "./issue-coming-soon";
 
 export type DocClientOption = {
   id: string;
@@ -107,7 +103,6 @@ export function DocumentForm({
   clients,
   sessions,
   business,
-  morningConnected,
   today,
   initial,
 }: {
@@ -117,7 +112,6 @@ export function DocumentForm({
   clients: DocClientOption[];
   sessions: DocSessionOption[];
   business: PreviewBusiness;
-  morningConnected: boolean;
   /** yyyy-mm-dd on the clinic calendar */
   today: string;
   initial?: {
@@ -226,7 +220,10 @@ export function DocumentForm({
   );
 
   const [showPreview, setShowPreview] = useState(false);
-  const [confirmIssue, setConfirmIssue] = useState<IssueSummary | null>(null);
+  /** when the preview was opened: its footer's production time */
+  const [producedAt, setProducedAt] = useState("");
+  /** "הפקת מסמך" was pressed: the app doesn't issue yet, so it explains what to do */
+  const [issueNote, setIssueNote] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -235,7 +232,7 @@ export function DocumentForm({
   const linked = kind === "CREDIT_NOTE" && !!creditOf;
   const money = (agorot: number) => formatDocMoney(agorot, currency);
 
-  // The draft as the rules (and morning) see it
+  // The draft as the rules see it
   const draft: DocumentDraft = useMemo(
     () => ({
       kind,
@@ -341,34 +338,10 @@ export function DocumentForm({
     return { ...draft, payments: info.hasPayments ? draftPaymentsFrom(shownPayments, draft) : [] };
   }
 
-  /** Checks the document and asks for the last confirmation before issuing. */
+  /** "הפקת מסמך": nothing is issued from the app yet — a calm note says what to do instead. */
   function askIssue() {
     setServerError(null);
-    const d = submittable();
-    const found = [
-      ...documentProblems(d, business.vatLiable),
-      // Only the connection can't take it: by hand in morning it's fine
-      ...(morningConnected ? morningPaymentProblems(d) : []),
-    ];
-    setProblems(found);
-    if (found.length) {
-      setShowPreview(false);
-      return;
-    }
-    if (!morningConnected) {
-      // Nothing can be issued from here: the preview offers the way through morning
-      openPreview();
-      return;
-    }
-    setConfirmIssue({
-      label: info.label,
-      code: info.code,
-      sender: business.name,
-      date: d.date.split("-").reverse().join("/"),
-      client: d.clientName,
-      amount: money(info.hasItems ? totals.totalAgorot : d.payments.reduce((s, p) => s + p.amountAgorot, 0)),
-      emails: d.clientEmails ?? [],
-    });
+    setIssueNote(true);
   }
 
   function openPreview() {
@@ -376,6 +349,8 @@ export function DocumentForm({
     const found = documentProblems(submittable(), business.vatLiable);
     setProblems(found);
     if (found.length === 0) {
+      setProducedAt(producedAtNow());
+      setIssueNote(false);
       setShowPreview(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -424,26 +399,19 @@ export function DocumentForm({
     });
   }
 
-  function save(intent: "draft" | "issue") {
+  function save() {
     setServerError(null);
     startTransition(async () => {
       try {
-        const r = await saveDocumentAction(payloadJson(), intent);
+        const r = await saveDocumentAction(payloadJson());
         if (!r.invoiceId) {
-          setConfirmIssue(null);
           setShowPreview(false);
           setServerError(r.error ?? "השמירה נכשלה.");
           setProblems(r.problems ?? []);
           return;
         }
-        const q = !r.issue
-          ? "saved=1"
-          : r.issue.ok
-            ? "issued=1"
-            : `issueError=${encodeURIComponent(r.issue.error)}${r.issue.uncertain ? "&uncertain=1" : ""}`;
-        router.push(`/invoices/${r.invoiceId}?${q}`);
+        router.push(`/invoices/${r.invoiceId}?saved=1`);
       } catch {
-        setConfirmIssue(null);
         setServerError("אין חיבור — המסמך לא נשמר. נסו שוב.");
       }
     });
@@ -451,7 +419,7 @@ export function DocumentForm({
 
   async function copyDetails() {
     try {
-      await navigator.clipboard.writeText(morningCopyText(submittable(), business.vatLiable));
+      await navigator.clipboard.writeText(documentCopyText(submittable(), business.vatLiable));
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
@@ -459,12 +427,11 @@ export function DocumentForm({
     }
   }
 
-  const issueDialog = confirmIssue && (
-    <IssueConfirmDialog
-      summary={confirmIssue}
+  const issueNoteBox = issueNote && (
+    <IssueComingSoon
+      onSave={save}
+      onClose={() => setIssueNote(false)}
       pending={pending}
-      onConfirm={() => save("issue")}
-      onClose={() => setConfirmIssue(null)}
     />
   );
 
@@ -473,54 +440,34 @@ export function DocumentForm({
     return (
       <div className="space-y-5">
         <div className="rounded-2xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700 leading-relaxed">
-          {morningConnected ? (
-            <>
-              כך ייראה המסמך. <b>״הפקת {info.label} ב-morning״</b> מפיקה אותו שם — מסמך רשמי עם
-              מספר — והמספר והקישור נשמרים כאן. אחרי ההפקה אי אפשר לערוך אותו, רק לבטל.
-            </>
-          ) : (
-            <>
-              כך ייראה המסמך. morning לא מחובר, אז המסמך יישמר כאן כטיוטה (לא מסמך מס) ומפיקים
-              אותו ב-morning: ״העתקת הפרטים״ ואז ״פתיחה ב-morning״.
-            </>
-          )}
+          כך ייראה המסמך. כרגע הוא נשמר כטיוטה (עדיין לא מסמך מס); הפקה מתוך האפליקציה תגיע
+          בקרוב.
         </div>
 
-        {issueDialog}
-        <DocumentPreview draft={submittable()} business={business} status="draft" />
+        <DocumentPreview
+          draft={submittable()}
+          business={business}
+          status="draft"
+          producedAt={producedAt}
+        />
 
-        {serverError && <p className="text-sm text-terracotta-600">{serverError}</p>}
+        {serverError && <p role="alert" className="text-sm text-terracotta-600">{serverError}</p>}
+        {issueNoteBox}
 
         <div className="flex flex-wrap items-start gap-2 justify-between">
           <Button type="button" variant="ghost" onClick={() => setShowPreview(false)} disabled={pending}>
             חזרה לעריכה
           </Button>
           <div className="flex flex-wrap items-start gap-2">
-            {morningConnected ? (
-              <>
-                <MorningPdfPreview load={() => previewDraftInMorningAction(payloadJson())} />
-                <Button type="button" variant="secondary" onClick={() => save("draft")} disabled={pending}>
-                  <Save className="w-4 h-4" /> שמירה כטיוטה
-                </Button>
-                <Button type="button" onClick={askIssue} disabled={pending}>
-                  <FileCheck className="w-4 h-4" /> {`הפקת ${info.label} ב-morning`}
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button type="button" variant="secondary" onClick={copyDetails}>
-                  <Copy className="w-4 h-4" /> {copied ? "הועתק ✓" : "העתקת הפרטים"}
-                </Button>
-                <a href={morningNewDocumentUrl(kind)} target="_blank" rel="noopener noreferrer">
-                  <Button type="button" variant="secondary">
-                    <ExternalLink className="w-4 h-4" /> פתיחה ב-morning
-                  </Button>
-                </a>
-                <Button type="button" onClick={() => save("draft")} disabled={pending}>
-                  <Save className="w-4 h-4" /> {pending ? "שומר…" : "שמירה כטיוטה"}
-                </Button>
-              </>
-            )}
+            <Button type="button" variant="secondary" onClick={copyDetails}>
+              <Copy className="w-4 h-4" /> {copied ? "הועתק ✓" : "העתקת הפרטים"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={save} disabled={pending}>
+              <Save className="w-4 h-4" /> {pending ? "שומר…" : "שמירת טיוטה"}
+            </Button>
+            <Button type="button" onClick={askIssue} disabled={pending}>
+              <FileCheck className="w-4 h-4" /> הפקת מסמך
+            </Button>
           </div>
         </div>
       </div>
@@ -530,7 +477,7 @@ export function DocumentForm({
   // ── Form ──────────────────────────────────────────────────────────────────
   const typeChoice = related ? (
     <div className="rounded-2xl border border-cream-300 bg-cream-100 px-4 py-3 text-sm text-ink-soft">
-      קבלה על <b>{related.label}</b>. כשהקבלה תופק ב-morning, החשבונית תיסגר שם.
+      קבלה על <b>{related.label}</b>. שמירת הקבלה מעדכנת את היתרה של החשבונית.
     </div>
   ) : (
     <Card>
@@ -562,7 +509,6 @@ export function DocumentForm({
         openPreview();
       }}
     >
-      {issueDialog}
       {typeChoice}
 
       <Card>
@@ -645,7 +591,7 @@ export function DocumentForm({
               </div>
             </div>
           )}
-          {rounding && <p className="text-xs text-ink-muted">העיגול נעשה ב-morning בהפקה, ולא מוצג כאן בסכומים.</p>}
+          {rounding && <p className="text-xs text-ink-muted">העיגול נשמר עם המסמך ולא מוצג כאן בסכומים.</p>}
         </CardContent>
       </Card>
 
@@ -1019,11 +965,6 @@ export function DocumentForm({
                     ))}
                   </div>
                 )}
-                {morningConnected && MANUAL_ONLY_PAYMENT_KINDS.includes(p.method) && (
-                  <p className="text-xs text-ink-muted">
-                    ל-morning אין סוג תקבול כזה: מסמך עם ״{PAYMENT_KIND_LABELS[p.method]}״ מפיקים ב-morning ידנית.
-                  </p>
-                )}
               </div>
             ))}
             <Button
@@ -1041,7 +982,7 @@ export function DocumentForm({
             </Button>
             {info.hasItems && receiptsOff && (
               <p role="status" className="rounded-lg border border-gold-400 bg-gold-200/40 px-3 py-2 text-sm text-ink">
-                סכום התקבולים ({money(receivedAgorot)}) שונה מסכום המסמך ({money(totals.totalAgorot)}). הם חייבים להיות שווים כדי להפיק.
+                סכום התקבולים ({money(receivedAgorot)}) שונה מסכום המסמך ({money(totals.totalAgorot)}). הם חייבים להיות שווים כדי להשלים את המסמך.
               </p>
             )}
             <div className="flex justify-between text-sm max-w-xs ms-auto">
@@ -1072,9 +1013,7 @@ export function DocumentForm({
         <CardContent className="space-y-2">
           <Label htmlFor="doc-email-0">שליחה במייל</Label>
           <p className="text-xs text-ink-muted">
-            {morningConnected
-              ? "בהפקה morning שולח את המסמך לכתובות האלה. בלי כתובת המסמך לא נשלח."
-              : "הכתובות נשמרות עם המסמך. השליחה נעשית בהפקה דרך morning."}
+            הכתובות נשמרות עם המסמך. השליחה במייל תתאפשר יחד עם ההפקה מתוך האפליקציה.
           </p>
           {emails.map((e, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -1117,14 +1056,16 @@ export function DocumentForm({
         </div>
       )}
 
+      {issueNoteBox}
+
       <div className="flex flex-wrap items-center gap-2 justify-end">
         <Link href={stored ? `/invoices/${stored.id}` : "/invoices"}>
           <Button type="button" variant="ghost">
             ביטול
           </Button>
         </Link>
-        <Button type="button" variant="secondary" onClick={() => save("draft")} disabled={pending}>
-          <Save className="w-4 h-4" /> {pending ? "שומר…" : "שמירה כטיוטה"}
+        <Button type="button" variant="secondary" onClick={save} disabled={pending}>
+          <Save className="w-4 h-4" /> {pending ? "שומר…" : "שמירת טיוטה"}
         </Button>
         <Button type="submit" variant="secondary">
           <Eye className="w-4 h-4" /> תצוגה מקדימה

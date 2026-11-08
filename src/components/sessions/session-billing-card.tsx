@@ -13,11 +13,12 @@ import {
   type SessionPaymentState,
 } from "@/server/actions/sessions";
 import {
-  attachMorningNumberToSessionAction,
+  attachDocumentNumberToSessionAction,
   type AttachNumberState,
-} from "@/server/actions/morning-docs";
+} from "@/server/actions/document-numbers";
 
-function MorningNumberRow({
+/** The number of a document issued outside the app, typed onto the meeting. */
+function DocNumberRow({
   sessionId,
   kind,
   label,
@@ -31,19 +32,19 @@ function MorningNumberRow({
   initialUrl: string | null;
 }) {
   const [state, formAction, pending] = useActionState<AttachNumberState, FormData>(
-    attachMorningNumberToSessionAction,
+    attachDocumentNumberToSessionAction,
     null,
   );
   const url = state?.saved ? (state.matchedUrl ?? null) : initialUrl;
 
   return (
     <div className="space-y-1">
-      <Label htmlFor={`morning-${kind}`}>{label}</Label>
+      <Label htmlFor={`doc-number-${kind}`}>{label}</Label>
       <form action={formAction} className="flex items-center gap-2">
         <input type="hidden" name="sessionId" value={sessionId} />
         <input type="hidden" name="kind" value={kind} />
         <Input
-          id={`morning-${kind}`}
+          id={`doc-number-${kind}`}
           name="number"
           dir="ltr"
           inputMode="numeric"
@@ -68,7 +69,7 @@ function MorningNumberRow({
             rel="noopener noreferrer"
             className="text-xs text-sage-600 hover:text-sage-700 inline-flex items-center gap-1"
           >
-            פתיחה ב-morning <ExternalLink className="w-3 h-3" />
+            פתיחת המסמך <ExternalLink className="w-3 h-3" />
           </a>
         )}
         {state?.error && (
@@ -83,7 +84,7 @@ export function SessionBillingCard({
   sessionId,
   rate,
   payment,
-  morning,
+  docNumbers,
   invoiced = false,
 }: {
   /** the meeting is already on a document (app invoice / "מסמך חדש") */
@@ -96,7 +97,8 @@ export function SessionBillingCard({
     amount: string | null;
     note: string | null;
   };
-  morning: {
+  /** numbers of documents issued elsewhere (and their links, from before 2026-11-08) */
+  docNumbers: {
     invoiceNumber: string | null;
     invoiceUrl: string | null;
     receiptNumber: string | null;
@@ -198,37 +200,37 @@ export function SessionBillingCard({
         </form>
 
         <div className="border-t border-cream-200 pt-4 space-y-3">
-          <MorningNumberRow
+          <DocNumberRow
             sessionId={sessionId}
             kind="invoice"
-            label="מספר חשבונית מס (morning)"
-            initialNumber={morning.invoiceNumber}
-            initialUrl={morning.invoiceUrl}
+            label="מספר חשבונית מס שהופקה"
+            initialNumber={docNumbers.invoiceNumber}
+            initialUrl={docNumbers.invoiceUrl}
           />
-          <MorningNumberRow
+          <DocNumberRow
             sessionId={sessionId}
             kind="receipt"
-            label="מספר קבלה (morning)"
-            initialNumber={morning.receiptNumber}
-            initialUrl={morning.receiptUrl}
+            label="מספר קבלה שהופקה"
+            initialNumber={docNumbers.receiptNumber}
+            initialUrl={docNumbers.receiptUrl}
           />
-          <MorningNumberRow
+          <DocNumberRow
             sessionId={sessionId}
             kind="invoiceReceipt"
-            label="מספר חשבונית מס-קבלה (morning)"
-            initialNumber={morning.invoiceReceiptNumber}
-            initialUrl={morning.invoiceReceiptUrl}
+            label="מספר חשבונית מס/קבלה שהופקה"
+            initialNumber={docNumbers.invoiceReceiptNumber}
+            initialUrl={docNumbers.invoiceReceiptUrl}
           />
           <p className="text-xs text-ink-subtle">
-            הופק ב-morning? רושמים כאן את המספר — חשבונית מס וקבלה בנפרד, או
-            חשבונית מס-קבלה מאוחדת.
+            המסמך הופק במקום אחר? רושמים כאן את המספר — חשבונית מס וקבלה בנפרד, או
+            חשבונית מס/קבלה מאוחדת.
           </p>
           {!invoiced && (
             <Link
               href={`/invoices/new?sessionId=${sessionId}`}
               className="inline-flex items-center gap-1 text-sm text-sage-600 hover:text-sage-700 font-medium"
             >
-              <FilePlus className="w-4 h-4" /> הפקת חשבונית / קבלה לפגישה
+              <FilePlus className="w-4 h-4" /> חשבונית / קבלה חדשה לפגישה
             </Link>
           )}
         </div>

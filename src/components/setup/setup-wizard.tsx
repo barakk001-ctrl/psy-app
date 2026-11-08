@@ -10,7 +10,6 @@ import { ExplainerVideo } from "@/components/auth/explainer-video";
 import { BrandingCard } from "@/components/settings/branding-card";
 import { BusinessInfoForm } from "@/components/settings/business-info-form";
 import { MeetingTypesCard } from "@/components/settings/meeting-types-card";
-import { MorningSettingsForm } from "@/components/settings/morning-settings-form";
 import { FORM_STEPS, LAST_STEP, SETUP_STEPS } from "@/lib/onboarding";
 import { pauseOnboardingAction, setOnboardingStepAction } from "@/server/actions/onboarding";
 
@@ -22,12 +21,6 @@ type Props = {
   business: React.ComponentProps<typeof BusinessInfoForm>["initial"];
   meetingTypes: React.ComponentProps<typeof MeetingTypesCard>["types"];
   defaultMinutes: number;
-  morning: {
-    connected: boolean;
-    keyIdMasked: string | null;
-    sandbox: boolean;
-    docType: number;
-  };
 };
 
 /**
@@ -35,7 +28,7 @@ type Props = {
  * card's own form through its own server action and moves on once it saved;
  * "דילוג" moves on without saving. Nothing is required.
  */
-export function SetupWizard({ step, brand, business, meetingTypes, defaultMinutes, morning }: Props) {
+export function SetupWizard({ step, brand, business, meetingTypes, defaultMinutes }: Props) {
   const router = useRouter();
   const [busy, startBusy] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -59,11 +52,6 @@ export function SetupWizard({ step, brand, business, meetingTypes, defaultMinute
 
   const onNext = () => {
     const form = document.getElementById(FORM_ID) as HTMLFormElement | null;
-    if (current.id === "morning") {
-      // Saving morning tests the keys, so only when some were typed
-      const key = form?.querySelector<HTMLInputElement>('[name="morningApiKeyId"]')?.value.trim();
-      if (!key) return advance();
-    }
     if (!form) return advance();
     setSaving(true);
     form.requestSubmit();
@@ -135,7 +123,6 @@ export function SetupWizard({ step, brand, business, meetingTypes, defaultMinute
           {current.id === "types" && (
             <MeetingTypesCard types={meetingTypes} defaultMinutes={defaultMinutes} {...shared} hideSave />
           )}
-          {current.id === "morning" && <MorningSettingsForm {...morning} {...shared} />}
 
           {isDone && (
             <div className="space-y-3 pt-2">
@@ -184,7 +171,7 @@ export function SetupWizard({ step, brand, business, meetingTypes, defaultMinute
               {busy || saving ? "שומר…" : "הבא"}
             </Button>
             <Button type="button" variant="secondary" className="h-12" disabled={busy} onClick={advance}>
-              {current.id === "morning" ? "אחר כך" : "דילוג"}
+              דילוג
             </Button>
           </div>
         </footer>

@@ -207,7 +207,7 @@ export default async function SessionDetailPage({
             amount: sess.paidAmount ? sess.paidAmount.toString() : null,
             note: sess.paymentNote,
           }}
-          morning={{
+          docNumbers={{
             invoiceNumber: sess.morningDocNumber,
             invoiceUrl: sess.morningDocUrl,
             receiptNumber: sess.morningReceiptNumber,
@@ -296,7 +296,7 @@ export default async function SessionDetailPage({
                 </Link>
                 {sess.invoiceItem.invoice.morningDocNumber && (
                   <div className="text-xs text-ink-muted">
-                    מסמך morning:{" "}
+                    מספר המסמך:{" "}
                     {sess.invoiceItem.invoice.morningDocUrl ? (
                       <a
                         href={sess.invoiceItem.invoice.morningDocUrl}

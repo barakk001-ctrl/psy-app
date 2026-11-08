@@ -3,7 +3,7 @@
 //
 // Only meetings that start after now are ever considered, and of those only
 // the empty ones are deleted: a meeting with a clinical note, an attachment, a
-// payment record, an app invoice or a Morning document number holds clinical
+// payment record, an app invoice or a document number (morningDoc* columns) holds clinical
 // or billing records and is kept (cancelled instead, so no reminder goes out).
 
 export type BulkDeleteCandidate = {
@@ -26,7 +26,7 @@ export const KEEP_REASON_LABELS: Record<KeepReason, string> = {
   files: "קבצים מצורפים",
   payment: "רישום תשלום",
   invoice: "חשבונית",
-  morning: "מסמך Morning",
+  morning: "מספר מסמך שהופק",
 };
 
 export function keepReasons(s: BulkDeleteCandidate): KeepReason[] {

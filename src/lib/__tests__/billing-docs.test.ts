@@ -18,9 +18,8 @@ import {
   joinEmails,
   lastDayOfMonth,
   lineAgorot,
-  morningCopyText,
+  documentCopyText,
   splitEmails,
-  morningNewDocumentUrl,
   parseAgorot,
   PAYMENT_DETAIL_FIELDS,
   PAYMENT_KINDS,
@@ -86,11 +85,14 @@ describe("kinds", () => {
     expect(docTypeLabel(null)).toBe("חשבונית (דרישת תשלום)");
   });
   it("credits only issued tax invoices", () => {
-    expect(canCreditNote({ docType: 305, morningDocId: "x", status: "SENT" })).toBe(true);
-    expect(canCreditNote({ docType: 320, morningDocId: "x", status: "PAID" })).toBe(true);
-    expect(canCreditNote({ docType: 320, morningDocId: null, status: "PAID" })).toBe(false);
-    expect(canCreditNote({ docType: 400, morningDocId: "x", status: "PAID" })).toBe(false);
-    expect(canCreditNote({ docType: 305, morningDocId: "x", status: "CANCELLED" })).toBe(false);
+    const none = { morningDocId: null, morningDocNumber: null };
+    expect(canCreditNote({ ...none, docType: 305, morningDocId: "x", status: "SENT" })).toBe(true);
+    expect(canCreditNote({ ...none, docType: 320, morningDocId: "x", status: "PAID" })).toBe(true);
+    // issued elsewhere, its number recorded by hand
+    expect(canCreditNote({ ...none, docType: 305, morningDocNumber: "20017", status: "SENT" })).toBe(true);
+    expect(canCreditNote({ ...none, docType: 320, status: "PAID" })).toBe(false);
+    expect(canCreditNote({ ...none, docType: 400, morningDocId: "x", status: "PAID" })).toBe(false);
+    expect(canCreditNote({ ...none, docType: 305, morningDocId: "x", status: "CANCELLED" })).toBe(false);
   });
 });
 
@@ -192,16 +194,14 @@ describe("documentProblems", () => {
   });
 });
 
-describe("issuing by hand in morning", () => {
-  it("opens morning's new-document screen for the type", () => {
-    expect(morningNewDocumentUrl("RECEIPT")).toBe(
-      "https://app.greeninvoice.co.il/incomes/documents/new/400",
-    );
-    expect(morningNewDocumentUrl("TAX_INVOICE")).toContain("/new/305");
+describe("issuing by hand elsewhere", () => {
+  it("keeps the Israeli type codes", () => {
+    expect(DOC_KINDS.RECEIPT.code).toBe(400);
+    expect(DOC_KINDS.TAX_INVOICE.code).toBe(305);
     expect(DOC_KINDS.CREDIT_NOTE.code).toBe(330);
   });
   it("summarises the document to paste", () => {
-    const text = morningCopyText(
+    const text = documentCopyText(
       {
         ...base,
         kind: "RECEIPT",
@@ -310,7 +310,7 @@ describe("per-document settings", () => {
     expect(PAYMENT_KINDS.filter((k) => PAYMENT_DETAIL_FIELDS[k].includes("details"))).toEqual(["OTHER"]);
   });
   it("copies an \"אחר\" payment with what it was", () => {
-    const text = morningCopyText(
+    const text = documentCopyText(
       {
         ...base,
         kind: "RECEIPT",

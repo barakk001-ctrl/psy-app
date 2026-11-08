@@ -3,72 +3,41 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, ExternalLink, FileCheck, FileMinus, Receipt } from "lucide-react";
+import { Copy, FileCheck, FileMinus, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  creditNoteAction,
-  issueDocumentAction,
-  previewStoredInMorningAction,
-  setDocumentMorningNumberAction,
-} from "@/server/actions/documents";
-import { IssueConfirmDialog, type IssueSummary } from "./issue-confirm-dialog";
-import { MorningPdfPreview } from "./morning-pdf-link";
+import { creditNoteAction, recordDocumentNumberAction } from "@/server/actions/documents";
+import { IssueComingSoon } from "./issue-coming-soon";
 
 const PANEL = "rounded-2xl border px-4 py-4 space-y-3";
 
-/** A saved draft: issue it in morning (connected), or issue it there by hand and record the number. */
+/**
+ * A saved draft. The app doesn't issue documents yet: the official one is
+ * issued elsewhere (the details are ready to copy) and its number is recorded
+ * here, which makes the draft count as issued.
+ */
 export function DraftDocumentActions({
   invoiceId,
   label,
-  summary,
-  morningConnected,
-  morningUrl,
   copyText,
-  initialError,
-  uncertain,
 }: {
   invoiceId: string;
   label: string;
-  /** what the issue confirmation shows */
-  summary: IssueSummary;
-  morningConnected: boolean;
-  /** morning's new-document screen for this type */
-  morningUrl: string;
   copyText: string;
-  initialError?: string | null;
-  uncertain?: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(initialError ?? null);
-  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [issueNote, setIssueNote] = useState(false);
   const [copied, setCopied] = useState(false);
   const [number, setNumber] = useState("");
-
-  const issue = () =>
-    start(async () => {
-      setError(null);
-      try {
-        const r = await issueDocumentAction(invoiceId);
-        if (!r.ok) {
-          setError(r.error);
-          setConfirming(false);
-          return;
-        }
-        router.replace(`/invoices/${invoiceId}?issued=1`);
-        router.refresh();
-      } catch {
-        setError("אין חיבור — המסמך לא הופק. נסו שוב.");
-      }
-    });
 
   const saveNumber = () =>
     start(async () => {
       setError(null);
       try {
-        const r = await setDocumentMorningNumberAction(invoiceId, number);
+        const r = await recordDocumentNumberAction(invoiceId, number);
         if (r.error) {
           setError(r.error);
           return;
@@ -92,79 +61,54 @@ export function DraftDocumentActions({
   return (
     <div className={`${PANEL} border-cream-300 bg-cream-100`}>
       <p className="text-sm text-ink-soft leading-relaxed">
-        <b className="text-ink">טיוטה — עדיין לא מסמך מס.</b>{" "}
-        {morningConnected
-          ? `כשהכול נכון, מפיקים את ה${label} ב-morning: שם הוא מקבל מספר רשמי, והמספר והקישור נשמרים כאן.`
-          : `morning לא מחובר: מפיקים את ה${label} ב-morning (״העתקת הפרטים״ ואז ״פתיחה ב-morning״), ורושמים כאן את המספר שהתקבל.`}
+        <b className="text-ink">טיוטה — עדיין לא מסמך מס.</b> מפיקים את ה{label} במערכת שבה מפיקים
+        היום (״העתקת הפרטים״ עוזרת), ורושמים כאן את מספר המסמך שהופק.
       </p>
 
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" size="sm" variant="secondary" onClick={copy}>
+          <Copy className="w-4 h-4" /> {copied ? "הועתק ✓" : "העתקת הפרטים"}
+        </Button>
+        <Button type="button" size="sm" variant="secondary" onClick={() => setIssueNote(true)}>
+          <FileCheck className="w-4 h-4" /> הפקת מסמך
+        </Button>
+      </div>
+      {issueNote && <IssueComingSoon saved onClose={() => setIssueNote(false)} />}
+
+      <div className="flex flex-wrap items-end gap-2">
+        <div>
+          <Label htmlFor="doc-issued-number" className="text-xs">
+            מספר המסמך שהופק
+          </Label>
+          <Input
+            id="doc-issued-number"
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+            inputMode="numeric"
+            dir="ltr"
+            placeholder="20017"
+            className="h-9 w-40"
+            invalid={!!error}
+            aria-describedby={error ? "doc-issued-number-error" : undefined}
+          />
+        </div>
+        <Button type="button" size="sm" onClick={saveNumber} disabled={pending || !number.trim()}>
+          {pending ? "שומר…" : "שמירת המספר"}
+        </Button>
+      </div>
       {error && (
-        <p role="alert"
-          className={`rounded-lg px-3 py-2 text-sm ${
-            uncertain
-              ? "border border-gold-400 bg-gold-200/40 text-ink"
-              : "border border-terracotta-500/30 bg-terracotta-500/10 text-terracotta-600"
-          }`}
+        <p
+          id="doc-issued-number-error"
+          role="alert"
+          className="rounded-lg border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600"
         >
           {error}
         </p>
       )}
-
-      {morningConnected ? (
-        <div className="flex flex-wrap items-start gap-2">
-          <MorningPdfPreview load={() => previewStoredInMorningAction(invoiceId)} />
-          <Button type="button" size="sm" onClick={() => setConfirming(true)}>
-            <FileCheck className="w-4 h-4" /> הפקת {label} ב-morning
-          </Button>
-          {confirming && (
-            <IssueConfirmDialog
-              summary={summary}
-              pending={pending}
-              onConfirm={issue}
-              onClose={() => setConfirming(false)}
-            />
-          )}
-        </div>
-      ) : (
-        <>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={copy}>
-              <Copy className="w-4 h-4" /> {copied ? "הועתק ✓" : "העתקת הפרטים"}
-            </Button>
-            <a href={morningUrl} target="_blank" rel="noopener noreferrer">
-              <Button type="button" size="sm" variant="secondary">
-                <ExternalLink className="w-4 h-4" /> פתיחה ב-morning
-              </Button>
-            </a>
-          </div>
-          <div className="flex flex-wrap items-end gap-2">
-            <div>
-              <Label htmlFor="doc-morning-number" className="text-xs">
-                מספר המסמך שהתקבל ב-morning
-              </Label>
-              <Input
-                id="doc-morning-number"
-                value={number}
-                onChange={(e) => setNumber(e.target.value)}
-                inputMode="numeric"
-                dir="ltr"
-                placeholder="20017"
-                className="h-9 w-40"
-              />
-            </div>
-            <Button type="button" size="sm" onClick={saveNumber} disabled={pending || !number.trim()}>
-              {pending ? "שומר…" : "שמירת המספר"}
-            </Button>
-          </div>
-          <p className="text-xs text-ink-muted">
-            רוצים שהמסמך יופק מכאן אוטומטית? מחברים את morning ב
-            <Link href="/settings?tab=documents#morning" className="text-sage-600 hover:underline">
-              הגדרות
-            </Link>
-            .
-          </p>
-        </>
-      )}
+      <p className="text-xs text-ink-muted">
+        אחרי שהמספר נשמר, המסמך נחשב כהופק: הוא נספר בהכנסות ובחובות, והפגישות שסומנו בו
+        מקבלות את המספר.
+      </p>
     </div>
   );
 }
@@ -195,10 +139,7 @@ export function IssuedDocumentActions({
           setError(r.error);
           return;
         }
-        if (r.creditNoteId) {
-          const q = r.issue?.ok ? "issued=1" : `issueError=${encodeURIComponent(r.issue?.error ?? "")}`;
-          router.push(`/invoices/${r.creditNoteId}?${q}`);
-        }
+        if (r.creditNoteId) router.push(`/invoices/${r.creditNoteId}?saved=1`);
       } catch {
         setError("אין חיבור — נסו שוב.");
       }
@@ -224,13 +165,13 @@ export function IssuedDocumentActions({
       {confirming && (
         <div className={`${PANEL} border-terracotta-500/30 bg-terracotta-500/5`}>
           <p className="text-sm text-ink">
-            תופק ב-morning חשבונית זיכוי על מלוא ה{label}, והיא תסומן כאן כמבוטלת. הפגישות שבה
-            יחזרו להיות פתוחות לחיוב.
+            תיווצר טיוטת חשבונית זיכוי על מלוא ה{label}. אחרי שמפיקים אותה ורושמים את המספר שלה,
+            ה{label} תסומן כאן כמבוטלת והפגישות שבה יחזרו להיות פתוחות לחיוב.
           </p>
           {error && <p role="alert" className="text-sm text-terracotta-600">{error}</p>}
           <div className="flex gap-2">
             <Button type="button" size="sm" variant="danger" onClick={credit} disabled={pending}>
-              {pending ? "מפיק…" : "כן, להפיק חשבונית זיכוי"}
+              {pending ? "יוצר…" : "יצירת טיוטת זיכוי"}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setConfirming(false)} disabled={pending}>
               ביטול

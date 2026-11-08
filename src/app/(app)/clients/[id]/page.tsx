@@ -397,7 +397,7 @@ export default async function ClientDetailPage({
         {client.morningDocuments.length > 0 && (
           <Card className="lg:col-span-3">
             <CardHeader>
-              <CardTitle>מסמכי morning משויכים</CardTitle>
+              <CardTitle>מסמכים שיובאו ושויכו</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <ul className="divide-y divide-cream-200">
@@ -425,7 +425,7 @@ export default async function ClientDetailPage({
                         rel="noopener noreferrer"
                         className="text-xs text-sage-600 hover:text-sage-700"
                       >
-                        פתיחה ב-morning ←
+                        פתיחת המסמך ←
                       </a>
                     )}
                   </li>

@@ -2,8 +2,10 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { seedPractice, type Practice } from "./db-fixtures";
 import { TEST_DATABASE_URL, assertThrowawayDatabase, resetTestSchema, truncateAll } from "./db-harness";
 
-// The income-document form on a real Postgres, with morning stubbed at the
-// module boundary. Skipped unless TEST_DATABASE_URL is set.
+// The income-document form on a real Postgres. The app doesn't issue documents
+// (morning was removed on 2026-11-08): a document is saved as a draft, and it
+// counts as issued once the number of the document issued elsewhere is
+// recorded on it. Skipped unless TEST_DATABASE_URL is set.
 
 const mocks = vi.hoisted(() => {
   const url = (process.env.TEST_DATABASE_URL ?? "").trim();
@@ -14,29 +16,13 @@ const mocks = vi.hoisted(() => {
     process.env.NOTES_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64");
     process.env.AUTH_SECRET = "test-only-secret";
   }
-  return {
-    actor: { id: null as string | null },
-    payloads: [] as Record<string, unknown>[],
-    morning: { mode: "ok" as "ok" | "refused" | "no-answer" },
-  };
+  return { actor: { id: null as string | null } };
 });
 
 vi.mock("@/auth", () => ({
   auth: async () => (mocks.actor.id ? { user: { id: mocks.actor.id } } : { user: null }),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined }));
-vi.mock("@/lib/morning", async (original) => {
-  const real = await original<typeof import("@/lib/morning")>();
-  return {
-    ...real,
-    createMorningDocument: async (_o: string, _c: unknown, payload: Record<string, unknown>) => {
-      mocks.payloads.push(payload);
-      if (mocks.morning.mode === "refused") return { ok: false, error: "morning 422: refused" };
-      if (mocks.morning.mode === "no-answer") return { ok: false, uncertain: true, error: "timeout" };
-      return { ok: true, data: { id: `stub-${mocks.payloads.length}`, number: 7000 + mocks.payloads.length, url: {} } };
-    },
-  };
-});
 
 type Db = typeof import("@/lib/db").db;
 
@@ -57,12 +43,13 @@ const body = (over: Record<string, unknown> = {}) =>
     ...over,
   });
 
-describe.skipIf(!TEST_DATABASE_URL)("income-document form (real Postgres, morning stubbed)", () => {
+describe.skipIf(!TEST_DATABASE_URL)("income-document form (real Postgres)", () => {
   let db: Db;
   let a: Practice;
   let b: Practice;
   let save: typeof import("@/server/actions/documents").saveDocumentAction;
-  let issue: typeof import("@/server/actions/documents").issueDocumentAction;
+  let record: typeof import("@/server/actions/documents").recordDocumentNumberAction;
+  let creditNote: typeof import("@/server/actions/documents").creditNoteAction;
 
   beforeAll(async () => {
     assertThrowawayDatabase(TEST_DATABASE_URL);
@@ -70,7 +57,8 @@ describe.skipIf(!TEST_DATABASE_URL)("income-document form (real Postgres, mornin
     db = (await import("@/lib/db")).db;
     const actions = await import("@/server/actions/documents");
     save = actions.saveDocumentAction;
-    issue = actions.issueDocumentAction;
+    record = actions.recordDocumentNumberAction;
+    creditNote = actions.creditNoteAction;
   }, 120_000);
 
   beforeEach(async () => {
@@ -79,63 +67,48 @@ describe.skipIf(!TEST_DATABASE_URL)("income-document form (real Postgres, mornin
     b = await seedPractice(db as never, "B");
     await db.user.updateMany({ data: { vatLiable: true } });
     mocks.actor.id = a.userId;
-    mocks.payloads.length = 0;
-    mocks.morning.mode = "ok";
   });
 
   afterEach(() => {
     mocks.actor.id = null;
   });
 
-  it("issues to a one-off client without creating a client", async () => {
+  it("saves a one-off client's document as a draft, without creating a client", async () => {
     const before = await db.client.count({ where: { userId: a.userId } });
-    const r = await save(
-      body({ clientEmails: ["one@example.test", "two@example.test"], currency: "USD" }),
-      "issue",
-    );
-    expect(r.issue?.ok).toBe(true);
+    const r = await save(body({ clientEmails: ["one@example.test", "two@example.test"], currency: "USD" }));
+    expect(r.invoiceId).toBeTruthy();
     expect(await db.client.count({ where: { userId: a.userId } })).toBe(before);
 
     const inv = await db.invoice.findFirstOrThrow({ where: { id: r.invoiceId, userId: a.userId } });
     expect(inv.clientId).toBeNull();
     expect(inv.docClientName).toBe("אורח לדוגמה");
-    expect(inv.morningDocNumber).toBe("7001");
+    expect(inv.docClientEmail).toBe("one@example.test, two@example.test");
     expect(inv.currency).toBe("USD");
-
-    const p = mocks.payloads[0];
-    expect(p.dueDate).toBe("2026-11-30");
-    expect(p.currency).toBe("USD");
-    expect(p.client).toEqual({
-      name: "אורח לדוגמה",
-      taxId: "123456782",
-      emails: ["one@example.test", "two@example.test"],
-      add: false,
-    });
-    expect((p.income as { currency: string }[])[0].currency).toBe("USD");
+    // A draft: no number, so it isn't money yet
+    expect(inv.morningDocNumber).toBeNull();
+    expect(inv.morningDocId).toBeNull();
+    expect(inv.status).toBe("DRAFT");
   });
 
-  it("keeps an unfinished form as a draft, refuses to issue it, and refuses an empty one", async () => {
-    const empty = await save(body({ clientName: "", items: [] }), "draft");
+  it("keeps an unfinished form as a draft, won't record a number on it, and refuses an empty one", async () => {
+    const empty = await save(body({ clientName: "", items: [] }));
     expect(empty.invoiceId).toBeUndefined();
     expect(empty.problems?.[0]).toContain("אין עדיין מה לשמור");
 
-    const partial = await save(
-      body({ items: [{ description: "", quantity: 1, unitPrice: "" }] }),
-      "draft",
-    );
+    const partial = await save(body({ items: [{ description: "", quantity: 1, unitPrice: "" }] }));
     expect(partial.invoiceId).toBeTruthy();
 
-    const issued = await issue(partial.invoiceId!);
-    expect(issued.ok).toBe(false);
-    expect(mocks.payloads).toHaveLength(0);
+    const r = await record(partial.invoiceId!, "20500");
+    expect(r.error).toContain("להשלים את הטיוטה");
+    const inv = await db.invoice.findUniqueOrThrow({ where: { id: partial.invoiceId } });
+    expect(inv.morningDocNumber).toBeNull();
   });
 
   it("edits a saved draft in place", async () => {
-    const first = await save(body(), "draft");
+    const first = await save(body());
     const count = await db.invoice.count({ where: { userId: a.userId } });
     const second = await save(
       body({ draftId: first.invoiceId, clientName: "שם אחר", items: [{ description: "אחר", quantity: 2, unitPrice: "100" }] }),
-      "draft",
     );
     expect(second.invoiceId).toBe(first.invoiceId);
     expect(await db.invoice.count({ where: { userId: a.userId } })).toBe(count);
@@ -148,23 +121,31 @@ describe.skipIf(!TEST_DATABASE_URL)("income-document form (real Postgres, mornin
     expect(Number(inv.total)).toBe(200);
   });
 
-  it("won't let one practice overwrite another's draft, or edit an issued document", async () => {
-    const mine = await save(body(), "draft");
+  it("won't let one practice overwrite another's draft, or edit a document with a number", async () => {
+    const mine = await save(body());
     mocks.actor.id = b.userId;
-    const theirs = await save(body({ draftId: mine.invoiceId, clientName: "פולש" }), "draft");
+    const theirs = await save(body({ draftId: mine.invoiceId, clientName: "פולש" }));
     expect(theirs.error).toBeTruthy();
+    expect(await record(mine.invoiceId!, "999")).toEqual({ error: "המסמך לא נמצא." });
     mocks.actor.id = a.userId;
     const inv = await db.invoice.findFirstOrThrow({ where: { id: mine.invoiceId } });
     expect(inv.docClientName).toBe("אורח לדוגמה");
+    expect(inv.morningDocNumber).toBeNull();
 
-    const done = await save(body(), "issue");
-    const again = await save(body({ draftId: done.invoiceId, clientName: "שינוי" }), "draft");
+    expect(await record(mine.invoiceId!, "20017")).toEqual({ saved: true });
+    const again = await save(body({ draftId: mine.invoiceId, clientName: "שינוי" }));
     expect(again.error).toBeTruthy();
   });
 
-  it("links ticked meetings only when the document is issued, and never prints them", async () => {
-    const ticked = body({ clientId: a.clientId, sessionIds: [a.pastSessionId] });
-    const draft = await save(ticked, "draft");
+  it("records only digits, and never on a cancelled draft", async () => {
+    const d = await save(body());
+    expect((await record(d.invoiceId!, "A-12")).error).toContain("ספרות");
+    await db.invoice.update({ where: { id: d.invoiceId }, data: { status: "CANCELLED" } });
+    expect((await record(d.invoiceId!, "12")).error).toContain("בוטל");
+  });
+
+  it("links ticked meetings only when the number is recorded, and never prints them", async () => {
+    const draft = await save(body({ clientId: a.clientId, sessionIds: [a.pastSessionId] }));
     const sessionBefore = await db.session.findUniqueOrThrow({
       where: { id: a.pastSessionId },
       select: { morningDocNumber: true, invoiceItem: true },
@@ -172,68 +153,44 @@ describe.skipIf(!TEST_DATABASE_URL)("income-document form (real Postgres, mornin
     expect(sessionBefore.morningDocNumber).toBeNull();
     expect(sessionBefore.invoiceItem).toBeNull();
 
-    const r = await issue(draft.invoiceId!);
-    expect(r.ok).toBe(true);
+    expect(await record(draft.invoiceId!, "20500")).toEqual({ saved: true });
     const session = await db.session.findUniqueOrThrow({
       where: { id: a.pastSessionId },
       select: { morningDocNumber: true, invoiceItem: { select: { linkOnly: true, invoiceId: true } } },
     });
-    expect(session.morningDocNumber).toBe("7001");
-    expect(session.invoiceItem).toEqual({ linkOnly: true, invoiceId: draft.invoiceId });
+    expect(session).toEqual({ morningDocNumber: "20500", invoiceItem: { linkOnly: true, invoiceId: draft.invoiceId } });
 
-    // One printed line went to morning, and no trace of the meeting
-    const p = mocks.payloads[0];
-    expect((p.income as unknown[]).length).toBe(1);
-    expect(JSON.stringify(p)).not.toContain(a.pastSessionId);
-    expect(JSON.stringify(p)).not.toContain("פגישה");
-
-    const stored = await db.invoice.findUniqueOrThrow({ where: { id: draft.invoiceId } });
+    const stored = await db.invoice.findUniqueOrThrow({ where: { id: draft.invoiceId }, include: { items: true } });
     expect(stored.draftSessionIds).toEqual([]);
+    expect(stored.status).toBe("SENT");
+    // The printed lines are still only what she typed
+    expect(stored.items.filter((i) => !i.linkOnly).map((i) => i.description)).toEqual(["ייעוץ"]);
   });
 
-  it.each(["refused", "no-answer"] as const)("a failed issue (%s) keeps the draft and leaves no link", async (mode) => {
-    mocks.morning.mode = mode;
-    const r = await save(body({ clientId: a.clientId, sessionIds: [a.pastSessionId] }), "issue");
-    expect(r.invoiceId).toBeTruthy();
-    expect(r.issue?.ok).toBe(false);
-
-    const inv = await db.invoice.findUniqueOrThrow({ where: { id: r.invoiceId }, include: { items: true } });
-    expect(inv.morningDocId).toBeNull();
-    expect(inv.items.map((i) => i.description)).toEqual(["ייעוץ"]);
-    expect(inv.draftSessionIds).toEqual([a.pastSessionId]);
-
-    const session = await db.session.findUniqueOrThrow({
+  it("a meeting billed by another document meanwhile isn't linked twice", async () => {
+    const first = await save(body({ clientId: a.clientId, sessionIds: [a.pastSessionId] }));
+    const second = await save(body({ clientId: a.clientId, sessionIds: [a.pastSessionId] }));
+    expect(await record(first.invoiceId!, "1")).toEqual({ saved: true });
+    expect(await record(second.invoiceId!, "2")).toEqual({ saved: true });
+    const s = await db.session.findUniqueOrThrow({
       where: { id: a.pastSessionId },
-      select: { morningDocNumber: true, invoiceItem: true },
+      select: { morningDocNumber: true, invoiceItem: { select: { invoiceId: true } } },
     });
-    expect(session.morningDocNumber).toBeNull();
-    expect(session.invoiceItem).toBeNull();
-  });
-
-  it("stops before morning if a ticked meeting was billed in the meantime", async () => {
-    const first = await save(body({ clientId: a.clientId, sessionIds: [a.pastSessionId] }), "draft");
-    const second = await save(body({ clientId: a.clientId, sessionIds: [a.pastSessionId] }), "draft");
-    expect((await issue(first.invoiceId!)).ok).toBe(true);
-    const r = await issue(second.invoiceId!);
-    expect(r.ok).toBe(false);
-    expect(mocks.payloads).toHaveLength(1);
+    expect(s).toEqual({ morningDocNumber: "1", invoiceItem: { invoiceId: first.invoiceId } });
   });
 
   describe("credit notes as their own form", () => {
     const credit = (over: Record<string, unknown> = {}) =>
       body({ kind: "CREDIT_NOTE", dueDate: "", clientTaxId: "", ...over });
 
-    it("issues one with no linked document, and cancels nothing", async () => {
-      const r = await save(credit(), "issue");
-      expect(r.issue?.ok).toBe(true);
-      const p = mocks.payloads[0];
-      expect(p.type).toBe(330);
-      expect(p.linkedDocumentIds).toBeUndefined();
+    it("records one with no linked document, and cancels nothing", async () => {
+      const r = await save(credit());
+      expect(await record(r.invoiceId!, "300")).toEqual({ saved: true });
       const orig = await db.invoice.findUniqueOrThrow({ where: { id: a.issuedDocId } });
       expect(orig.status).not.toBe("CANCELLED");
     });
 
-    it("cancels the original when linked and the amounts match", async () => {
+    it("cancels the original once its number is recorded, when linked and the amounts match", async () => {
       const orig = await db.invoice.findUniqueOrThrow({ where: { id: a.issuedDocId } });
       const r = await save(
         credit({
@@ -241,52 +198,65 @@ describe.skipIf(!TEST_DATABASE_URL)("income-document form (real Postgres, mornin
           relatedInvoiceId: orig.id,
           items: [{ description: "זיכוי", quantity: 1, unitPrice: orig.total.toString() }],
         }),
-        "issue",
       );
-      expect(r.issue?.ok).toBe(true);
-      expect(mocks.payloads[0].linkedDocumentIds).toEqual([orig.morningDocId]);
-      expect(mocks.payloads[0].linkType).toBe("cancel");
-      const after = await db.invoice.findUniqueOrThrow({ where: { id: orig.id } });
-      expect(after.status).toBe("CANCELLED");
+      expect(r.invoiceId).toBeTruthy();
+      expect((await db.invoice.findUniqueOrThrow({ where: { id: orig.id } })).status).not.toBe("CANCELLED");
+      expect(await record(r.invoiceId!, "301")).toEqual({ saved: true });
+      expect((await db.invoice.findUniqueOrThrow({ where: { id: orig.id } })).status).toBe("CANCELLED");
+    });
+
+    it("can be linked to a document whose number was recorded by hand", async () => {
+      const inv = await save(body({ clientId: a.clientId }));
+      await record(inv.invoiceId!, "20600");
+      const r = await creditNote(inv.invoiceId!);
+      expect(r.creditNoteId).toBeTruthy();
+      const draft = await db.invoice.findUniqueOrThrow({ where: { id: r.creditNoteId } });
+      expect(draft.docType).toBe(330);
+      expect(draft.relatedInvoiceId).toBe(inv.invoiceId);
+      expect(draft.morningDocNumber).toBeNull();
+      // nothing is cancelled until the credit note's own number is recorded
+      expect((await db.invoice.findUniqueOrThrow({ where: { id: inv.invoiceId } })).status).not.toBe("CANCELLED");
+      expect(await record(r.creditNoteId!, "20601")).toEqual({ saved: true });
+      expect((await db.invoice.findUniqueOrThrow({ where: { id: inv.invoiceId } })).status).toBe("CANCELLED");
     });
 
     it("won't link a credit that doesn't add up to the original", async () => {
       const orig = await db.invoice.findUniqueOrThrow({ where: { id: a.issuedDocId } });
-      const r = await save(
+      const draft = await save(
         credit({
           clientId: orig.clientId,
           relatedInvoiceId: orig.id,
           items: [{ description: "זיכוי חלקי", quantity: 1, unitPrice: "1" }],
         }),
-        "issue",
       );
-      expect(r.invoiceId).toBeUndefined();
-      expect(r.problems?.[0]).toContain("זיכוי חלקי");
-      expect(mocks.payloads).toHaveLength(0);
+      // A draft may be unfinished; recording its number may not
+      expect(draft.invoiceId).toBeTruthy();
+      const r = await record(draft.invoiceId!, "302");
+      expect(r.error).toBeTruthy();
+      expect((await db.invoice.findUniqueOrThrow({ where: { id: orig.id } })).status).not.toBe("CANCELLED");
     });
 
     it("isn't open to an exempt business", async () => {
       await db.user.update({ where: { id: a.userId }, data: { vatLiable: false } });
-      expect((await save(credit(), "draft")).invoiceId).toBeUndefined();
+      expect((await save(credit())).invoiceId).toBeUndefined();
     });
 
     it("takes no meetings", async () => {
-      const r = await save(credit({ clientId: a.clientId, sessionIds: [a.pastSessionId] }), "draft");
+      const r = await save(credit({ clientId: a.clientId, sessionIds: [a.pastSessionId] }));
       const inv = await db.invoice.findUniqueOrThrow({ where: { id: r.invoiceId } });
       expect(inv.draftSessionIds).toEqual([]);
     });
   });
 
-  it("sends the document's settings to morning", async () => {
-    await save(body({ lang: "en", vatType: 1, rounding: true }), "issue");
-    const p = mocks.payloads[0];
-    expect(p.lang).toBe("en");
-    expect(p.vatType).toBe(1);
-    expect(p.rounding).toBe(true);
-    expect((p.income as { vatType: number }[])[0].vatType).toBe(2);
+  it("keeps the document's settings", async () => {
+    const r = await save(body({ lang: "en", vatType: 1, rounding: true }));
+    const inv = await db.invoice.findUniqueOrThrow({ where: { id: r.invoiceId } });
+    expect(inv.lang).toBe("en");
+    expect(inv.vatType).toBe(1);
+    expect(inv.rounding).toBe(true);
   });
 
-  it("issues a receipt with several lines and no income lines of its own", async () => {
+  it("keeps a receipt with several lines and no income lines of its own", async () => {
     const r = await save(
       body({
         kind: "RECEIPT",
@@ -297,32 +267,27 @@ describe.skipIf(!TEST_DATABASE_URL)("income-document form (real Postgres, mornin
           { method: "BANK_TRANSFER", date: "2026-11-02", amount: "50", bankName: "בנק", bankBranch: "1", bankAccount: "2" },
         ],
       }),
-      "issue",
     );
-    expect(r.issue?.ok).toBe(true);
-    const p = mocks.payloads[0];
-    expect(p.payment).toHaveLength(2);
-    expect((p.payment as { transactionId?: string }[])[0].transactionId).toBe("A1");
-    expect((p.payment as { bankName?: string }[])[1].bankName).toBe("בנק");
+    const inv = await db.invoice.findUniqueOrThrow({ where: { id: r.invoiceId }, include: { payments: true } });
+    expect(inv.payments).toHaveLength(2);
+    expect(Number(inv.total)).toBe(150);
+    expect(inv.payments.find((p) => p.method === "BIT")?.reference).toBe("A1");
+    expect(await record(r.invoiceId!, "400")).toEqual({ saved: true });
   });
 
-  it("refuses receipts that don't add up to the document", async () => {
+  it("won't record a number while the receipts don't add up to the document", async () => {
     const r = await save(
       body({ kind: "TAX_INVOICE_RECEIPT", payments: [{ method: "CASH", date: "2026-11-02", amount: "1" }] }),
-      "issue",
     );
-    expect(r.invoiceId).toBeUndefined();
-    expect(r.problems?.join(" ")).toContain("סכום התקבולים");
+    expect(r.invoiceId).toBeTruthy();
+    expect((await record(r.invoiceId!, "500")).error).toContain("סכום התקבולים");
   });
 
   describe("meetings", () => {
     it("records the number by document type, and keeps a number she typed", async () => {
       await db.session.update({ where: { id: a.pastSessionId }, data: { morningReceiptNumber: "111" } });
       // The form doesn't suggest it now, and the server agrees
-      const refused = await save(
-        body({ kind: "TAX_INVOICE", clientId: a.clientId, sessionIds: [a.pastSessionId] }),
-        "draft",
-      );
+      const refused = await save(body({ kind: "TAX_INVOICE", clientId: a.clientId, sessionIds: [a.pastSessionId] }));
       expect(refused.invoiceId).toBeUndefined();
 
       await db.session.update({ where: { id: a.pastSessionId }, data: { morningReceiptNumber: null } });
@@ -335,28 +300,16 @@ describe.skipIf(!TEST_DATABASE_URL)("income-document form (real Postgres, mornin
           payments: [{ method: "CASH", date: "2026-11-02", amount: "100" }],
           sessionIds: [a.pastSessionId],
         }),
-        "issue",
       );
-      expect(r.issue?.ok).toBe(true);
+      expect(await record(r.invoiceId!, "7001")).toEqual({ saved: true });
       const s = await db.session.findUniqueOrThrow({ where: { id: a.pastSessionId } });
       expect(s.morningReceiptNumber).toBe("7001");
       expect(s.morningDocNumber).toBeNull();
     });
 
-    it("links them when the number is typed by hand too", async () => {
-      await db.user.update({ where: { id: a.userId }, data: { morningApiKeyId: null, morningApiSecret: null } });
-      const { setDocumentMorningNumberAction } = await import("@/server/actions/documents");
-      const draft = await save(body({ clientId: a.clientId, sessionIds: [a.pastSessionId] }), "draft");
-      expect(await setDocumentMorningNumberAction(draft.invoiceId!, "20500")).toEqual({ saved: true });
-      const s = await db.session.findUniqueOrThrow({
-        where: { id: a.pastSessionId },
-        select: { morningDocNumber: true, invoiceItem: { select: { linkOnly: true } } },
-      });
-      expect(s).toEqual({ morningDocNumber: "20500", invoiceItem: { linkOnly: true } });
-    });
-
     it("a credit note cancelling the document frees its meetings, number and all", async () => {
-      const inv = await save(body({ clientId: a.clientId, sessionIds: [a.pastSessionId] }), "issue");
+      const inv = await save(body({ clientId: a.clientId, sessionIds: [a.pastSessionId] }));
+      await record(inv.invoiceId!, "7001");
       const issued = await db.session.findUniqueOrThrow({ where: { id: a.pastSessionId } });
       expect(issued.morningDocNumber).toBe("7001");
 
@@ -369,9 +322,8 @@ describe.skipIf(!TEST_DATABASE_URL)("income-document form (real Postgres, mornin
           relatedInvoiceId: stored.id,
           items: [{ description: "זיכוי", quantity: 1, unitPrice: stored.total.toString() }],
         }),
-        "issue",
       );
-      expect(r.issue?.ok).toBe(true);
+      expect(await record(r.invoiceId!, "7002")).toEqual({ saved: true });
       const freed = await db.session.findUniqueOrThrow({
         where: { id: a.pastSessionId },
         select: { morningDocNumber: true, invoiceItem: true },
@@ -381,13 +333,13 @@ describe.skipIf(!TEST_DATABASE_URL)("income-document form (real Postgres, mornin
   });
 
   it("refuses another practice's client or meeting", async () => {
-    expect((await save(body({ clientId: b.clientId }), "draft")).invoiceId).toBeUndefined();
-    const r = await save(body({ clientId: a.clientId, sessionIds: [b.pastSessionId] }), "draft");
+    expect((await save(body({ clientId: b.clientId }))).invoiceId).toBeUndefined();
+    const r = await save(body({ clientId: a.clientId, sessionIds: [b.pastSessionId] }));
     expect(r.invoiceId).toBeUndefined();
   });
 
   it("doesn't take meetings for a one-off client", async () => {
-    const r = await save(body({ sessionIds: [a.pastSessionId] }), "draft");
+    const r = await save(body({ sessionIds: [a.pastSessionId] }));
     const inv = await db.invoice.findUniqueOrThrow({ where: { id: r.invoiceId } });
     expect(inv.draftSessionIds).toEqual([]);
   });

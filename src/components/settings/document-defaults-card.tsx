@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import {
   DOC_CURRENCIES,
+  DOC_KINDS,
   DOC_CURRENCY_LABELS,
   DOC_LANGS,
   DOC_LANG_LABELS,
@@ -21,9 +22,12 @@ import { updateDocumentDefaultsAction, type SettingsFormState } from "@/server/a
 export function DocumentDefaultsCard({
   defaults,
   vatLiable,
+  defaultDocType,
 }: {
   defaults: DocumentDefaults;
   vatLiable: boolean;
+  /** the type "מסמך חדש" starts on (400 / 320 / 305) */
+  defaultDocType: number;
 }) {
   const [state, formAction, pending] = useActionState<SettingsFormState, FormData>(
     updateDocumentDefaultsAction,
@@ -51,6 +55,18 @@ export function DocumentDefaultsCard({
             כל מסמך חדש מתחיל מההגדרות האלה, ואפשר לשנות אותן במסמך עצמו.
           </p>
           <div className="grid sm:grid-cols-2 gap-4">
+            {vatLiable && (
+              <div className="sm:col-span-2">
+                <Label htmlFor="defaultDocType">סוג המסמך שנפתח במסמך חדש</Label>
+                <Select id="defaultDocType" name="defaultDocType" defaultValue={String(defaultDocType)}>
+                  {[DOC_KINDS.RECEIPT, DOC_KINDS.TAX_INVOICE_RECEIPT, DOC_KINDS.TAX_INVOICE].map((k) => (
+                    <option key={k.code} value={k.code}>
+                      {k.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
             <div>
               <Label htmlFor="docCurrency">מטבע</Label>
               <Select id="docCurrency" name="docCurrency" defaultValue={defaults.currency}>

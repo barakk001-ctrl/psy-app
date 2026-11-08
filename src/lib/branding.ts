@@ -16,10 +16,8 @@ export function isValidLogoDataUrl(value: string): boolean {
 }
 
 /**
- * The logo for the top of the app's own document preview and draft PDFs, or
- * null: only when Settings → מיתוג has "גם בראש מסמכי ההכנסות" ticked. The
- * documents morning issues carry the logo of the morning account instead: its
- * API takes no logo with a document.
+ * The logo for the top of the app's document preview and draft PDFs, or
+ * null: only when Settings → מיתוג has "גם בראש מסמכי ההכנסות" ticked.
  */
 export function documentLogo(user: {
   logoUrl: string | null;

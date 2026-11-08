@@ -101,7 +101,7 @@ export function SessionList({
                         )}
                         {!s.invoiceItem?.invoice && s.morningDocNumber && (
                           <>
-                            {" · "}חשבונית morning <span dir="ltr">{s.morningDocNumber}</span>
+                            {" · "}חשבונית מס <span dir="ltr">{s.morningDocNumber}</span>
                           </>
                         )}
                         {!s.invoiceItem?.invoice && s.morningInvoiceReceiptNumber && (

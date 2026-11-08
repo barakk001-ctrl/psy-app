@@ -127,7 +127,7 @@ describe.skipIf(!TEST_DATABASE_URL)("full account export (real Postgres)", () =>
     const zip = await download();
     expect(zip.get("לקוחות.csv")!.toString("utf8")).toContain(`בסל-${a.canary}`);
     const all = [...zip.values()].map((v) => v.toString("utf8")).join("\n");
-    for (const secret of [a.calendarToken, a.inboxToken, a.inboxApiToken, `key-${a.tag}`, "morningApi", "hashedPassword"]) {
+    for (const secret of [a.calendarToken, a.inboxToken, a.inboxApiToken, "totpSecret", "hashedPassword"]) {
       expect(all).not.toContain(secret);
     }
   }, 30_000);

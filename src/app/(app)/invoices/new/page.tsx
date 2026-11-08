@@ -4,7 +4,6 @@ import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { documentLogo } from "@/lib/branding";
 import { db } from "@/lib/db";
-import { getMorningCredentials } from "@/lib/morning";
 import { creatableKinds, defaultKind, documentClientName, documentDefaults, docTypeLabel, DOC_KINDS, UNLINKED_SESSION, type DocKind } from "@/lib/billing-docs";
 import { clinicDay, draftFromInvoice, loadCreditableInvoices } from "@/lib/billing-doc-data";
 import { DocumentForm } from "@/components/invoices/document-form";
@@ -18,9 +17,9 @@ const dayLabel = (d: Date) =>
   }).format(d);
 
 /**
- * "מסמך חדש" in morning's order: type → client and dates → income lines
- * (meetings) → receipt lines → notes → preview → issue in morning (or save a
- * draft when morning isn't connected).
+ * "מסמך חדש": type → client and dates → income lines (meetings) → receipt
+ * lines → notes → preview → save a draft. The app doesn't issue documents yet:
+ * the official one is issued elsewhere and its number recorded on the draft.
  */
 export const metadata = { title: "מסמך חדש — מרפאה אישית" };
 
@@ -51,7 +50,7 @@ export default async function NewDocumentPage({
     : null;
   const stored = storedRow ? draftFromInvoice(storedRow) : null;
 
-  const [owner, clients, sessions, creds] = await Promise.all([
+  const [owner, clients, sessions] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
       select: {
@@ -63,7 +62,7 @@ export default async function NewDocumentPage({
         vatLiable: true,
         logoUrl: true,
         logoOnDocuments: true,
-        morningDocType: true,
+        defaultDocType: true,
         docCurrency: true,
         docLang: true,
         docVatType: true,
@@ -91,7 +90,6 @@ export default async function NewDocumentPage({
       take: 400,
       select: { id: true, clientId: true, startsAt: true, rate: true, treatmentType: true, status: true },
     }),
-    getMorningCredentials(userId),
   ]);
   const vatLiable = !!owner?.vatLiable;
 
@@ -109,9 +107,8 @@ export default async function NewDocumentPage({
 
   const kinds = creatableKinds(vatLiable).map((k) => k.kind);
   const requested = kinds.find((k) => k === params.kind) as DocKind | undefined;
-  const initialKind = stored?.kind ?? requested ?? defaultKind(vatLiable, owner?.morningDocType);
-  const creditable =
-    vatLiable && creds ? await loadCreditableInvoices(userId, storedRow?.id) : [];
+  const initialKind = stored?.kind ?? requested ?? defaultKind(vatLiable, owner?.defaultDocType);
+  const creditable = vatLiable ? await loadCreditableInvoices(userId, storedRow?.id) : [];
 
   const balance = forInvoice
     ? (Number(forInvoice.total.toString()) - Number(forInvoice.amountPaid.toString())).toFixed(2)
@@ -131,9 +128,8 @@ export default async function NewDocumentPage({
           {forInvoice ? "קבלה על חשבונית" : storedRow ? "עריכת טיוטה" : "מסמך חדש"}
         </h1>
         <p className="text-ink-muted text-sm mt-1">
-          {creds
-            ? "ממלאים כמו ב-morning, בודקים בתצוגה המקדימה, והמסמך מופק ב-morning — המספר והקישור נשמרים כאן."
-            : "ממלאים, בודקים בתצוגה המקדימה ושומרים כטיוטה. morning לא מחובר, אז את המסמך הרשמי מפיקים שם (הפרטים מוכנים להעתקה)."}
+          ממלאים, בודקים בתצוגה המקדימה ושומרים כטיוטה. מסמך שהופק במקום אחר נרשם בדף
+          הטיוטה עם המספר שלו.
         </p>
       </header>
       <DocumentForm
@@ -154,7 +150,6 @@ export default async function NewDocumentPage({
           })),
         }))}
         today={clinicDay(now)}
-        morningConnected={!!creds}
         business={{
           name: owner?.businessName ?? owner?.name ?? "",
           businessId: owner?.businessId ?? null,

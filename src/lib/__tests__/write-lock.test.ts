@@ -39,7 +39,6 @@ const ALLOWED: Record<string, string> = {
   "settings.sendSetPasswordLinkAction": "password (Google-only accounts)",
   "settings.updateIdleTimeoutAction": "idle-timeout preference",
   "settings.acceptAgreementAction": "agreement acceptance",
-  "settings.disconnectMorningAction": "disconnecting morning (removes keys)",
   "settings.calendarFeedDisableAction": "turning the calendar feed off (privacy)",
   "settings.setShowHolidaysAction": "calendar view preference, no data",
   "inbox.revokeInboxTokenAction": "revoking a token (security)",

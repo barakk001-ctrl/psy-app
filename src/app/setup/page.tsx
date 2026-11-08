@@ -40,10 +40,6 @@ export default async function SetupPage({
         vatLiable: true,
         defaultSessionMinutes: true,
         idleTimeoutMinutes: true,
-        morningApiKeyId: true,
-        morningApiSecret: true,
-        morningSandbox: true,
-        morningDocType: true,
         onboardingStep: true,
       },
     }),
@@ -81,12 +77,6 @@ export default async function SetupPage({
         }}
         meetingTypes={meetingTypes}
         defaultMinutes={user.defaultSessionMinutes}
-        morning={{
-          connected: !!(user.morningApiKeyId && user.morningApiSecret),
-          keyIdMasked: user.morningApiKeyId ? `…${user.morningApiKeyId.slice(-6)}` : null,
-          sandbox: user.morningSandbox,
-          docType: user.morningDocType,
-        }}
       />
     </>
   );

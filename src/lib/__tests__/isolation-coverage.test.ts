@@ -52,7 +52,7 @@ const TAKES_ID =
   /formData\.get\("(\w*[iI]d|token)"\)|\b(id|\w+Id)\s*:\s*string\b|input\.(id|\w+Id)\b/;
 
 /** Fields that end in "Id" without naming any record: the account's own settings, a plan's name. */
-const NOT_RECORD_IDS = /\b(businessId|morningApiKeyId|planId)\b/g;
+const NOT_RECORD_IDS = /\b(businessId|planId)\b/g;
 const readsId = (text: string) => TAKES_ID.test(text.replace(NOT_RECORD_IDS, ""));
 
 describe("isolation coverage", () => {
@@ -102,7 +102,7 @@ describe("isolation coverage", () => {
     expect(Object.keys(ROUTE_CASES).filter((k) => k in NO_ID_ROUTES)).toEqual([]);
   });
 
-  it("the file downloads, PDFs, calendar feed, uploads and morning documents are all attacked", () => {
+  it("the file downloads, PDFs, calendar feed, uploads and document numbers are all attacked", () => {
     for (const k of [
       "files/[id]",
       "documents/[id]",
@@ -117,9 +117,9 @@ describe("isolation coverage", () => {
     for (const k of [
       "files.uploadSessionFileAction",
       "client-documents.uploadClientDocumentAction",
-      "morning-docs.attachMorningNumberToSessionAction",
-      "morning-docs.assignMorningDocumentAction",
-      "documents.issueDocumentAction",
+      "document-numbers.attachDocumentNumberToSessionAction",
+      "document-numbers.assignImportedDocumentAction",
+      "documents.recordDocumentNumberAction",
       "documents.creditNoteAction",
     ]) {
       expect(CASES).toHaveProperty([k]);

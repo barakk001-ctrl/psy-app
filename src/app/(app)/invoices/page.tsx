@@ -1,22 +1,13 @@
-import Link from "next/link";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { IncomeDocuments } from "@/components/invoices/income-documents";
-import { MorningDocsPanel } from "@/components/invoices/morning-docs-panel";
+import { ImportedDocsPanel } from "@/components/invoices/imported-docs-panel";
 import { DocKindSquares } from "@/components/invoices/doc-kind-squares";
-import { getMorningCredentials } from "@/lib/morning";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { clinicDay } from "@/lib/billing-doc-data";
 import { draftsWhere, parseDocListFilters } from "@/lib/income-doc-list";
 import { loadDocMonths, loadFilteredDocuments } from "@/lib/income-doc-rows";
-
-// "ב-morning" kept on one line (the hyphen is a break point before the LTR word)
-const inMorning = (
-  <span className="whitespace-nowrap">
-    ב-<span dir="ltr">morning</span>
-  </span>
-);
 
 export const metadata = { title: "מסמכי הכנסות — מרפאה אישית" };
 
@@ -38,19 +29,17 @@ export default async function InvoicesPage({
     db.invoice.count({ where: { userId, OR: [{ docType: null }, { morningDocNumber: { not: null } }] } }),
   ]);
 
-  const morningConnected = !!(await getMorningCredentials(userId));
   const owner = await db.user.findUnique({
     where: { id: userId },
     select: { vatLiable: true },
   });
-  const unassignedDocs = morningConnected
-    ? await db.morningDocument.findMany({
-        where: { userId, clientId: null },
-        orderBy: { docDate: "desc" },
-        take: 50,
-      })
-    : [];
-  const clientOptions = morningConnected
+  // Documents imported from morning before 2026-11-08 and never assigned
+  const unassignedDocs = await db.morningDocument.findMany({
+    where: { userId, clientId: null },
+    orderBy: { docDate: "desc" },
+    take: 50,
+  });
+  const clientOptions = unassignedDocs.length
     ? (
         await db.client.findMany({
           // Inactive clients too (listed after the active ones)
@@ -66,23 +55,10 @@ export default async function InvoicesPage({
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl text-ink">מסמכי הכנסות</h1>
-          {/* What this page is — and isn't (Keren asked whether it issues into morning) */}
+          {/* What this page is — and isn't */}
           <p className="text-ink-muted mt-1 text-sm max-w-2xl">
-            {morningConnected ? (
-              <>
-                מסמך חדש מפיק חשבונית מס, חשבונית מס/קבלה או קבלה {inMorning} — שם הם
-                מסמכים רשמיים — והמספר והקישור נשמרים כאן.
-              </>
-            ) : (
-              <>
-                מסמך חדש מכין את המסמך ושומר טיוטה (לא מסמך מס); את המסמך הרשמי מפיקים{" "}
-                {inMorning}. כדי שיופק מכאן אוטומטית, מחברים את morning ב
-                <Link href="/settings?tab=documents#morning" className="text-sage-600 hover:text-sage-700 hover:underline">
-                  הגדרות
-                </Link>
-                .
-              </>
-            )}
+            מסמך חדש מכין את המסמך ושומר טיוטה (עדיין לא מסמך מס). הפקה מתוך האפליקציה
+            תגיע בקרוב; בינתיים, מסמך שהופק במקום אחר נרשם כאן עם המספר שלו.
           </p>
         </div>
       </header>
@@ -96,15 +72,15 @@ export default async function InvoicesPage({
         </CardContent>
       </Card>
 
-      {morningConnected && (
-        <MorningDocsPanel
+      {unassignedDocs.length > 0 && (
+        <ImportedDocsPanel
           docs={unassignedDocs.map((d) => ({
             id: d.id,
             number: d.number,
             docType: d.docType,
             docDate: d.docDate ? formatDate(d.docDate) : null,
             amount: d.amount ? formatCurrency(d.amount.toString()) : null,
-            morningClientName: d.morningClientName,
+            clientNameOnDoc: d.morningClientName,
             url: d.url,
           }))}
           clients={clientOptions}

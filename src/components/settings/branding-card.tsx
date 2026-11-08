@@ -162,8 +162,7 @@ export function BrandingCard({
               <span className="text-sm text-ink">להציג את הלוגו גם בראש מסמכי ההכנסות</span>
             </label>
             <p id="logo-on-documents-hint" className="text-xs text-ink-muted mt-1 ms-8">
-              בתצוגה המקדימה ובטיוטות כאן. המסמך הרשמי מופק ב-<span dir="ltr">morning</span>, והלוגו
-              שמופיע בו הוא הלוגו שהוגדר בחשבון ה-<span dir="ltr">morning</span>.
+              בתצוגה המקדימה של המסמכים ובקובצי ה-PDF של הטיוטות.
               {onDocuments && !logo && " עדיין לא נבחרה תמונה."}
             </p>
           </div>

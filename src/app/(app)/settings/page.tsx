@@ -4,7 +4,6 @@ import { db, dbAll } from "@/lib/db";
 import { BusinessInfoForm } from "@/components/settings/business-info-form";
 import { BrandingCard } from "@/components/settings/branding-card";
 import { PersonalDetailsForm } from "@/components/settings/personal-details-form";
-import { MorningSettingsForm } from "@/components/settings/morning-settings-form";
 import { DocumentDefaultsCard } from "@/components/settings/document-defaults-card";
 import { documentDefaults } from "@/lib/billing-docs";
 import { BiometricSettings } from "@/components/settings/biometric-settings";
@@ -82,10 +81,7 @@ export default async function SettingsPage({
       totpSecret: true,
       totpBackupCodes: true,
       hashedPassword: true,
-      morningApiKeyId: true,
-      morningApiSecret: true,
-      morningSandbox: true,
-      morningDocType: true,
+      defaultDocType: true,
       docCurrency: true,
       docLang: true,
       docVatType: true,
@@ -174,11 +170,6 @@ export default async function SettingsPage({
 
   const closures = user.isAdmin ? await pendingClosures() : [];
 
-  const morningConnected = !!(user.morningApiKeyId && user.morningApiSecret);
-  const keyIdMasked = user.morningApiKeyId
-    ? `…${user.morningApiKeyId.slice(-6)}`
-    : null;
-
   const calendarOrigin = await (async () => {
     const h = await headers();
     const proto = h.get("x-forwarded-proto") ?? "https";
@@ -198,7 +189,7 @@ export default async function SettingsPage({
           <span>
             <span className="font-medium">הגדרה ראשונית</span>
             <span className="block text-xs text-sage-700/80">
-              מעבר צעד אחר צעד על השם, פרטי העסק, סוגי המפגשים וחיבור ל-<span dir="ltr">morning</span>
+              מעבר צעד אחר צעד על השם, פרטי העסק וסוגי המפגשים
             </span>
           </span>
           <span aria-hidden>←</span>
@@ -233,14 +224,10 @@ export default async function SettingsPage({
     documents: (
       <>
         <div id="document-defaults" className="scroll-mt-24">
-          <DocumentDefaultsCard defaults={documentDefaults(user)} vatLiable={user.vatLiable} />
-        </div>
-        <div id="morning" className="scroll-mt-24">
-          <MorningSettingsForm
-            connected={morningConnected}
-            keyIdMasked={keyIdMasked}
-            sandbox={user.morningSandbox}
-            docType={user.morningDocType}
+          <DocumentDefaultsCard
+            defaults={documentDefaults(user)}
+            vatLiable={user.vatLiable}
+            defaultDocType={user.defaultDocType}
           />
         </div>
       </>

@@ -1,11 +1,12 @@
-// "מסמך חדש" — invoices and receipts in morning's terms (pure, tested).
+// "מסמך חדש" — invoices and receipts (pure, tested). The type codes are the
+// Israeli ones the old morning integration used (305/320/400/330).
 //
 // Legally valid Israeli tax invoices and receipts must come from registered
-// software, so the app never issues them itself: with morning connected it
-// creates the document THROUGH morning's API (src/lib/morning.ts) and keeps
-// the number and link morning returns; without a connection the document is
-// a draft (its PDF says it is not a tax document) and the practitioner
-// issues it in morning herself, with the details ready to copy.
+// software, and the app is not registered yet, so it never issues them: a
+// document here is a draft (its PDF says it is not a tax document) until the
+// practitioner records the number of the document she issued elsewhere. The
+// morning integration was removed on 2026-11-08; documents it issued keep
+// their id/number/link (morningDoc* columns) and count as before.
 //
 // Money is handled in agorot (integers) here — never float arithmetic.
 
@@ -17,7 +18,7 @@ export type DocKind = "TAX_INVOICE" | "TAX_INVOICE_RECEIPT" | "RECEIPT" | "CREDI
 
 export type DocKindInfo = {
   kind: DocKind;
-  /** morning's document type code */
+  /** the document type code (305 / 320 / 400 / 330) */
   code: number;
   label: string;
   /** one line under the choice */
@@ -122,14 +123,19 @@ export function defaultKind(vatLiable: boolean, preferredCode: number | null | u
   return (allowed.find((k) => k.code === preferredCode) ?? allowed[0]).kind;
 }
 
-/** A credit note can cancel an issued tax invoice (305 / 320) that isn't cancelled. */
+/**
+ * A credit note can cancel an issued tax invoice (305 / 320) that isn't
+ * cancelled. Issued = morning gave it an id (before 2026-11-08) or the number
+ * of the document issued elsewhere was recorded.
+ */
 export function canCreditNote(doc: {
   docType: number | null;
   morningDocId: string | null;
+  morningDocNumber: string | null;
   status: string;
 }): boolean {
   return (
-    !!doc.morningDocId &&
+    !!(doc.morningDocId || doc.morningDocNumber) &&
     (doc.docType === DOC_KINDS.TAX_INVOICE.code ||
       doc.docType === DOC_KINDS.TAX_INVOICE_RECEIPT.code) &&
     doc.status !== "CANCELLED"
@@ -138,7 +144,8 @@ export function canCreditNote(doc: {
 
 /**
  * A "מסמך חדש" document counts as money only once it is issued: morning gave
- * it an id, or she typed the number she got there. Older app invoices have no
+ * it an id (before 2026-11-08), or the number of the document issued
+ * elsewhere was recorded. Older app invoices have no
  * issued state and count as they always did.
  */
 export function isUnissuedDocument(doc: {
@@ -206,14 +213,6 @@ export const PAYMENT_KIND_LABELS: Record<PaymentKind, string> = {
   OTHER: "אחר",
 };
 
-/**
- * morning has no payment type for these, so a document that has one can't be
- * created through the connection: it is issued in morning by hand, where the
- * type is chosen there. ("אחר" in morning needs one of its own sub-types:
- * crypto, vouchers and the like.)
- */
-export const MANUAL_ONLY_PAYMENT_KINDS: readonly PaymentKind[] = ["OTHER"];
-
 export type PaymentDetailField =
   | "bankName"
   | "bankBranch"
@@ -236,7 +235,6 @@ export const PAYMENT_DETAIL_FIELDS: Record<PaymentKind, PaymentDetailField[]> = 
   PAYBOX: ["reference"],
   GOOGLE_PAY: ["reference"],
   APPLE_PAY: ["reference"],
-  // sent to morning as a bank transfer from "Payoneer", which has no reference
   PAYONEER: [],
   GIFT_VOUCHER: ["reference"],
   OTHER: ["details", "reference"],
@@ -284,9 +282,9 @@ export const DEAL_TYPE_LABELS: Record<DealType, string> = {
   CREDIT: "קרדיט",
 };
 
-// ── Draft shape (what the form builds, the action stores, morning receives) ──
+// ── Draft shape (what the form builds and the action stores) ─────────────────
 
-/** The currencies offered on a document (morning takes these as ISO codes). */
+/** The currencies offered on a document (ISO codes). */
 export const DOC_CURRENCIES = ["ILS", "USD", "EUR", "GBP"] as const;
 export type DocCurrency = (typeof DOC_CURRENCIES)[number];
 export const DOC_CURRENCY_LABELS: Record<DocCurrency, string> = {
@@ -305,7 +303,7 @@ export const DOC_LANGS = ["he", "en"] as const;
 export type DocLang = (typeof DOC_LANGS)[number];
 export const DOC_LANG_LABELS: Record<DocLang, string> = { he: "עברית", en: "אנגלית" };
 
-/** morning's document vatType. "Mixed" (2) needs a VAT choice per line, so isn't offered. */
+/** The document's VAT type. "Mixed" (2) needs a VAT choice per line, so isn't offered. */
 export const DOC_VAT_TYPES = [0, 1] as const;
 export type DocVatType = (typeof DOC_VAT_TYPES)[number];
 export const DOC_VAT_TYPE_LABELS: Record<DocVatType, string> = {
@@ -379,7 +377,7 @@ export type DocumentDraft = {
   kind: DocKind;
   clientName: string;
   clientTaxId?: string | null;
-  /** morning emails the issued document's link to these (empty = not sent) */
+  /** where the issued document is to be emailed (kept for when the app issues) */
   clientEmails?: string[];
   /** yyyy-mm-dd */
   date: string;
@@ -391,11 +389,11 @@ export type DocumentDraft = {
   currency?: string;
   /** missing = Hebrew */
   lang?: string;
-  /** morning's document vatType: 0 by business type (or missing), 1 exempt */
+  /** the document's VAT type: 0 by business type (or missing), 1 exempt */
   vatType?: number;
-  /** morning rounds the amounts */
+  /** round the amounts (applied by the issuing system) */
   rounding?: boolean;
-  /** meetings linked to it: internal, never printed or sent to morning */
+  /** meetings linked to it: internal, never printed */
   sessionIds?: string[];
   description?: string | null;
   items: DraftItem[];
@@ -449,11 +447,6 @@ export function agorotToDecimalString(agorot: number): string {
   const sign = agorot < 0 ? "-" : "";
   const abs = Math.abs(Math.round(agorot));
   return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
-}
-
-/** Agorot → number of shekels with 2 decimals (morning's JSON wants numbers). */
-export function agorotToNumber(agorot: number): number {
-  return Number(agorotToDecimalString(agorot));
 }
 
 /** Quantity × unit price, rounded to the agora (quantity has up to 2 decimals). */
@@ -607,34 +600,13 @@ export function documentProblems(draft: DocumentDraft, vatLiable: boolean): stri
   return problems;
 }
 
-/**
- * Why morning's API can't take this document as it is (issuing or morning's
- * own preview through the connection). Drafts, the in-app preview and issuing
- * by hand in morning are not affected.
- */
-export function morningPaymentProblems(draft: DocumentDraft): string[] {
-  if (!DOC_KINDS[draft.kind].hasPayments) return [];
-  return draft.payments.flatMap((p, i) =>
-    MANUAL_ONLY_PAYMENT_KINDS.includes(p.method)
-      ? [
-          `בתקבול ${i + 1} (${PAYMENT_KIND_LABELS[p.method]}): ל-morning אין סוג תקבול כזה, ולכן אי אפשר להפיק את המסמך דרך החיבור. בוחרים סוג תקבול אחר, או מפיקים את המסמך ב-morning ידנית.`,
-        ]
-      : [],
-  );
-}
-
-// ── Without a connection: issuing in morning by hand ────────────────────────
-
-/** morning's own "new document" screen for this type. */
-export function morningNewDocumentUrl(kind: DocKind): string {
-  return `https://app.greeninvoice.co.il/incomes/documents/new/${DOC_KINDS[kind].code}`;
-}
+// ── Issuing elsewhere by hand ───────────────────────────────────────────────
 
 /**
- * Plain-text summary to paste into morning's form (the web app has no
- * documented way to prefill a new document from a link).
+ * Plain-text summary of a draft, to copy into the system where the official
+ * document is issued (until the app issues documents itself).
  */
-export function morningCopyText(draft: DocumentDraft, vatLiable: boolean): string {
+export function documentCopyText(draft: DocumentDraft, vatLiable: boolean): string {
   const info = DOC_KINDS[draft.kind];
   const totals = documentTotals(draft, vatLiable);
   const ils = (a: number) =>

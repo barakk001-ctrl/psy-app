@@ -7,31 +7,28 @@ import {
   DOC_KINDS,
   canCreditNote,
   documentClientName,
-  documentTotals,
-  formatDocMoney,
+  documentCopyText,
   docKindByCode,
   docTypeLabel,
-  morningCopyText,
-  morningNewDocumentUrl,
 } from "@/lib/billing-docs";
 import { draftFromInvoice, type InvoiceWithParts } from "@/lib/billing-doc-data";
 import { cancelInvoiceAction } from "@/server/actions/invoices";
 import { formatDate } from "@/lib/format";
-import { DocumentPreview, type PreviewBusiness } from "./document-preview";
-import { IssueSuccess } from "./issue-success";
+import { DocumentPreview, producedAtNow, type PreviewBusiness } from "./document-preview";
 import { DraftDocumentActions, IssuedDocumentActions } from "./document-actions";
 
-/** A document made in "מסמך חדש" (Invoice with docType): draft or issued in morning. */
+/**
+ * A document made in "מסמך חדש" (Invoice with docType): a draft, or issued —
+ * through morning before 2026-11-08, or elsewhere with its number recorded.
+ */
 export async function DocumentView({
   invoice,
   business,
-  morningConnected,
   notice,
 }: {
   invoice: InvoiceWithParts;
   business: PreviewBusiness;
-  morningConnected: boolean;
-  notice: { issued?: boolean; saved?: boolean; issueError?: string; uncertain?: boolean };
+  notice: { saved?: boolean };
 }) {
   const info = docKindByCode(invoice.docType)!;
   const draft = draftFromInvoice(invoice)!;
@@ -66,7 +63,7 @@ export async function DocumentView({
   );
   const canReceipt =
     issued && invoice.docType === DOC_KINDS.TAX_INVOICE.code && !cancelled && invoice.status !== "PAID";
-  const canCredit = morningConnected && canCreditNote(invoice) && !hasCreditNote;
+  const canCredit = canCreditNote(invoice) && !hasCreditNote;
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -86,7 +83,7 @@ export async function DocumentView({
                   : "bg-gold-200 text-ink"
             }`}
           >
-            {cancelled ? "בוטל" : issued ? "הופק ב-morning" : "טיוטה"}
+            {cancelled ? "בוטל" : issued ? "הופק" : "טיוטה"}
           </span>
           <h1 className="font-display text-3xl text-ink mt-2">
             {info.label} {issued ? invoice.morningDocNumber : ""}
@@ -116,7 +113,7 @@ export async function DocumentView({
           {issued && invoice.morningDocUrl && (
             <a href={invoice.morningDocUrl} target="_blank" rel="noopener noreferrer">
               <Button type="button" size="sm" variant="secondary">
-                <ExternalLink className="w-4 h-4" /> המסמך ב-morning
+                <ExternalLink className="w-4 h-4" /> פתיחת המסמך
               </Button>
             </a>
           )}
@@ -145,14 +142,6 @@ export async function DocumentView({
         </div>
       </header>
 
-      {notice.issued && issued && (
-        <IssueSuccess
-          label={info.label}
-          number={invoice.morningDocNumber}
-          url={invoice.morningDocUrl}
-          emails={invoice.docClientEmail}
-        />
-      )}
       {notice.saved && !issued && (
         <div className="rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700">
           הטיוטה נשמרה.
@@ -163,20 +152,7 @@ export async function DocumentView({
         <DraftDocumentActions
           invoiceId={invoice.id}
           label={info.label}
-          summary={{
-            label: info.label,
-            code: info.code,
-            sender: business.name,
-            date: draft.date.split("-").reverse().join("/"),
-            client: draft.clientName,
-            amount: formatDocMoney(documentTotals(draft, business.vatLiable).totalAgorot, draft.currency),
-            emails: draft.clientEmails ?? [],
-          }}
-          morningConnected={morningConnected}
-          morningUrl={morningNewDocumentUrl(info.kind)}
-          copyText={morningCopyText(draft, business.vatLiable)}
-          initialError={notice.issueError || null}
-          uncertain={notice.uncertain}
+          copyText={documentCopyText(draft, business.vatLiable)}
         />
       )}
 
@@ -190,7 +166,7 @@ export async function DocumentView({
       )}
       {issued && !cancelled && invoice.docType === DOC_KINDS.RECEIPT.code && (
         <p className="text-xs text-ink-muted">
-          צריך לבטל קבלה? מבטלים אותה ב-morning (״ביטול מסמך״) — קבלה רשמית לא נמחקת.
+          צריך לבטל קבלה? מבטלים אותה במערכת שבה הופקה — קבלה רשמית לא נמחקת.
         </p>
       )}
 
@@ -232,6 +208,7 @@ export async function DocumentView({
         business={business}
         number={invoice.morningDocNumber}
         status={issued ? "issued" : "draft"}
+        producedAt={producedAtNow()}
       />
     </div>
   );

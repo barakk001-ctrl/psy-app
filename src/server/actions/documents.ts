@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { isReadOnly, subscriptionReadOnly } from "@/lib/subscription-server";
+import { subscriptionReadOnly } from "@/lib/subscription-server";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { computeInvoiceStatus } from "@/lib/invoice-status";
 import {
@@ -12,9 +12,7 @@ import {
   UNLINKED_SESSION,
   agorotToDecimalString,
   canCreditNote,
-  docKindByCode,
   documentProblems,
-  morningPaymentProblems,
   documentTotals,
   draftSaveProblems,
   joinEmails,
@@ -22,20 +20,7 @@ import {
   parseAgorot,
   type DocumentDraft,
 } from "@/lib/billing-docs";
-import {
-  applyCreditNote,
-  dayToDate,
-  issueStoredDocument,
-  linkDraftSessions,
-  previewStoredDocument,
-  type IssueResult,
-} from "@/lib/billing-doc-data";
-import {
-  buildMorningDocumentPayload,
-  getMorningCredentials,
-  morningNextNumber,
-  previewMorningDocument,
-} from "@/lib/morning";
+import { applyCreditNote, dayToDate, draftFromInvoice, linkDraftSessions } from "@/lib/billing-doc-data";
 import { documentDraftSchema, type DocumentDraftInput } from "@/server/validators/billing-document";
 
 async function requireUserId(): Promise<string> {
@@ -49,8 +34,6 @@ export type SaveDocumentResult = {
   /** rule problems (Hebrew), shown as a list */
   problems?: string[];
   invoiceId?: string;
-  /** set when issuing was asked for */
-  issue?: IssueResult;
 };
 
 const blank = (v: string | undefined | null) => (v && v.trim() ? v.trim() : null);
@@ -103,7 +86,7 @@ function toDraft(input: DocumentDraftInput): DocumentDraft {
   };
 }
 
-type RelatedInvoice = { id: string; morningDocId: string | null; total: string; status: string };
+type RelatedInvoice = { id: string; total: string; status: string };
 
 type Parsed =
   | { ok: false; result: SaveDocumentResult }
@@ -117,7 +100,7 @@ type Parsed =
 
 /**
  * Parses + checks the form's JSON against the rules and the user's own data.
- * `complete` is for preview and issuing; a draft may be unfinished. A receipt
+ * `complete` is for a finished document; a draft may be unfinished. A receipt
  * for an invoice is always complete, since saving it settles that invoice.
  * A credit note linked to a document cancels all of it, so it must add up to it.
  */
@@ -173,10 +156,10 @@ async function parseDraft(userId: string, json: string, complete: boolean): Prom
   if (relId && input.kind === "CREDIT_NOTE") {
     const rel = await db.invoice.findFirst({
       where: { id: relId, userId, clientId },
-      select: { id: true, morningDocId: true, total: true, status: true, docType: true },
+      select: { id: true, morningDocId: true, morningDocNumber: true, total: true, status: true, docType: true },
     });
     if (!rel || !canCreditNote(rel)) {
-      return { ok: false, result: { error: "אפשר לקשר רק חשבונית מס שהופקה ב-morning ולא בוטלה." } };
+      return { ok: false, result: { error: "אפשר לקשר רק חשבונית מס שהופקה (יש לה מספר) ולא בוטלה." } };
     }
     const live = await db.invoice.findFirst({
       where: {
@@ -198,17 +181,17 @@ async function parseDraft(userId: string, json: string, complete: boolean): Prom
         },
       };
     }
-    relatedInvoice = { id: rel.id, morningDocId: rel.morningDocId, total: rel.total.toString(), status: rel.status };
+    relatedInvoice = { id: rel.id, total: rel.total.toString(), status: rel.status };
   } else if (relId) {
     const rel = await db.invoice.findFirst({
       where: { id: relId, userId, clientId },
-      select: { id: true, morningDocId: true, total: true, status: true, docType: true },
+      select: { id: true, total: true, status: true, docType: true },
     });
     if (!rel || rel.docType !== DOC_KINDS.TAX_INVOICE.code || input.kind !== "RECEIPT") {
       return { ok: false, result: { error: "החשבונית שהקבלה משלמת לא נמצאה." } };
     }
     if (rel.status === "CANCELLED") return { ok: false, result: { error: "החשבונית בוטלה." } };
-    relatedInvoice = { id: rel.id, morningDocId: rel.morningDocId, total: rel.total.toString(), status: rel.status };
+    relatedInvoice = { id: rel.id, total: rel.total.toString(), status: rel.status };
   }
   return { ok: true, input, draft, vatLiable, relatedInvoice };
 }
@@ -224,18 +207,15 @@ function revalidateDocument(id: string, clientId: string | null, sessionIds: (st
 }
 
 /**
- * "מסמך חדש": saves the document (always — as a draft first) and, when asked
- * and morning is connected, issues it there. A failed issue leaves the draft
- * saved; the document page then shows why and offers to try again. With
+ * "מסמך חדש": saves the document as a draft. The app doesn't issue documents
+ * (not registered software yet): the official one is issued elsewhere and its
+ * number recorded on the draft's page (recordDocumentNumberAction). With
  * `draftId` it updates that saved draft instead of adding a document.
  */
-export async function saveDocumentAction(
-  json: string,
-  intent: "draft" | "issue",
-): Promise<SaveDocumentResult> {
+export async function saveDocumentAction(json: string): Promise<SaveDocumentResult> {
   const userId = await requireUserId();
   if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
-  const p = await parseDraft(userId, json, intent === "issue");
+  const p = await parseDraft(userId, json, false);
   if (!p.ok) return p.result;
   const { input, draft, vatLiable, relatedInvoice } = p;
   const clientId = blank(input.clientId);
@@ -363,96 +343,40 @@ export async function saveDocumentAction(
     return inv;
   });
 
-  let issue: IssueResult | undefined;
-  if (intent === "issue") issue = await issueStoredDocument(userId, created.id);
-
   revalidateDocument(created.id, clientId, draft.sessionIds ?? []);
   if (relatedInvoice) revalidatePath(`/invoices/${relatedInvoice.id}`);
-  return { invoiceId: created.id, issue };
-}
-
-/** morning's PDF of the unsaved form, before anything is issued (base64). */
-export async function previewDraftInMorningAction(
-  json: string,
-): Promise<{ pdfBase64?: string; error?: string; problems?: string[] }> {
-  const userId = await requireUserId();
-  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
-  const creds = await getMorningCredentials(userId);
-  if (!creds) return { error: "חשבון morning לא מחובר." };
-  const p = await parseDraft(userId, json, true);
-  if (!p.ok) return { error: p.result.error, problems: p.result.problems };
-  const link =
-    p.relatedInvoice?.morningDocId != null
-      ? {
-          linkedDocumentIds: [p.relatedInvoice.morningDocId],
-          linkType: p.draft.kind === "CREDIT_NOTE" ? ("cancel" as const) : ("link" as const),
-        }
-      : {};
-  const unsupported = morningPaymentProblems(p.draft);
-  if (unsupported.length) return { error: unsupported.join(" ") };
-  const payload = buildMorningDocumentPayload(p.draft, { vatLiable: p.vatLiable, ...link });
-  const res = await previewMorningDocument(userId, creds, payload);
-  return res.ok ? { pdfBase64: res.data } : { error: `התצוגה המקדימה של morning נכשלה: ${res.error}` };
+  return { invoiceId: created.id };
 }
 
 /**
- * The number morning says the next document of this type will get, for the
- * issue confirmation. Null whenever it can't say; never made up.
- */
-export async function documentNextNumberAction(kind: string): Promise<{ number: number | null }> {
-  const userId = await requireUserId();
-  if (await isReadOnly(userId)) return { number: null };
-  const creds = await getMorningCredentials(userId);
-  const info = docKindByCode(Number(kind));
-  if (!creds || !info) return { number: null };
-  return { number: await morningNextNumber(userId, creds, info.code) };
-}
-
-/** morning's PDF of a saved draft (document page). */
-export async function previewStoredInMorningAction(
-  invoiceId: string,
-): Promise<{ pdfBase64?: string; error?: string }> {
-  const userId = await requireUserId();
-  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
-  const res = await previewStoredDocument(userId, invoiceId);
-  return res.ok ? { pdfBase64: res.pdfBase64 } : { error: res.error };
-}
-
-/** "הפקה ב-morning" for a saved draft (document page). */
-export async function issueDocumentAction(invoiceId: string): Promise<IssueResult> {
-  const userId = await requireUserId();
-  if (await subscriptionReadOnly(userId)) return { ok: false, error: READ_ONLY_ERROR };
-  const res = await issueStoredDocument(userId, invoiceId);
-  const inv = await db.invoice.findFirst({
-    where: { id: invoiceId, userId },
-    select: { clientId: true, items: { select: { sessionId: true } } },
-  });
-  if (inv) revalidateDocument(invoiceId, inv.clientId, inv.items.map((i) => i.sessionId));
-  return res;
-}
-
-/**
- * "ביטול בחשבונית זיכוי": a credit note (330) for the whole of an issued tax
- * invoice, issued through morning and linked to it ("cancel"). On success the
- * invoice is marked cancelled and its meetings can be billed again.
+ * "ביטול בחשבונית זיכוי": a draft credit note (330) for the whole of an issued
+ * tax invoice, linked to it. Nothing is cancelled yet: once the number of the
+ * credit note issued elsewhere is recorded on it, the invoice is marked
+ * cancelled and its meetings can be billed again (applyCreditNote).
  */
 export async function creditNoteAction(
   invoiceId: string,
-): Promise<{ error?: string; creditNoteId?: string; issue?: IssueResult }> {
+): Promise<{ error?: string; creditNoteId?: string }> {
   const userId = await requireUserId();
   if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
-  if (!(await getMorningCredentials(userId))) return { error: "חשבון morning לא מחובר." };
   const orig = await db.invoice.findFirst({
     where: { id: invoiceId, userId },
     include: { items: { orderBy: { id: "asc" } } },
   });
   if (!orig) return { error: "המסמך לא נמצא." };
-  if (!canCreditNote(orig)) return { error: "אפשר לזכות רק חשבונית מס שהופקה ב-morning ולא בוטלה." };
+  if (!canCreditNote(orig)) return { error: "אפשר לזכות רק חשבונית מס שהופקה (יש לה מספר) ולא בוטלה." };
   const existing = await db.invoice.findFirst({
-    where: { userId, relatedInvoiceId: orig.id, docType: DOC_KINDS.CREDIT_NOTE.code },
-    select: { id: true, morningDocId: true },
+    where: {
+      userId,
+      relatedInvoiceId: orig.id,
+      docType: DOC_KINDS.CREDIT_NOTE.code,
+      status: { not: "CANCELLED" },
+    },
+    select: { id: true, morningDocId: true, morningDocNumber: true },
   });
-  if (existing?.morningDocId) return { error: "כבר הופקה חשבונית זיכוי למסמך הזה." };
+  if (existing?.morningDocId || existing?.morningDocNumber) {
+    return { error: "כבר קיימת חשבונית זיכוי למסמך הזה." };
+  }
 
   const creditId =
     existing?.id ??
@@ -483,7 +407,7 @@ export async function creditNoteAction(
             docClientEmail: orig.docClientEmail,
             relatedInvoiceId: orig.id,
             items: {
-              create: orig.items.map((it) => ({
+              create: orig.items.filter((it) => !it.linkOnly).map((it) => ({
                 description: it.description,
                 quantity: it.quantity,
                 unitPrice: it.unitPrice,
@@ -496,32 +420,55 @@ export async function creditNoteAction(
       })
     ).id;
 
-  const issue = await issueStoredDocument(userId, creditId);
   revalidateDocument(creditId, orig.clientId, orig.items.map((i) => i.sessionId));
   revalidatePath(`/invoices/${orig.id}`);
-  return { creditNoteId: creditId, issue };
+  return { creditNoteId: creditId };
 }
 
 /**
- * Without a connection: she issued the draft in morning herself and types the
- * number here. Like the meeting's number fields, a synced morning document
- * with that number supplies the link. The meetings get the number too
- * (unless one is already typed there).
+ * "מספר המסמך שהופק": the official document was issued elsewhere (the app
+ * doesn't issue yet) and its number is recorded on the draft, which then
+ * counts as issued. Like the meeting's number fields, a document imported
+ * before 2026-11-08 with that number supplies the link. The meetings get the
+ * number too (unless one is already typed there).
  */
-export async function setDocumentMorningNumberAction(
+export async function recordDocumentNumberAction(
   invoiceId: string,
   rawNumber: string,
 ): Promise<{ error?: string; saved?: boolean }> {
   const userId = await requireUserId();
   if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const number = rawNumber.trim().slice(0, 30);
-  if (!/^\d+$/.test(number)) return { error: "מספר המסמך ב-morning הוא מספר (ספרות בלבד)." };
+  if (!/^\d+$/.test(number)) return { error: "מספר המסמך הוא מספר (ספרות בלבד)." };
   const inv = await db.invoice.findFirst({
     where: { id: invoiceId, userId },
-    select: { id: true, clientId: true, docType: true, morningDocId: true, relatedInvoiceId: true, status: true, total: true, amountPaid: true, draftSessionIds: true, items: { select: { sessionId: true } } },
+    include: { items: true, payments: true, client: true },
   });
   if (!inv || inv.docType == null) return { error: "המסמך לא נמצא." };
-  if (inv.morningDocId) return { error: "המסמך הופק דרך החיבור ל-morning — המספר כבר שמור." };
+  if (inv.morningDocId) return { error: "למסמך הזה כבר שמור מספר." };
+  if (inv.status === "CANCELLED") return { error: "המסמך בוטל, ולכן לא רושמים לו מספר." };
+  // From here on it counts as money: it has to be a whole document first
+  const owner = await db.user.findUnique({ where: { id: userId }, select: { vatLiable: true } });
+  const asDraft = draftFromInvoice(inv);
+  const problems = asDraft ? documentProblems(asDraft, !!owner?.vatLiable) : [];
+  if (problems.length) {
+    return { error: `לפני רישום המספר צריך להשלים את הטיוטה (״עריכה״): ${problems.join(" ")}` };
+  }
+  // A linked credit note cancels all of the original: the same check as saving it
+  if (asDraft && inv.docType === DOC_KINDS.CREDIT_NOTE.code && inv.relatedInvoiceId) {
+    const rel = await db.invoice.findFirst({
+      where: { id: inv.relatedInvoiceId, userId },
+      select: { docType: true, morningDocId: true, morningDocNumber: true, status: true, total: true },
+    });
+    if (!rel || !canCreditNote(rel)) {
+      return { error: "המסמך המקורי כבר בוטל או שאין לו מספר. מסירים את הקישור (״עריכה״) ומנסים שוב." };
+    }
+    if ((parseAgorot(rel.total.toString()) ?? 0) !== documentTotals(asDraft, !!owner?.vatLiable).totalAgorot) {
+      return {
+        error: "חשבונית זיכוי שמקושרת למסמך מבטלת את כולו, אז הסכום צריך להיות זהה. לזיכוי חלקי מסירים את הקישור (״עריכה״).",
+      };
+    }
+  }
   const doc = await db.morningDocument.findFirst({ where: { userId, number }, select: { url: true } });
   const url = doc?.url ?? null;
   await db.$transaction(async (tx) => {

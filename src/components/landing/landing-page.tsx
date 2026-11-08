@@ -15,7 +15,7 @@ import phoneCalendar from "./phone-calendar.jpg";
 
 // The public home for signed-out visitors. Every claim here must be true of the
 // code today: keep it in step with the product, and keep the "כדאי לדעת" list
-// honest (automatic reminders and morning are not promised). The screenshots
+// honest (automatic reminders and issuing tax documents are not promised). The screenshots
 // are of the made-up practice from scripts/explainer/seed.cjs — never real data.
 
 const CTA_PRIMARY =
@@ -89,8 +89,7 @@ const SECURITY: { title: string; text: string }[] = [
 
 const GOOD_TO_KNOW: string[] = [
   "תזכורות אוטומטיות ללקוחות עדיין לא פעילות. אפשר לשלוח תזכורת בוואטסאפ בלחיצה, מהודעה מוכנה.",
-  "המערכת לא מפיקה מסמכי מס בעצמה. אפשר לרשום לכל פגישה את מספרי המסמכים מ-morning.",
-  "החיבור הישיר ל-morning עדיין בבדיקות, ולכן אין להסתמך עליו בשלב זה.",
+  "המערכת עדיין לא מפיקה מסמכי מס בעצמה. בינתיים מכינים כאן טיוטה ורושמים את מספר המסמך שהופק, גם על כל פגישה.",
   `בתקופת הניסיון אפשר לקבוע פגישות עד ${TRIAL_DAYS} יום קדימה.`,
 ];
 
@@ -102,7 +101,7 @@ const VIDEO_TEXT: string[] = [
   "עריכה מהירה: לחיצה על פגישה ושינוי מועד לפגישה אחת או לכל הבאות.",
   "תיקי לקוחות, רשימת המתנה ותיעוד פגישות.",
   "אישורי תשלום: אילו פגישות עוד לא שולמו.",
-  "מסך ״מסמך חדש״ להכנת קבלה או חשבונית (ההפקה דרך morning עדיין בבדיקות).",
+  "מסך ״מסמך חדש״ להכנת קבלה או חשבונית, עם תצוגה מקדימה (ההפקה מתוך האפליקציה תגיע בהמשך).",
   "דוחות הכנסות עם ייצוא ל-PDF.",
   "מסלולים, פרטיות ואבטחה.",
 ];

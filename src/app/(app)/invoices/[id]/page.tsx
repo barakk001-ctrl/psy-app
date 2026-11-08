@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ChevronLeft,
+  ExternalLink,
   Send,
   XCircle,
   Trash2,
@@ -17,9 +18,7 @@ import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { PaymentForm } from "@/components/invoices/payment-form";
 import { SendInvoiceEmailButton } from "@/components/invoices/send-invoice-email-button";
 import { InvoicePdfButton } from "@/components/invoices/invoice-pdf-button";
-import { MorningReceiptButton } from "@/components/invoices/morning-receipt-button";
 import { DocumentView } from "@/components/invoices/document-view";
-import { getMorningCredentials } from "@/lib/morning";
 import {
   markInvoiceSentAction,
   cancelInvoiceAction,
@@ -37,7 +36,7 @@ export default async function InvoiceDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ issued?: string; saved?: string; issueError?: string; uncertain?: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -55,28 +54,24 @@ export default async function InvoiceDetailPage({
 
   if (!invoice) notFound();
 
-  // Documents from "מסמך חדש" (in morning's terms) have their own view
+  // Documents from "מסמך חדש" have their own view
   if (invoice.docType != null) {
-    const [owner, creds] = await Promise.all([
-      db.user.findUnique({
-        where: { id: userId },
-        select: {
-          name: true,
-          businessName: true,
-          businessId: true,
-          address: true,
-          phone: true,
-          vatLiable: true,
-          logoUrl: true,
-          logoOnDocuments: true,
-        },
-      }),
-      getMorningCredentials(userId),
-    ]);
+    const owner = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        name: true,
+        businessName: true,
+        businessId: true,
+        address: true,
+        phone: true,
+        vatLiable: true,
+        logoUrl: true,
+        logoOnDocuments: true,
+      },
+    });
     return (
       <DocumentView
         invoice={invoice}
-        morningConnected={!!creds}
         business={{
           name: owner?.businessName ?? owner?.name ?? "",
           businessId: owner?.businessId ?? null,
@@ -85,12 +80,7 @@ export default async function InvoiceDetailPage({
           vatLiable: !!owner?.vatLiable,
           logoUrl: owner ? documentLogo(owner) : null,
         }}
-        notice={{
-          issued: sp.issued === "1",
-          saved: sp.saved === "1",
-          issueError: sp.issueError,
-          uncertain: sp.uncertain === "1",
-        }}
+        notice={{ saved: sp.saved === "1" }}
       />
     );
   }
@@ -102,7 +92,6 @@ export default async function InvoiceDetailPage({
   const client = invoice.client;
   if (!client) notFound();
 
-  const morningConnected = !!(await getMorningCredentials(userId));
   const owner = await db.user.findUnique({
     where: { id: userId },
     select: { vatLiable: true },
@@ -140,14 +129,15 @@ export default async function InvoiceDetailPage({
               clientEmail={client.email}
             />
           )}
-          {morningConnected &&
-            invoice.status !== "CANCELLED" &&
-            (invoice.payments.length > 0 || invoice.morningDocUrl) && (
-              <MorningReceiptButton
-                invoiceId={invoice.id}
-                existingDocUrl={invoice.morningDocUrl}
-              />
-            )}
+          {/* A receipt issued for it in the past (kept as history) */}
+          {invoice.morningDocUrl && (
+            <a href={invoice.morningDocUrl} target="_blank" rel="noopener noreferrer">
+              <Button variant="secondary" size="sm">
+                <ExternalLink className="w-4 h-4" />
+                הקבלה שהופקה
+              </Button>
+            </a>
+          )}
           {invoice.status === "DRAFT" && (
             <form action={markInvoiceSentAction}>
               <input type="hidden" name="id" value={invoice.id} />

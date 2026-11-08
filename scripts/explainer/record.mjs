@@ -195,9 +195,9 @@ await sleep(1200);
 await wheel(190, 700);
 await sleep(3000);
 
-// ── New document (morning's flow) ────────────────────────────────────────────
+// ── New document ─────────────────────────────────────────────────────────────
 await jump("/invoices/new");
-caption("מסמך חדש", "קבלה או חשבונית דרך morning: בוחרים פגישות, בודקים ומפיקים");
+caption("מסמך חדש", "קבלה או חשבונית: בוחרים פגישות, בודקים בתצוגה מקדימה ושומרים");
 await sleep(500);
 await clickOn(await byText("main button", "חשבונית מס/קבלה"));
 await sleep(700);

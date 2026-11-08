@@ -28,8 +28,7 @@ model User {
   // Logo or photo shown in the app header (a small data: URL resized in the
   // browser, so no file storage is needed)
   logoUrl         String?
-  // Show the logo at the top of the app's own document preview and draft PDFs
-  // (morning's documents use the logo set in the morning account)
+  // Show the logo at the top of the app's document preview and draft PDFs
   logoOnDocuments Boolean   @default(false)
   // Name shown under "מרפאה אישית" in the header, so the app reads as theirs
   brandName       String?
@@ -130,21 +129,14 @@ model User {
   closedAt   DateTime?
   purgeAfter DateTime?
 
-  // Morning (Green Invoice) API connection — secret encrypted at app layer
-  morningApiKeyId  String?
-  morningApiSecret String?  // packed AES-256-GCM (iv:tag:ciphertext, base64)
-  morningSandbox   Boolean  @default(true)
-  morningDocType   Int      @default(400) // 400 = קבלה, 320 = חשבונית מס-קבלה
+  // The type "מסמך חדש" starts on: 400 קבלה, 320 חשבונית מס/קבלה, 305 חשבונית
+  // מס (Settings → ברירות מחדל למסמכים). The column keeps its old name.
+  defaultDocType   Int      @default(400) @map("morningDocType")
   // What each new document's settings bar starts on (Settings → ברירות מחדל למסמכים)
   docCurrency      String   @default("ILS")
   docLang          String   @default("he")
   docVatType       Int      @default(0)
   docRounding      Boolean  @default(false)
-  // Where the keys came from (src/lib/morning-credentials.ts): MANUAL = pasted
-  // in Settings; PARTNER = delivered by morning's partner program (not built
-  // yet). The document code never looks at this — only the credential store
-  // and the token strategy do.
-  morningKeySource String   @default("MANUAL")
 
   clients         Client[]
   sessions        Session[]
@@ -342,8 +334,9 @@ model Session {
   meetingUrl    String?
   treatmentType String          @default("טיפול פרטני")
 
-  // Morning document numbers typed by the practitioner (billing happens in
-  // Morning; the app links it). Tax invoice and receipt are separate because
+  // Numbers of documents issued outside the app (morning until 2026-11-08,
+  // any system since), typed by the practitioner or written when a document
+  // got its number. Names kept from the morning era. Tax invoice and receipt are separate because
   // she sometimes issues the invoice first and the receipt later.
   morningDocNumber     String?  // חשבונית מס
   morningDocUrl        String?
@@ -352,7 +345,7 @@ model Session {
   morningInvoiceReceiptNumber String?  // חשבונית מס-קבלה (מסמך משולב)
   morningInvoiceReceiptUrl    String?
 
-  // Quick per-meeting payment record (Morning-first workflow, no app invoice)
+  // Quick per-meeting payment record (documents issued elsewhere, no app invoice)
   paymentStatus  String?         // PAID | UNPAID | EXEMPT (ללא תשלום)
   paymentMethod  PaymentMethod?
   paidAmount     Decimal?        @db.Decimal(10, 2)
@@ -539,16 +532,18 @@ model Invoice {
   notes         String?       @db.Text
   pdfUrl        String?       // generated PDF location
 
-  // Tax document issued in Morning (Green Invoice) for this invoice
+  // The issued document's id/link from morning (until 2026-11-08, kept as
+  // history) and its number: morning's, or the one recorded by hand for a
+  // document issued elsewhere. A number = issued (counts as money).
   morningDocId     String?
   morningDocUrl    String?
   morningDocNumber String?
 
-  // "מסמך חדש" (src/lib/billing-docs.ts): the document this row is, in
-  // morning's terms — 305 חשבונית מס, 320 חשבונית מס/קבלה, 400 קבלה, 330
-  // חשבונית זיכוי. null = an older app invoice (a payment request). The app
-  // never issues tax documents itself: until morning returns a number
-  // (morningDocId/Number above) the row is a draft, not a tax document.
+  // "מסמך חדש" (src/lib/billing-docs.ts): the document this row is — 305
+  // חשבונית מס, 320 חשבונית מס/קבלה, 400 קבלה, 330 חשבונית זיכוי. null = an
+  // older app invoice (a payment request). The app doesn't issue tax
+  // documents itself (yet): until it has a number (morningDocId/Number above)
+  // the row is a draft, not a tax document.
   docType          Int?
   // Line prices include VAT (true) or VAT is added on top (false); only
   // matters for a VAT-liable business (עוסק מורשה)
@@ -556,13 +551,13 @@ model Invoice {
   // Client details as printed on the document (prefilled from the client)
   docClientName    String?
   docClientTaxId   String?
-  // When set, morning emails the issued document's link to this address
+  // Where the issued document is to be emailed (comma-separated)
   docClientEmail   String?
   // "תיאור תכולת המסמך" (shown on receipts, which have no item lines)
   description      String?
   // ISO code. Reports count ILS documents only: no exchange rate is stored.
   currency         String    @default("ILS")
-  // morning's per-document settings: "he" | "en"; 0 by business type, 1 exempt
+  // Per-document settings: "he" | "en"; 0 by business type, 1 exempt
   lang             String    @default("he")
   vatType          Int       @default(0)
   rounding         Boolean   @default(false)
@@ -573,6 +568,7 @@ model Invoice {
   // The document this one refers to (same user): for a credit note (330) the
   // invoice it cancels, for a receipt (400) the tax invoice (305) it pays
   relatedInvoiceId String?
+  // When issuing through morning was claimed (until 2026-11-08); history only
   morningIssuedAt  DateTime?
 
   items         InvoiceItem[]
@@ -624,7 +620,7 @@ model Payment {
   reference     String?       // tx id, check #, last 4 digits, etc.
   notes         String?
 
-  // Receipt-line details, as morning asks for them per payment type
+  // Receipt-line details per payment type
   bankName      String?       // transfer / cheque
   bankBranch    String?
   bankAccount   String?
@@ -688,8 +684,9 @@ model InboxMessage {
   @@index([userId, processed])
 }
 
-// Documents issued directly in Morning (outside the app's schedule) — synced
-// into a general inbox and manually assigned to a client afterwards.
+// Documents issued directly in morning, imported before the integration was
+// removed (2026-11-08). Nothing new arrives; existing rows are history and can
+// still be assigned to a client.
 model MorningDocument {
   // Our row id. Rows synced before 2026-10-29 kept morning's id here (the
   // migration copied it into morningId); new rows get a cuid.

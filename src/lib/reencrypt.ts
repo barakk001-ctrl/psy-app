@@ -252,14 +252,6 @@ async function packedColumns(run: Run) {
 
   await packedField(
     run,
-    "User.morningApiSecret",
-    (after) => dbAll.user.findMany({ select: { id: true, morningApiSecret: true }, ...pageArgs(after) }),
-    (r) => r.morningApiSecret,
-    (r, old, next) =>
-      update(dbAll.user.updateMany({ where: { id: r.id, morningApiSecret: old }, data: { morningApiSecret: next } })),
-  );
-  await packedField(
-    run,
     "User.totpSecret",
     (after) => dbAll.user.findMany({ select: { id: true, totpSecret: true }, ...pageArgs(after) }),
     (r) => r.totpSecret,

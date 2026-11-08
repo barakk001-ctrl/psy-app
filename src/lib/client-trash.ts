@@ -60,7 +60,7 @@ export type DeletionBlocker = "active" | "invoices" | "payments" | "morning";
 export const BLOCKER_LABELS: Record<Exclude<DeletionBlocker, "active">, string> = {
   invoices: "חשבוניות שהופקו באפליקציה",
   payments: "רישומי תשלום בפגישות",
-  morning: "מסמכי Morning (חשבונית/קבלה)",
+  morning: "מסמכים שהופקו (חשבונית/קבלה)",
 };
 
 export type DeletionDecision =

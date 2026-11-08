@@ -23,6 +23,21 @@ export type PreviewBusiness = {
   logoUrl?: string | null;
 };
 
+/** "08/11/2026 14:05", clinic time: the moment the preview or PDF was produced. */
+export function producedAtNow(now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Jerusalem",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("day")}/${get("month")}/${get("year")} ${get("hour")}:${get("minute")}`;
+}
+
 function heDate(day: string | null | undefined): string {
   if (!day) return "";
   const [y, m, d] = day.split("-");
@@ -30,23 +45,24 @@ function heDate(day: string | null | undefined): string {
 }
 
 /**
- * The document as it will look — what the practitioner checks before issuing
- * (she always previews in morning). The official PDF is morning's; this is
- * the app's rendering of the same details, available with or without a
- * connection.
+ * The document as it will look — what the practitioner checks before saving
+ * or issuing it elsewhere. A draft is marked as not a tax document.
  */
 export function DocumentPreview({
   draft,
   business,
   number,
   status,
+  producedAt,
 }: {
   draft: DocumentDraft;
   business: PreviewBusiness;
-  /** morning's number once issued */
+  /** the document's number once issued */
   number?: string | null;
   /** "draft" shows the not-a-tax-document band */
   status: "draft" | "issued";
+  /** producedAtNow(), formatted where it is rendered */
+  producedAt?: string;
 }) {
   const info = DOC_KINDS[draft.kind];
   const t = documentTotals(draft, business.vatLiable);
@@ -56,7 +72,7 @@ export function DocumentPreview({
     <article className="relative rounded-2xl border border-cream-300 bg-white text-ink shadow-soft overflow-hidden">
       {status === "draft" && (
         <div className="bg-cream-100 border-b border-cream-300 px-5 py-2 text-xs text-ink-soft text-center">
-          תצוגה מקדימה — עדיין לא מסמך מס. המסמך הרשמי מופק ב-morning.
+          תצוגה מקדימה — עדיין לא מסמך מס.
         </div>
       )}
       <div className="p-5 sm:p-7 space-y-6">
@@ -190,6 +206,11 @@ export function DocumentPreview({
             <h3 className="text-sm font-semibold mb-1">הערות</h3>
             <p className="text-sm text-ink-soft whitespace-pre-wrap">{draft.remarks}</p>
           </section>
+        )}
+        {producedAt && (
+          <footer className="text-xs text-ink-muted text-center border-t border-cream-200 pt-3">
+            הופק ע״י מרפאה אישית · <span dir="ltr">{producedAt}</span>
+          </footer>
         )}
       </div>
     </article>

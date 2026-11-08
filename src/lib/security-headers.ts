@@ -16,7 +16,7 @@
 // - no third-party script, unless Cloudflare Turnstile is switched on
 //   (src/lib/turnstile.ts: its script and frame on the public forms) — Google
 //   sign-in and Grow payments are full page redirects started by a form/server
-//   action, so they only matter to form-action. Resend and morning are called
+//   action, so they only matter to form-action. Resend is called
 //   from the server, never the browser.
 
 export type SecurityHeaderOptions = {

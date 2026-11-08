@@ -400,7 +400,7 @@ ${noteText(path, s.note!)}
               unissued: isUnissuedDocument(r.invoice) ? "כן" : "",
             }));
           }
-          // …and on meetings, the morning-first way
+          // …and on meetings (documents issued elsewhere, numbers typed on the meeting)
           for await (const rows of paged((c) =>
             dbAll.session.findMany({
               where: { ...mine, paymentStatus: "PAID" },
@@ -427,7 +427,7 @@ ${noteText(path, s.note!)}
     csvEntry(
       tally,
       "חשבוניות ומסמכים.csv",
-      ["מזהה", "מספר", "סוג מסמך", "לקוח/ה", "שם על המסמך", "מספר זיהוי על המסמך", "תאריך", "תאריך לתשלום", "סטטוס", "סכום ביניים", "סה״כ", "שולם", "מספר ב-morning", "קישור ב-morning", "תיאור", "הערות", "מטבע", "שפה", "סוג מע״מ", "עיגול", "מייל למשלוח", "פגישות שסומנו בטיוטה"],
+      ["מזהה", "מספר", "סוג מסמך", "לקוח/ה", "שם על המסמך", "מספר זיהוי על המסמך", "תאריך", "תאריך לתשלום", "סטטוס", "סכום ביניים", "סה״כ", "שולם", "מספר המסמך שהופק", "קישור למסמך", "תיאור", "הערות", "מטבע", "שפה", "סוג מע״מ", "עיגול", "מייל למשלוח", "פגישות שסומנו בטיוטה"],
       () => paged((c) => dbAll.invoice.findMany({ where: mine, ...orderPage, ...c })),
       (r) => [
         r.id,
@@ -487,8 +487,8 @@ ${noteText(path, s.note!)}
     ),
     csvEntry(
       tally,
-      "מסמכי morning.csv",
-      ["מזהה", "מספר", "סוג", "תאריך", "סכום", "תיאור", "לקוח/ה ב-morning", "לקוח/ה", "קישור"],
+      "מסמכים שיובאו.csv",
+      ["מזהה", "מספר", "סוג", "תאריך", "סכום", "תיאור", "לקוח/ה במסמך", "לקוח/ה", "קישור"],
       () => paged((c) => dbAll.morningDocument.findMany({ where: mine, ...orderPage, ...c })),
       (r) => [r.id, r.number, r.docType, day(r.docDate), r.amount, r.description, r.morningClientName, clientName(r.clientId), r.url],
     ),

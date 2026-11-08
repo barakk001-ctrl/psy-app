@@ -101,7 +101,8 @@ describe("help articles", () => {
     expect(find("ניתוק אוטומטי")).toContain("login-security");
     expect(find("קוד חד פעמי")[0]).toBe("login-security");
     expect(find("פייס איידי")).toContain("login-security");
-    expect(find("מורנינג")).toContain("connect-morning");
+    expect(find("מורנינג")).toContain("record-issued-document");
+    expect(find("מסמך שהופק")[0]).toBe("record-issued-document");
     expect(find("דוח חודשי")).toContain("reports");
     expect(find("העלאת מסמך")[0]).toBe("client-documents");
     expect(find("טופס הסכמה")[0]).toBe("client-documents");

@@ -2,7 +2,7 @@
 // tested in onboarding.test.ts. Every step reuses a Settings card; a step saves
 // when "הבא" is pressed, so leaving halfway loses nothing.
 
-export type SetupStepId = "brand" | "business" | "types" | "morning" | "done";
+export type SetupStepId = "brand" | "business" | "types" | "done";
 
 export type SetupStep = { id: SetupStepId; title: string; subtitle: string };
 
@@ -10,7 +10,6 @@ export const SETUP_STEPS: SetupStep[] = [
   { id: "brand", title: "איך נקרא לקליניקה?", subtitle: "שם ותמונה או לוגו שיופיעו בראש האפליקציה." },
   { id: "business", title: "פרטי העסק", subtitle: "מופיעים בראש המסמכים שמפיקים. אפשר למלא גם תעריף רגיל." },
   { id: "types", title: "סוגי מפגשים ויומן", subtitle: "משך פגישה רגיל, סוגי המפגשים והצבע של כל סוג ביומן." },
-  { id: "morning", title: "חיבור ל-morning", subtitle: "לא חובה, ואפשר לחבר אחר כך בהגדרות." },
   { id: "done", title: "הכול מוכן", subtitle: "אפשר להתחיל לעבוד. כל מה שמילאתם נשמר, ואפשר לשנות אותו בהגדרות." },
 ];
 

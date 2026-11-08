@@ -1,71 +1,21 @@
 "use server";
 
+// Numbers of documents issued outside the app, typed onto a meeting
+// ("מספר המסמך שהופק"), and the documents imported from morning before the
+// integration was removed (2026-11-08): no new ones arrive, the ones already
+// imported can still be assigned to a client and supply a link by number.
+
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { isReadOnly, requireWritable } from "@/lib/subscription-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import {
-  getMorningCredentials,
-  mapMorningSearchItem, morningDocUpsert,
-  searchMorningDocuments,
-} from "@/lib/morning";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   return session.user.id;
-}
-
-export type MorningSyncState = {
-  error?: string;
-  synced?: number;
-} | null;
-
-/**
- * Pulls documents issued directly in Morning (last 90 days) that the app
- * doesn't know about, into the general inbox for manual assignment.
- */
-export async function syncMorningDocumentsAction(
-  _: MorningSyncState,
-  __: FormData,
-): Promise<MorningSyncState> {
-  const userId = await requireUserId();
-  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
-
-  const creds = await getMorningCredentials(userId);
-  if (!creds) return { error: "חשבון morning לא מחובר" };
-
-  const iso = (d: Date) =>
-    new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" }).format(d);
-  const now = new Date();
-  const from = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-
-  const result = await searchMorningDocuments(userId, creds, {
-    fromDate: iso(from),
-    toDate: iso(now),
-  });
-  if (!result.ok) return { error: `משיכת המסמכים נכשלה: ${result.error}` };
-
-  // Exclude documents the app itself issued (linked to an invoice)
-  const linked = await db.invoice.findMany({
-    where: { userId, morningDocId: { not: null } },
-    select: { morningDocId: true },
-  });
-  const linkedIds = new Set(linked.map((i) => i.morningDocId));
-
-  let synced = 0;
-  for (const item of result.data) {
-    if (!item.id || linkedIds.has(item.id)) continue;
-    const mapped = mapMorningSearchItem(item);
-    // Scoped to this account (userId + morning id) — see morningDocUpsert
-    await db.morningDocument.upsert(morningDocUpsert(userId, mapped));
-    synced++;
-  }
-
-  revalidatePath("/invoices");
-  return { synced };
 }
 
 export type AttachNumberState = {
@@ -75,11 +25,11 @@ export type AttachNumberState = {
 } | null;
 
 /**
- * Attaches a Morning invoice/receipt number (typed by the practitioner) to a
- * meeting. If the number matches a synced Morning document or an app-issued
- * invoice, the document link is resolved automatically.
+ * Attaches the number of a document issued elsewhere (typed by the
+ * practitioner) to a meeting. If the number matches an imported document or
+ * a document in the app, its link is filled in automatically.
  */
-export async function attachMorningNumberToSessionAction(
+export async function attachDocumentNumberToSessionAction(
   _: AttachNumberState,
   formData: FormData,
 ): Promise<AttachNumberState> {
@@ -88,12 +38,13 @@ export async function attachMorningNumberToSessionAction(
   const sessionId = String(formData.get("sessionId") ?? "");
   const number = String(formData.get("number") ?? "").trim().slice(0, 30);
   // "invoice" = חשבונית מס, "receipt" = קבלה, "invoiceReceipt" = חשבונית
-  // מס-קבלה — a single combined document in Morning
+  // מס/קבלה — a single combined document
   const rawKind = formData.get("kind");
   const kind =
     rawKind === "receipt" || rawKind === "invoiceReceipt" ? rawKind : "invoice";
   if (!sessionId) return { error: "מזהה פגישה חסר" };
 
+  // The columns keep their morning-era names (history: existing numbers stay)
   const FIELDS = {
     invoice: ["morningDocNumber", "morningDocUrl"],
     receipt: ["morningReceiptNumber", "morningReceiptUrl"],
@@ -118,7 +69,7 @@ export async function attachMorningNumberToSessionAction(
     return { saved: true, matchedUrl: null };
   }
 
-  // Resolve a link: synced Morning documents first, then app-issued invoices
+  // Resolve a link: imported documents first, then documents in the app
   let url: string | null = null;
   const doc = await db.morningDocument.findFirst({
     where: { userId, number },
@@ -151,7 +102,8 @@ export async function attachMorningNumberToSessionAction(
   return { saved: true, matchedUrl: url };
 }
 
-export async function assignMorningDocumentAction(formData: FormData) {
+/** Assigns a document imported from morning (before 2026-11-08) to a client. */
+export async function assignImportedDocumentAction(formData: FormData) {
   const userId = await requireUserId();
   await requireWritable(userId);
   const docId = String(formData.get("docId") ?? "");

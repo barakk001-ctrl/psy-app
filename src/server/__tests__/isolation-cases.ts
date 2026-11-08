@@ -192,69 +192,54 @@ export const CASES: Record<string, Case> = {
     control: "writes",
   },
 
-  // ── "מסמך חדש" and morning documents ─────────────────────────────────────
+  // ── "מסמך חדש" and recorded document numbers ─────────────────────────────
   "documents.saveDocumentAction": {
     run: async ({ call, target, me, mode }) => {
       const save = "documents.saveDocumentAction";
       if (mode === "control") {
-        return call(save, documentJson({ clientId: me.clientId, sessionId: me.pastSessionId }), "draft");
+        return call(save, documentJson({ clientId: me.clientId, sessionId: me.pastSessionId }));
       }
       return [
         // their client
-        await call(save, documentJson({ clientId: target.clientId }), "draft"),
+        await call(save, documentJson({ clientId: target.clientId })),
         // my client, their meeting
-        await call(save, documentJson({ clientId: me.clientId, sessionId: target.pastSessionId }), "draft"),
+        await call(save, documentJson({ clientId: me.clientId, sessionId: target.pastSessionId })),
         // a receipt paying their invoice
         await call(
           save,
           documentJson({ clientId: me.clientId, relatedInvoiceId: target.issuedDocId, kind: "RECEIPT" }),
-          "issue",
         ),
         // a credit note cancelling their invoice
         await call(
           save,
           documentJson({ clientId: me.clientId, relatedInvoiceId: target.issuedDocId, kind: "CREDIT_NOTE" }),
-          "issue",
         ),
         // my client, written over their saved draft
-        await call(save, documentJson({ clientId: me.clientId, draftId: target.draftDocId }), "draft"),
+        await call(save, documentJson({ clientId: me.clientId, draftId: target.draftDocId })),
       ];
     },
-    control: "writes",
-  },
-  "documents.previewDraftInMorningAction": {
-    run: ({ call, target }) =>
-      call("documents.previewDraftInMorningAction", documentJson({ clientId: target.clientId })),
-    control: has("pdfBase64"),
-  },
-  "documents.previewStoredInMorningAction": {
-    run: ({ call, target }) => call("documents.previewStoredInMorningAction", target.draftDocId),
-    control: has("pdfBase64"),
-  },
-  "documents.issueDocumentAction": {
-    run: ({ call, target }) => call("documents.issueDocumentAction", target.draftDocId),
     control: "writes",
   },
   "documents.creditNoteAction": {
     run: ({ call, target }) => call("documents.creditNoteAction", target.issuedDocId),
     control: "writes",
   },
-  "documents.setDocumentMorningNumberAction": {
-    run: ({ call, target }) => call("documents.setDocumentMorningNumberAction", target.draftDocId, "12345"),
+  "documents.recordDocumentNumberAction": {
+    run: ({ call, target }) => call("documents.recordDocumentNumberAction", target.draftDocId, "12345"),
     control: "writes",
   },
-  "morning-docs.attachMorningNumberToSessionAction": {
+  "document-numbers.attachDocumentNumberToSessionAction": {
     run: ({ call, target }) =>
       call(
-        "morning-docs.attachMorningNumberToSessionAction",
+        "document-numbers.attachDocumentNumberToSessionAction",
         null,
         form({ sessionId: target.sessionId, number: "7001" }),
       ),
     control: "writes",
   },
-  "morning-docs.assignMorningDocumentAction": {
+  "document-numbers.assignImportedDocumentAction": {
     run: async ({ call, target, me, mode }) => {
-      const assign = "morning-docs.assignMorningDocumentAction";
+      const assign = "document-numbers.assignImportedDocumentAction";
       if (mode === "control") return call(assign, form({ docId: me.morningDocId, clientId: me.clientId }));
       // their document to my client, and my document to their client
       await call(assign, form({ docId: target.morningDocId, clientId: me.clientId }));
@@ -275,10 +260,6 @@ export const CASES: Record<string, Case> = {
   "invoices.sendInvoiceEmailAction": {
     run: ({ call, target }) => call("invoices.sendInvoiceEmailAction", null, form({ id: target.oldInvoiceId })),
     control: has("sent"),
-  },
-  "invoices.issueMorningReceiptAction": {
-    run: ({ call, target }) => call("invoices.issueMorningReceiptAction", null, form({ id: target.oldInvoiceId })),
-    control: "writes",
   },
   "payments.recordPaymentAction": {
     run: ({ call, target }) =>
@@ -562,7 +543,6 @@ export const NO_ID_INPUT: Record<string, string> = {
   "inbox.generateInboxTokenAction": "own account",
   "inbox.revokeInboxTokenAction": "own account",
   "meeting-types.addMeetingTypeAction": "creates under the signed-in user",
-  "morning-docs.syncMorningDocumentsAction": "own account; rows keyed by userId + morning id",
   "onboarding.setOnboardingStepAction": "own account",
   "onboarding.pauseOnboardingAction": "own account",
   "settings.calendarFeedEnableAction": "own account",
@@ -572,15 +552,12 @@ export const NO_ID_INPUT: Record<string, string> = {
   "settings.updateBusinessInfoAction": "own account",
   "expenses.uploadExpenseAction": "creates one of the caller's own, from a file",
   "settings.updateDocumentDefaultsAction": "own account",
-  "documents.documentNextNumberAction": "a document type; the answer is morning's for the caller's own keys",
   "settings.updateSessionDefaultsAction": "own account",
   "settings.updateBrandingAction": "own account",
   "settings.setShowHolidaysAction": "own account",
   "settings.updatePersonalDetailsAction": "own account",
   "settings.changePasswordAction": "own account",
   "settings.sendSetPasswordLinkAction": "own account",
-  "settings.saveMorningSettingsAction": "own account",
-  "settings.disconnectMorningAction": "own account",
   "settings.updateIdleTimeoutAction": "own account",
   "invites.createInviteCodeAction": "admin only; creates a code, reads no id",
   "subscription.startCardPaymentAction": "own account; the plan is the only input",

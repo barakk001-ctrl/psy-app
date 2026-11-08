@@ -1,6 +1,7 @@
-// DB side of "מסמך חדש" (rules: billing-docs.ts, morning payload: morning.ts).
-// A document is stored as an Invoice row with `docType`; it becomes a tax
-// document only when morning issues it and returns its id/number/link.
+// DB side of "מסמך חדש" (rules: billing-docs.ts). A document is stored as an
+// Invoice row with `docType`; it counts as issued once it has a number: one
+// morning returned (before 2026-11-08) or the number of the document issued
+// elsewhere, recorded by hand (recordDocumentNumberAction).
 
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -9,8 +10,6 @@ import {
   canCreditNote,
   docKindByCode,
   documentClientName,
-  documentProblems,
-  morningPaymentProblems,
   parseAgorot,
   splitEmails,
   type CardType,
@@ -18,15 +17,6 @@ import {
   type DocumentDraft,
   type PaymentKind,
 } from "@/lib/billing-docs";
-import { computeInvoiceStatus } from "@/lib/invoice-status";
-import {
-  buildMorningDocumentPayload,
-  createMorningDocument,
-  getMorningCredentials,
-  morningDocUrl,
-  previewMorningDocument,
-  type MorningPayloadOptions,
-} from "@/lib/morning";
 
 export type InvoiceWithParts = Prisma.InvoiceGetPayload<{
   include: { items: true; payments: true; client: true };
@@ -96,7 +86,7 @@ export function draftFromInvoice(inv: InvoiceWithParts): DocumentDraft | null {
   };
 }
 
-/** Where a session keeps the number of each kind of morning document. */
+/** Where a session keeps the number of each kind of document (columns named for morning, kept). */
 const SESSION_FIELDS: Partial<Record<number, readonly [string, string]>> = {
   305: ["morningDocNumber", "morningDocUrl"],
   320: ["morningInvoiceReceiptNumber", "morningInvoiceReceiptUrl"],
@@ -193,156 +183,6 @@ export async function applyCreditNote(
   });
 }
 
-/** How long an issue in progress blocks another attempt. */
-const ISSUE_CLAIM_MS = 2 * 60_000;
-
-export type IssueResult =
-  | { ok: true; number: string | null; url: string | null }
-  | { ok: false; error: string; uncertain?: boolean };
-
-async function linkOptions(
-  userId: string,
-  inv: { docType: number | null; relatedInvoiceId: string | null },
-): Promise<Pick<MorningPayloadOptions, "linkedDocumentIds" | "linkType"> | { error: string }> {
-  // A credit note may stand alone; whether morning agrees isn't documented
-  if (!inv.relatedInvoiceId) return {};
-  const rel = await db.invoice.findFirst({
-    where: { id: inv.relatedInvoiceId, userId },
-    select: { morningDocId: true, docType: true },
-  });
-  if (inv.docType === DOC_KINDS.CREDIT_NOTE.code) {
-    if (!rel?.morningDocId) return { error: "המסמך המקורי לא הופק ב-morning, אז אין מה לזכות." };
-    return { linkedDocumentIds: [rel.morningDocId], linkType: "cancel" };
-  }
-  // A receipt for a tax invoice: morning links the two and closes the invoice
-  if (rel?.morningDocId && rel.docType === DOC_KINDS.TAX_INVOICE.code) {
-    return { linkedDocumentIds: [rel.morningDocId], linkType: "link" };
-  }
-  return {};
-}
-
-/** The morning payload for a stored document, or why there can't be one. */
-async function payloadFor(
-  userId: string,
-  inv: InvoiceWithParts,
-): Promise<{ payload: Record<string, unknown> } | { error: string }> {
-  const draft = draftFromInvoice(inv);
-  if (!draft) return { error: "זו חשבונית מהגרסה הקודמת — מפיקים לה קבלה בכפתור ״הפקת קבלה ב-morning״." };
-  const owner = await db.user.findUnique({ where: { id: userId }, select: { vatLiable: true } });
-  const vatLiable = !!owner?.vatLiable;
-  const problems = [...documentProblems(draft, vatLiable), ...morningPaymentProblems(draft)];
-  if (problems.length) return { error: problems.join(" ") };
-  const link = await linkOptions(userId, inv);
-  if ("error" in link) return link;
-  return { payload: buildMorningDocumentPayload(draft, { vatLiable, ...link }) };
-}
-
-function loadDocument(userId: string, invoiceId: string) {
-  return db.invoice.findFirst({
-    where: { id: invoiceId, userId },
-    include: { items: true, payments: true, client: true },
-  });
-}
-
-/** morning's own PDF of a stored draft (base64), before issuing. */
-export async function previewStoredDocument(
-  userId: string,
-  invoiceId: string,
-): Promise<{ ok: true; pdfBase64: string } | { ok: false; error: string }> {
-  const creds = await getMorningCredentials(userId);
-  if (!creds) return { ok: false, error: "חשבון morning לא מחובר." };
-  const inv = await loadDocument(userId, invoiceId);
-  if (!inv) return { ok: false, error: "המסמך לא נמצא." };
-  const built = await payloadFor(userId, inv);
-  if ("error" in built) return { ok: false, error: built.error };
-  const res = await previewMorningDocument(userId, creds, built.payload);
-  return res.ok
-    ? { ok: true, pdfBase64: res.data }
-    : { ok: false, error: `התצוגה המקדימה של morning נכשלה: ${res.error}` };
-}
-
-/**
- * Issues a stored draft through morning and keeps what morning returns — on
- * the document, and on the meetings it covers (unless she already typed a
- * number there). Claimed first so a double tap can't issue twice; an attempt
- * that got no answer keeps the claim for two minutes and says to check
- * morning before trying again.
- */
-export async function issueStoredDocument(userId: string, invoiceId: string): Promise<IssueResult> {
-  const creds = await getMorningCredentials(userId);
-  if (!creds) return { ok: false, error: "חשבון morning לא מחובר — מחברים בהגדרות." };
-  const inv = await loadDocument(userId, invoiceId);
-  if (!inv) return { ok: false, error: "המסמך לא נמצא." };
-  if (inv.morningDocId) return { ok: false, error: "המסמך כבר הופק ב-morning." };
-  if (inv.status === "CANCELLED") return { ok: false, error: "לא מפיקים מסמך שבוטל." };
-
-  const built = await payloadFor(userId, inv);
-  if ("error" in built) return { ok: false, error: built.error };
-
-  // Before anything goes to morning, not after it issued
-  if (inv.draftSessionIds.length) {
-    const taken = await db.session.count({
-      where: { id: { in: inv.draftSessionIds }, userId, invoiceItem: { isNot: null } },
-    });
-    if (taken > 0) {
-      return { ok: false, error: "אחת הפגישות שסומנו כבר משויכת למסמך אחר. מסירים אותה מהטיוטה ומנסים שוב." };
-    }
-  }
-
-  const claim = await db.invoice.updateMany({
-    where: {
-      id: invoiceId,
-      userId,
-      morningDocId: null,
-      OR: [{ morningIssuedAt: null }, { morningIssuedAt: { lt: new Date(Date.now() - ISSUE_CLAIM_MS) } }],
-    },
-    data: { morningIssuedAt: new Date() },
-  });
-  if (claim.count === 0) {
-    return {
-      ok: false,
-      error: "ההפקה כבר בתהליך. בדקו ב-morning אם המסמך נוצר, ונסו שוב בעוד שתי דקות אם לא.",
-    };
-  }
-
-  const res = await createMorningDocument(userId, creds, built.payload);
-  if (!res.ok) {
-    if (!res.uncertain) {
-      await db.invoice.updateMany({ where: { id: invoiceId, userId }, data: { morningIssuedAt: null } });
-      return { ok: false, error: `morning לא הפיק את המסמך: ${res.error}` };
-    }
-    return {
-      ok: false,
-      uncertain: true,
-      error:
-        "לא התקבלה תשובה מ-morning, וייתכן שהמסמך בכל זאת נוצר. בדקו ב-morning לפני ניסיון נוסף (אפשר לנסות שוב בעוד שתי דקות).",
-    };
-  }
-
-  const number = res.data.number != null ? String(res.data.number) : null;
-  const url = morningDocUrl(res.data);
-  const total = Number(inv.total.toString());
-  const paid = Number(inv.amountPaid.toString());
-  await db.$transaction(async (tx) => {
-    await tx.invoice.update({
-      where: { id: invoiceId },
-      data: {
-        morningDocId: res.data.id,
-        morningDocNumber: number,
-        morningDocUrl: url,
-        morningIssuedAt: new Date(),
-        status:
-          inv.docType === DOC_KINDS.CREDIT_NOTE.code
-            ? "SENT"
-            : computeInvoiceStatus(inv.status === "DRAFT" ? "SENT" : inv.status, paid, total),
-      },
-    });
-    await linkDraftSessions(tx, userId, inv, number, url);
-    await applyCreditNote(tx, userId, inv);
-  });
-  return { ok: true, number, url };
-}
-
 /**
  * Issued tax invoices a credit note can still cancel, newest first: the same
  * test as the "ביטול בחשבונית זיכוי" button on the document page. `exceptCreditId`
@@ -353,7 +193,7 @@ export async function loadCreditableInvoices(userId: string, exceptCreditId?: st
     where: {
       userId,
       docType: { in: [DOC_KINDS.TAX_INVOICE.code, DOC_KINDS.TAX_INVOICE_RECEIPT.code] },
-      morningDocId: { not: null },
+      OR: [{ morningDocId: { not: null } }, { morningDocNumber: { not: null } }],
       status: { not: "CANCELLED" },
     },
     orderBy: [{ issueDate: "desc" }, { number: "desc" }],

@@ -8,10 +8,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth, unstable_update } from "@/auth";
 import { db } from "@/lib/db";
-import { encryptSecret } from "@/lib/crypto";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
-import { getMorningCredentials, testMorningConnection } from "@/lib/morning";
-import { clearMorningCredentials, saveMorningCredentials } from "@/lib/morning-credentials";
 import bcrypt from "bcryptjs";
 import { rateLimit } from "@/lib/rate-limit";
 import { logAudit } from "@/lib/audit";
@@ -313,79 +310,6 @@ export async function sendSetPasswordLinkAction(
   return { sent: true };
 }
 
-export type MorningSettingsState = {
-  error?: string;
-  saved?: boolean;
-  connectionOk?: boolean;
-} | null;
-
-export async function saveMorningSettingsAction(
-  _: MorningSettingsState,
-  formData: FormData,
-): Promise<MorningSettingsState> {
-  const userId = await requireUserId();
-  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
-
-  const keyId = String(formData.get("morningApiKeyId") ?? "").trim();
-  const secret = String(formData.get("morningApiSecret") ?? "").trim();
-  const sandbox = formData.get("morningSandbox") === "on";
-  const docTypeRaw = Number(formData.get("morningDocType") ?? 400);
-  // The type "מסמך חדש" starts on: 400 קבלה, 320 חשבונית מס/קבלה, 305 חשבונית מס
-  const docType = docTypeRaw === 320 || docTypeRaw === 305 ? docTypeRaw : 400;
-
-  // No new keys entered — update preferences on the existing connection
-  if (!keyId && !secret) {
-    const existing = await getMorningCredentials(userId);
-    if (!existing) {
-      return { error: "יש להזין גם מזהה מפתח (ID) וגם מפתח סודי (Secret)" };
-    }
-    if (existing.sandbox !== sandbox) {
-      // Environment changed — the stored keys must be valid there
-      const retest = await testMorningConnection(userId, { ...existing, sandbox });
-      if (!retest.ok) {
-        return {
-          error: `המפתחות השמורים לא תקפים בסביבה שנבחרה — יש להזין מפתחות מתאימים. (${retest.error})`,
-        };
-      }
-    }
-    await db.user.update({
-      where: { id: userId },
-      data: { morningSandbox: sandbox, morningDocType: docType },
-    });
-    revalidatePath("/settings");
-    return { saved: true, connectionOk: true };
-  }
-
-  if (!keyId || !secret) {
-    return { error: "יש להזין גם מזהה מפתח (ID) וגם מפתח סודי (Secret)" };
-  }
-
-  // Verify the credentials against Morning before saving
-  const creds = { keyId, secret, sandbox, source: "MANUAL" as const };
-  const test = await testMorningConnection(userId, creds);
-  if (!test.ok) {
-    const envHint = test.error.includes("401")
-      ? sandbox
-        ? " שימו לב: מפתחות מהחשבון האמיתי לא עובדים מול Sandbox — בטלו את הסימון של סביבת הניסיון ונסו שוב."
-        : " שימו לב: מפתחות של חשבון Sandbox עובדים רק כשסביבת הניסיון מסומנת."
-      : "";
-    return {
-      error: `החיבור ל-morning נכשל — בדקו את המפתחות. (${test.error})${envHint}`,
-    };
-  }
-
-  await saveMorningCredentials(userId, creds, { morningDocType: docType });
-
-  revalidatePath("/settings");
-  return { saved: true, connectionOk: true };
-}
-
-export async function disconnectMorningAction() {
-  const userId = await requireUserId();
-  await clearMorningCredentials(userId);
-  revalidatePath("/settings");
-}
-
 /**
  * Settings → ניתוק אוטומטי. Saved on the account (the browser timer reads it
  * from the layout) and copied into the current session token, whose clock the
@@ -431,9 +355,21 @@ export async function updateDocumentDefaultsAction(
     docRounding: formData.get("docRounding") === "on",
     vatLiable: owner?.vatLiable,
   });
+  // The type "מסמך חדש" starts on: 400 קבלה, 320 חשבונית מס/קבלה, 305 חשבונית מס.
+  // Sent only to a VAT-liable business (an exempt one issues receipts only).
+  const rawType = formData.get("defaultDocType");
+  const typeCode = Number(rawType);
+  const defaultDocType =
+    rawType === null ? undefined : typeCode === 320 || typeCode === 305 ? typeCode : 400;
   await db.user.update({
     where: { id: userId },
-    data: { docCurrency: d.currency, docLang: d.lang, docVatType: d.vatType, docRounding: d.rounding },
+    data: {
+      docCurrency: d.currency,
+      docLang: d.lang,
+      docVatType: d.vatType,
+      docRounding: d.rounding,
+      ...(defaultDocType !== undefined ? { defaultDocType } : {}),
+    },
   });
   revalidatePath("/settings");
   revalidatePath("/invoices/new");
