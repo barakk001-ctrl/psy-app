@@ -86,7 +86,7 @@ export function planLabel(id: string | null | undefined): string {
 /** Everything is in every plan — the plans differ only in how you pay. */
 export const PLAN_FEATURES: string[] = [
   "יומן פגישות עם פגישות קבועות (כל שבוע / כל שבועיים) ומועדי ישראל",
-  "תיק לכל מטופל/ת: פרטים, היסטוריית פגישות ומסמכים",
+  "תיק לכל לקוח/ה: פרטים, היסטוריית פגישות ומסמכים",
   "סיכומי פגישות מוצפנים, עם יומן גישה לרשומות",
   "מעקב תשלומים לכל פגישה ורישום מספרי המסמכים מ-morning",
   "רשימת המתנה, משימות ותזכורות בוואטסאפ בלחיצה",

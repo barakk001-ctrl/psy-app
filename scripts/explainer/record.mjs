@@ -184,7 +184,7 @@ await sleep(3000);
 
 // ── Follow-up lists ──────────────────────────────────────────────────────────
 await jump("/document");
-caption("תיעוד פגישות", "מה חסר בסיכומים, עם סינון לפי מטופל/ת, סטטוס ותקופה");
+caption("תיעוד פגישות", "מה חסר בסיכומים, עם סינון לפי לקוח/ה, סטטוס ותקופה");
 await moveTo(600, 300);
 await sleep(1500);
 await wheel(190, 700);
@@ -228,12 +228,17 @@ await sleep(5200);
 // ── Security ─────────────────────────────────────────────────────────────────
 await cut(() => page.evaluate(() => scrollTo(0, 0)));
 await nav("/settings");
+// The settings tabs, then the security one
+caption("פרטיות ואבטחה", "סיכומים מוצפנים, שרתים באירופה, גיבוי יומי ויומן גישה");
+await moveTo(700, 300);
+await sleep(700);
+await clickOn('a[href="/settings?tab=security"]');
+await sleep(600);
 await cut(async () => {
   const audit = await byText("main h2, main h3", "יומן גישה לרשומות");
   if (audit) await page.evaluate((e) => e.scrollIntoView({ block: "start", behavior: "instant" }), audit);
   await page.evaluate(() => scrollBy(0, -90));
 });
-caption("פרטיות ואבטחה", "סיכומים מוצפנים, שרתים באירופה, גיבוי יומי ויומן גישה");
 await moveTo(600, 300);
 await sleep(4800);
 

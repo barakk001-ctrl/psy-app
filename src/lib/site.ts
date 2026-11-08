@@ -7,7 +7,7 @@ export const SITE_NAME = "מרפאה אישית";
 
 export const SITE_TITLE = "מרפאה אישית — מערכת לניהול קליניקה למטפלים עצמאיים";
 export const SITE_DESCRIPTION =
-  "יומן פגישות, תיקי מטופלים, סיכומים מוצפנים ומעקב תשלומים, בעברית, בטלפון ובמחשב. 30 יום חינם, בלי כרטיס אשראי.";
+  "יומן פגישות, תיקי לקוחות, סיכומים מוצפנים ומעקב תשלומים, בעברית, בטלפון ובמחשב. 30 יום חינם, בלי כרטיס אשראי.";
 
 /** Link-preview image, 1200x630. Under /icons, which the middleware leaves public. */
 export const OG_IMAGE = "/icons/og-image.png";

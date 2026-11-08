@@ -15,7 +15,7 @@ const at = (dayOffset, h, m = 0) => { const n = new Date(Date.now() + 2 * 360000
   const user = await db.user.create({ data: {
     email: "demo@demo.co.il", name: "נועה כהן-דמו", hashedPassword: await bcrypt.hash("Demo-pass-2026", 10), emailVerifiedAt: new Date(),
     agreementVersion: "draft-2026-10", agreementAcceptedAt: new Date(), trialEndsAt: new Date(Date.now() + 21 * DAY),
-    showHolidays: true, vatLiable: true, businessName: "קליניקה לדוגמה", phone: "0501234567",
+    showHolidays: true, vatLiable: true, businessName: "קליניקה לדוגמה", phone: "0501234567", onboardingCompletedAt: new Date(),
   } });
   const types = [["טיפול פרטני", "#5C7559"], ["טיפול זוגי", "#7A5C8E"], ["הדרכת הורים", "#4F6F94"], ["אבחון", "#B5654A"]];
   for (const [name, color] of types) await db.meetingType.create({ data: { userId: user.id, name, color } });
