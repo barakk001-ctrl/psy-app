@@ -7,7 +7,7 @@ import { ImportedDocsPanel } from "@/components/invoices/imported-docs-panel";
 import { DocKindSquares } from "@/components/invoices/doc-kind-squares";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { clinicDay } from "@/lib/billing-doc-data";
-import { draftsWhere, parseDocListFilters } from "@/lib/income-doc-list";
+import { LISTED_DOCUMENT, draftsWhere, parseDocListFilters } from "@/lib/income-doc-list";
 import { loadDocMonths, loadFilteredDocuments } from "@/lib/income-doc-rows";
 
 export const metadata = { title: "מסמכי הכנסות — מרפאה אישית" };
@@ -29,7 +29,7 @@ export default async function InvoicesPage({
     loadFilteredDocuments(userId, filters, today),
     loadDocMonths(draftsWhere(userId)),
     db.invoice.count({ where: draftsWhere(userId) }),
-    db.invoice.count({ where: { userId, OR: [{ docType: null }, { morningDocNumber: { not: null } }] } }),
+    db.invoice.count({ where: { userId, ...LISTED_DOCUMENT } }),
   ]);
 
   const owner = await db.user.findUnique({

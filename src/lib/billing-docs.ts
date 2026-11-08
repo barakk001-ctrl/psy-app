@@ -123,19 +123,57 @@ export function defaultKind(vatLiable: boolean, preferredCode: number | null | u
   return (allowed.find((k) => k.code === preferredCode) ?? allowed[0]).kind;
 }
 
+// ── Issued or not: the one test ─────────────────────────────────────────────
+//
+// Every "is this document issued?" decision goes through here (PR 1.1 of
+// docs/accounting/implementation-plan.md), so that documents the app issues
+// itself later plug in by changing these and nothing else.
+
+/** The columns the issued test reads. */
+export type IssuedFields = { morningDocId: string | null; morningDocNumber: string | null };
+
+/**
+ * Issued = morning gave it an id (before 2026-11-08) or the number of the
+ * document issued elsewhere was recorded. Says nothing about the type: an
+ * older app invoice (`docType` null) with a morning id had a receipt issued
+ * for it by morning.
+ */
+export function isIssuedDocument(doc: IssuedFields): boolean {
+  return !!(doc.morningDocId || doc.morningDocNumber);
+}
+
+/** The query form of isIssuedDocument. Goes under `AND`, since it is an `OR`. */
+export const ISSUED_DOCUMENT = {
+  OR: [{ morningDocId: { not: null } }, { morningDocNumber: { not: null } }],
+};
+
+/** The query form of !isIssuedDocument (spread into a where). */
+export const NOT_ISSUED = { morningDocId: null, morningDocNumber: null } as const;
+
+/**
+ * The document carries a printed number (`morningDocNumber`). What the lists,
+ * the document page and the PDF show as "issued", and what cancelling an
+ * older-style row checks. Narrower than isIssuedDocument only for a row with
+ * a morning id and no number, which morning issuing could in principle leave;
+ * kept apart so that consolidating the checks changed no behaviour.
+ */
+export function hasDocumentNumber(doc: { morningDocNumber: string | null }): boolean {
+  return !!doc.morningDocNumber;
+}
+
+/** The query form of hasDocumentNumber. */
+export const HAS_DOCUMENT_NUMBER = { morningDocNumber: { not: null } };
+
+/** The query form of !hasDocumentNumber (spread into a where). */
+export const NO_DOCUMENT_NUMBER = { morningDocNumber: null } as const;
+
 /**
  * A credit note can cancel an issued tax invoice (305 / 320) that isn't
- * cancelled. Issued = morning gave it an id (before 2026-11-08) or the number
- * of the document issued elsewhere was recorded.
+ * cancelled.
  */
-export function canCreditNote(doc: {
-  docType: number | null;
-  morningDocId: string | null;
-  morningDocNumber: string | null;
-  status: string;
-}): boolean {
+export function canCreditNote(doc: IssuedFields & { docType: number | null; status: string }): boolean {
   return (
-    !!(doc.morningDocId || doc.morningDocNumber) &&
+    isIssuedDocument(doc) &&
     (doc.docType === DOC_KINDS.TAX_INVOICE.code ||
       doc.docType === DOC_KINDS.TAX_INVOICE_RECEIPT.code) &&
     doc.status !== "CANCELLED"
@@ -143,29 +181,45 @@ export function canCreditNote(doc: {
 }
 
 /**
- * A "מסמך חדש" document counts as money only once it is issued: morning gave
- * it an id (before 2026-11-08), or the number of the document issued
- * elsewhere was recorded. Older app invoices have no
- * issued state and count as they always did.
+ * A "מסמך חדש" document counts as money only once it is issued. Older app
+ * invoices have no issued state and count as they always did.
  */
-export function isUnissuedDocument(doc: {
-  docType: number | null;
-  morningDocId: string | null;
-  morningDocNumber: string | null;
-}): boolean {
-  return doc.docType != null && !doc.morningDocId && !doc.morningDocNumber;
+export function isUnissuedDocument(doc: IssuedFields & { docType: number | null }): boolean {
+  return doc.docType != null && !isIssuedDocument(doc);
 }
 
-/** The same test for a query. Goes under `AND`, since it holds an `OR` of its own. */
+/** The query form of !isUnissuedDocument. Goes under `AND`, since it holds an `OR` of its own. */
 export const COUNTS_AS_MONEY = {
-  OR: [{ docType: null }, { morningDocId: { not: null } }, { morningDocNumber: { not: null } }],
+  OR: [{ docType: null }, ...ISSUED_DOCUMENT.OR],
 };
 
 /** The query form of isUnissuedDocument. */
 export const UNISSUED_DOCUMENT = {
   docType: { not: null },
-  morningDocId: null,
-  morningDocNumber: null,
+  ...NOT_ISSUED,
+};
+
+// ── Meetings and their document numbers ─────────────────────────────────────
+
+/** A meeting's number fields (one per type, names kept from the morning era). */
+export type SessionNumberFields = {
+  morningDocNumber: string | null;
+  morningReceiptNumber: string | null;
+  morningInvoiceReceiptNumber: string | null;
+};
+
+/** A document number was typed on the meeting or written there when a document got its number. */
+export function sessionHasDocumentNumber(s: SessionNumberFields): boolean {
+  return !!(s.morningDocNumber || s.morningReceiptNumber || s.morningInvoiceReceiptNumber);
+}
+
+/** The query form of sessionHasDocumentNumber. Goes under `AND`, since it is an `OR`. */
+export const SESSION_HAS_DOCUMENT_NUMBER = {
+  OR: [
+    { morningDocNumber: { not: null } },
+    { morningReceiptNumber: { not: null } },
+    { morningInvoiceReceiptNumber: { not: null } },
+  ],
 };
 
 /**

@@ -11,12 +11,14 @@ import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { computeInvoiceStatus } from "@/lib/invoice-status";
 import {
   DOC_KINDS,
+  NOT_ISSUED,
   UNLINKED_SESSION,
   agorotToDecimalString,
   canCreditNote,
   documentProblems,
   documentTotals,
   draftSaveProblems,
+  isIssuedDocument,
   joinEmails,
   lineAgorot,
   parseAgorot,
@@ -282,8 +284,7 @@ export async function saveDocumentAction(json: string): Promise<SaveDocumentResu
         id: draftId,
         userId,
         docType: { not: null },
-        morningDocId: null,
-        morningDocNumber: null,
+        ...NOT_ISSUED,
         status: { not: "CANCELLED" },
         AND: [
           { OR: [{ relatedInvoiceId: null }, { docType: DOC_KINDS.CREDIT_NOTE.code }] },
@@ -380,7 +381,7 @@ export async function creditNoteAction(
     },
     select: { id: true, morningDocId: true, morningDocNumber: true },
   });
-  if (existing?.morningDocId || existing?.morningDocNumber) {
+  if (existing && isIssuedDocument(existing)) {
     return { error: "כבר קיימת חשבונית זיכוי למסמך הזה." };
   }
 
@@ -453,6 +454,8 @@ export async function recordDocumentNumberAction(
     include: { items: true, payments: true, client: true },
   });
   if (!inv || inv.docType == null) return { error: "המסמך לא נמצא." };
+  // Only morning's id blocks it here: the page offers recording only while
+  // there's no number (hasDocumentNumber), and this keeps exactly that rule
   if (inv.morningDocId) return { error: "למסמך הזה כבר שמור מספר." };
   if (inv.status === "CANCELLED") return { error: "המסמך בוטל, ולכן לא רושמים לו מספר." };
   // From here on it counts as money: it has to be a whole document first

@@ -12,7 +12,7 @@ import { sendEmail } from "@/lib/email";
 import { buildInvoiceEmail, renderInvoicePdfBuffer } from "@/lib/invoice-email";
 import { loadInvoicePdfData } from "@/lib/invoice-pdf-data";
 import { computeInvoiceStatus } from "@/lib/invoice-status";
-import { agorotToDecimalString, parseAgorot } from "@/lib/billing-docs";
+import { agorotToDecimalString, hasDocumentNumber, parseAgorot } from "@/lib/billing-docs";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -50,7 +50,7 @@ export async function cancelInvoiceAction(formData: FormData) {
   });
   if (!inv || inv.status === "CANCELLED") return;
   // An issued document is cancelled where it was issued (credit note / ביטול), not here
-  if (inv.docType != null && inv.morningDocNumber) return;
+  if (inv.docType != null && hasDocumentNumber(inv)) return;
 
   await db.$transaction(async (tx) => {
     await tx.invoice.update({ where: { id, userId }, data: { status: "CANCELLED" } });

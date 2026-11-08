@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { clientIdNumber } from "@/lib/sensitive-fields";
 import type { InvoicePDFData } from "@/components/invoices/invoice-pdf";
-import { documentClientName, docTypeLabel } from "@/lib/billing-docs";
+import { documentClientName, docTypeLabel, hasDocumentNumber } from "@/lib/billing-docs";
 import { documentLogo, pdfLogo } from "@/lib/branding";
 import { draftFromInvoice } from "@/lib/billing-doc-data";
 import { DOC_BUSINESS_SELECT, docBusiness } from "@/lib/document-business";
@@ -112,7 +112,7 @@ export async function loadDocumentPdfData(
         signatureUrl: pdfLogo(business.signatureUrl ?? null),
       },
       number: inv.morningDocNumber,
-      status: inv.morningDocNumber ? "issued" : "draft",
+      status: hasDocumentNumber(inv) ? "issued" : "draft",
       producedAt: producedAtNow(),
     },
   };

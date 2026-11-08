@@ -6,6 +6,7 @@ import { PdfButton } from "@/components/ui/pdf-button";
 import {
   DOC_KINDS,
   canCreditNote,
+  hasDocumentNumber,
   documentClientName,
   documentCopyText,
   docKindByCode,
@@ -32,7 +33,7 @@ export async function DocumentView({
 }) {
   const info = docKindByCode(invoice.docType)!;
   const draft = draftFromInvoice(invoice)!;
-  const issued = !!invoice.morningDocNumber;
+  const issued = hasDocumentNumber(invoice);
   const cancelled = invoice.status === "CANCELLED";
 
   const [related, linkedToThis] = await Promise.all([

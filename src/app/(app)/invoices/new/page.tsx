@@ -5,7 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { DOC_BUSINESS_SELECT, docBusiness } from "@/lib/document-business";
 import { db } from "@/lib/db";
-import { creatableKinds, defaultKind, documentClientName, documentDefaults, docTypeLabel, DOC_KINDS, UNLINKED_SESSION, type DocKind } from "@/lib/billing-docs";
+import { creatableKinds, defaultKind, documentClientName, documentDefaults, docTypeLabel, DOC_KINDS, NOT_ISSUED, UNLINKED_SESSION, type DocKind } from "@/lib/billing-docs";
 import { clinicDay, draftFromInvoice, loadCreditableInvoices } from "@/lib/billing-doc-data";
 import { DocumentForm } from "@/components/invoices/document-form";
 
@@ -43,8 +43,7 @@ export default async function NewDocumentPage({
           id: params.draft,
           userId,
           docType: { not: null },
-          morningDocId: null,
-          morningDocNumber: null,
+          ...NOT_ISSUED,
           status: { not: "CANCELLED" },
           OR: [{ relatedInvoiceId: null }, { docType: DOC_KINDS.CREDIT_NOTE.code }],
         },

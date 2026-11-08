@@ -24,7 +24,7 @@ import { NoteEditor } from "@/components/sessions/note-editor";
 import { noteVersion } from "@/lib/note-autosave";
 import { DeleteSeriesButton } from "@/components/sessions/delete-series-button";
 import { SessionBillingCard } from "@/components/sessions/session-billing-card";
-import { docTypeLabel } from "@/lib/billing-docs";
+import { docTypeLabel, hasDocumentNumber } from "@/lib/billing-docs";
 import { DeleteSessionChoice } from "@/components/sessions/delete-session-choice";
 import { sessionScopeInfoAction } from "@/server/actions/sessions";
 import { SessionFilesCard } from "@/components/sessions/session-files-card";
@@ -294,7 +294,7 @@ export default async function SessionDetailPage({
                   className="text-ink-soft hover:text-sage-600 block"
                 >
                   {sess.invoiceItem.invoice.docType != null
-                    ? `${docTypeLabel(sess.invoiceItem.invoice.docType)}${sess.invoiceItem.invoice.morningDocNumber ? "" : " (טיוטה)"}`
+                    ? `${docTypeLabel(sess.invoiceItem.invoice.docType)}${hasDocumentNumber(sess.invoiceItem.invoice) ? "" : " (טיוטה)"}`
                     : `חשבונית #${String(sess.invoiceItem.invoice.number).padStart(4, "0")}`}
                 </MaybeLink>
                 {sess.invoiceItem.invoice.morningDocNumber && (

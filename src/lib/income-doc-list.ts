@@ -2,7 +2,7 @@
 // URL so back and refresh keep them. Pure and tested; the page does the DB call.
 
 import type { Prisma } from "@prisma/client";
-import { DOC_KINDS, docKindSquares } from "@/lib/billing-docs";
+import { DOC_KINDS, HAS_DOCUMENT_NUMBER, NO_DOCUMENT_NUMBER, docKindSquares } from "@/lib/billing-docs";
 
 export type DocView = "documents" | "drafts";
 
@@ -89,8 +89,13 @@ const dayDate = (day: string) => new Date(`${day}T00:00:00.000Z`);
  */
 const DRAFT_WHERE: Prisma.InvoiceWhereInput = {
   docType: { not: null },
-  morningDocNumber: null,
+  ...NO_DOCUMENT_NUMBER,
   status: { not: "CANCELLED" },
+};
+
+/** What the documents tab lists: older app invoices as they are, and documents with a number. */
+export const LISTED_DOCUMENT: Prisma.InvoiceWhereInput = {
+  OR: [{ docType: null }, HAS_DOCUMENT_NUMBER],
 };
 
 export function draftsWhere(userId: string): Prisma.InvoiceWhereInput {
@@ -120,7 +125,7 @@ export function docListWhere(userId: string, f: DocListFilters, today: string): 
   return {
     userId,
     // Older app invoices have no type and are documents as they are
-    OR: [{ docType: null }, { morningDocNumber: { not: null } }],
+    ...LISTED_DOCUMENT,
     ...(f.type !== "all" ? { docType: Number(f.type) } : {}),
     ...(status ? { status } : {}),
     ...(from || to

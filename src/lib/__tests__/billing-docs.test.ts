@@ -25,7 +25,19 @@ import {
   PAYMENT_KINDS,
   PAYMENT_KIND_LABELS,
   type DocumentDraft,
+  COUNTS_AS_MONEY,
+  HAS_DOCUMENT_NUMBER,
+  ISSUED_DOCUMENT,
+  NOT_ISSUED,
+  NO_DOCUMENT_NUMBER,
+  SESSION_HAS_DOCUMENT_NUMBER,
+  UNISSUED_DOCUMENT,
+  UNLINKED_SESSION,
+  hasDocumentNumber,
+  isIssuedDocument,
+  sessionHasDocumentNumber,
 } from "@/lib/billing-docs";
+import { LISTED_DOCUMENT } from "@/lib/income-doc-list";
 
 const base: DocumentDraft = {
   kind: "TAX_INVOICE_RECEIPT",
@@ -331,5 +343,97 @@ describe("when a document counts as money", () => {
   });
   it("leaves older app invoices alone", () => {
     expect(isUnissuedDocument({ docType: null, morningDocId: null, morningDocNumber: null })).toBe(false);
+  });
+});
+
+// ── PR 1.1: one "issued" predicate ─────────────────────────────────────────
+
+/** Enough of Prisma's where semantics to run the fragments against plain rows. */
+type Where = Record<string, unknown>;
+function matches(where: Where, row: Record<string, unknown>): boolean {
+  return Object.entries(where).every(([key, cond]) => {
+    if (key === "OR") return (cond as Where[]).some((w) => matches(w, row));
+    if (key === "AND") return (cond as Where[]).every((w) => matches(w, row));
+    const v = row[key];
+    if (cond === null) return v === null;
+    if (typeof cond === "object" && cond && "not" in cond) {
+      const not = (cond as { not: unknown }).not;
+      return not === null ? v !== null : v !== not;
+    }
+    return v === cond;
+  });
+}
+
+describe("the issued predicate, for each kind of document", () => {
+  const none = { morningDocId: null, morningDocNumber: null };
+  // Every kind a row can be today
+  const kinds = {
+    olderInvoice: { docType: null, ...none, status: "SENT" },
+    olderInvoiceWithMorningReceipt: { docType: null, morningDocId: "gi-1", morningDocNumber: null, status: "PAID" },
+    legacyMorningIssued: { docType: 305, morningDocId: "gi-2", morningDocNumber: "1001", status: "SENT" },
+    legacyMorningIdOnly: { docType: 320, morningDocId: "gi-3", morningDocNumber: null, status: "PAID" },
+    typedNumber: { docType: 320, morningDocId: null, morningDocNumber: "20500", status: "PAID" },
+    draft: { docType: 305, ...none, status: "DRAFT" },
+    cancelledDraft: { docType: 400, ...none, status: "CANCELLED" },
+    cancelledIssued: { docType: 305, morningDocId: null, morningDocNumber: "20017", status: "CANCELLED" },
+    creditNoteDraft: { docType: 330, ...none, status: "DRAFT" },
+    creditNoteIssued: { docType: 330, morningDocId: null, morningDocNumber: "30001", status: "SENT" },
+  } as const;
+  type Kind = keyof typeof kinds;
+
+  const expected: Record<Kind, { issued: boolean; counts: boolean; numbered: boolean; credit: boolean; listed: boolean }> = {
+    olderInvoice: { issued: false, counts: true, numbered: false, credit: false, listed: true },
+    olderInvoiceWithMorningReceipt: { issued: true, counts: true, numbered: false, credit: false, listed: true },
+    legacyMorningIssued: { issued: true, counts: true, numbered: true, credit: true, listed: true },
+    legacyMorningIdOnly: { issued: true, counts: true, numbered: false, credit: true, listed: false },
+    typedNumber: { issued: true, counts: true, numbered: true, credit: true, listed: true },
+    draft: { issued: false, counts: false, numbered: false, credit: false, listed: false },
+    cancelledDraft: { issued: false, counts: false, numbered: false, credit: false, listed: false },
+    cancelledIssued: { issued: true, counts: true, numbered: true, credit: false, listed: true },
+    creditNoteDraft: { issued: false, counts: false, numbered: false, credit: false, listed: false },
+    creditNoteIssued: { issued: true, counts: true, numbered: true, credit: false, listed: true },
+  };
+
+  it.each(Object.keys(kinds) as Kind[])("%s", (k) => {
+    const row = kinds[k];
+    const e = expected[k];
+    expect(isIssuedDocument(row)).toBe(e.issued);
+    expect(isUnissuedDocument(row)).toBe(!e.counts);
+    expect(hasDocumentNumber(row)).toBe(e.numbered);
+    expect(canCreditNote(row)).toBe(e.credit);
+    // The query forms agree with the in-memory ones on every kind
+    expect(matches(ISSUED_DOCUMENT, row)).toBe(e.issued);
+    expect(matches(NOT_ISSUED, row)).toBe(!e.issued);
+    expect(matches(COUNTS_AS_MONEY, row)).toBe(e.counts);
+    expect(matches(UNISSUED_DOCUMENT, row)).toBe(!e.counts);
+    expect(matches(HAS_DOCUMENT_NUMBER, row)).toBe(e.numbered);
+    expect(matches(NO_DOCUMENT_NUMBER, row)).toBe(!e.numbered);
+    expect(matches(LISTED_DOCUMENT, row)).toBe(e.listed);
+  });
+
+  it("builds exactly the queries the 19 hand-written checks did", () => {
+    expect(COUNTS_AS_MONEY).toEqual({
+      OR: [{ docType: null }, { morningDocId: { not: null } }, { morningDocNumber: { not: null } }],
+    });
+    expect(UNISSUED_DOCUMENT).toEqual({ docType: { not: null }, morningDocId: null, morningDocNumber: null });
+    expect(ISSUED_DOCUMENT).toEqual({ OR: [{ morningDocId: { not: null } }, { morningDocNumber: { not: null } }] });
+    expect(NOT_ISSUED).toEqual({ morningDocId: null, morningDocNumber: null });
+    expect(LISTED_DOCUMENT).toEqual({ OR: [{ docType: null }, { morningDocNumber: { not: null } }] });
+    expect(NO_DOCUMENT_NUMBER).toEqual({ morningDocNumber: null });
+  });
+});
+
+describe("a meeting's document numbers", () => {
+  const empty = { morningDocNumber: null, morningReceiptNumber: null, morningInvoiceReceiptNumber: null };
+  it.each([
+    ["none", empty, false],
+    ["חשבונית מס", { ...empty, morningDocNumber: "1" }, true],
+    ["קבלה", { ...empty, morningReceiptNumber: "2" }, true],
+    ["חשבונית מס/קבלה", { ...empty, morningInvoiceReceiptNumber: "3" }, true],
+  ] as const)("%s", (_name, s, has) => {
+    expect(sessionHasDocumentNumber(s)).toBe(has);
+    expect(matches(SESSION_HAS_DOCUMENT_NUMBER, s)).toBe(has);
+    // "מסמך חדש" suggests a meeting only without a number (and without a document)
+    expect(matches(UNLINKED_SESSION, { ...s, invoiceItem: null })).toBe(!has);
   });
 });

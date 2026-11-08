@@ -6,6 +6,8 @@
 // payment record, an app invoice or a document number (morningDoc* columns) holds clinical
 // or billing records and is kept (cancelled instead, so no reminder goes out).
 
+import { sessionHasDocumentNumber } from "@/lib/billing-docs";
+
 export type BulkDeleteCandidate = {
   id: string;
   startsAt: Date;
@@ -37,7 +39,7 @@ export function keepReasons(s: BulkDeleteCandidate): KeepReason[] {
     reasons.push("payment");
   }
   if (s.hasInvoiceItem) reasons.push("invoice");
-  if (s.morningDocNumber || s.morningReceiptNumber || s.morningInvoiceReceiptNumber) {
+  if (sessionHasDocumentNumber(s)) {
     reasons.push("morning");
   }
   return reasons;

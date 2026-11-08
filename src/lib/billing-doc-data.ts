@@ -7,6 +7,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
   DOC_KINDS,
+  ISSUED_DOCUMENT,
   canCreditNote,
   docKindByCode,
   documentClientName,
@@ -193,7 +194,7 @@ export async function loadCreditableInvoices(userId: string, exceptCreditId?: st
     where: {
       userId,
       docType: { in: [DOC_KINDS.TAX_INVOICE.code, DOC_KINDS.TAX_INVOICE_RECEIPT.code] },
-      OR: [{ morningDocId: { not: null } }, { morningDocNumber: { not: null } }],
+      AND: [ISSUED_DOCUMENT],
       status: { not: "CANCELLED" },
     },
     orderBy: [{ issueDate: "desc" }, { number: "desc" }],

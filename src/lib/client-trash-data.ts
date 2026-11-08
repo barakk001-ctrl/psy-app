@@ -4,6 +4,7 @@
 // purge, which runs for every practice and logs each purge under its owner).
 
 import { dbAll } from "@/lib/db";
+import { SESSION_HAS_DOCUMENT_NUMBER } from "@/lib/billing-docs";
 import { logAudit } from "@/lib/audit";
 import { purgeCutoff, type ClientDeletionFacts } from "@/lib/client-trash";
 
@@ -31,14 +32,7 @@ export async function loadDeletionFacts(
         where: { ...mine, OR: [{ paymentStatus: "PAID" }, { paidAmount: { not: null } }] },
       }),
       dbAll.session.count({
-        where: {
-          ...mine,
-          OR: [
-            { morningDocNumber: { not: null } },
-            { morningReceiptNumber: { not: null } },
-            { morningInvoiceReceiptNumber: { not: null } },
-          ],
-        },
+        where: { ...mine, ...SESSION_HAS_DOCUMENT_NUMBER },
       }),
       dbAll.morningDocument.count({ where: mine }),
     ]);
