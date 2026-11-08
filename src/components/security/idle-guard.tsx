@@ -13,7 +13,7 @@ import {
   type IdlePhase,
   type IdleReason,
 } from "@/lib/idle-timeout";
-import { dirtyWork, saveDirtyWork } from "@/lib/unsaved-work";
+import { dirtyWork, markLeavingPage, saveDirtyWork } from "@/lib/unsaved-work";
 
 // Automatic sign-out after inactivity — the browser half (rules and the
 // server half: src/lib/idle-timeout.ts).
@@ -215,6 +215,7 @@ export function IdleGuard({
       } catch {
         // already signed out (another tab, or the server's own expiry)
       }
+      markLeavingPage();
       window.location.replace(reason === "manual" ? "/login" : `/login?reason=${reason}`);
     };
 

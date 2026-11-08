@@ -21,6 +21,7 @@ import { formatDateTime, formatTime, formatCurrency } from "@/lib/format";
 import { SessionStatusBadge } from "@/components/sessions/session-status-badge";
 import { SessionStatusActions } from "@/components/sessions/session-status-actions";
 import { NoteEditor } from "@/components/sessions/note-editor";
+import { noteVersion } from "@/lib/note-autosave";
 import { DeleteSeriesButton } from "@/components/sessions/delete-series-button";
 import { SessionBillingCard } from "@/components/sessions/session-billing-card";
 import { docTypeLabel } from "@/lib/billing-docs";
@@ -99,6 +100,7 @@ export default async function SessionDetailPage({
   // Decrypt server-side. The plaintext flows down to the NoteEditor client component
   // because the user already has authorization to read their own note.
   let initialNote = "";
+  let noteReadable = true;
   if (sess.note) {
     try {
       initialNote = decryptNote({
@@ -110,6 +112,7 @@ export default async function SessionDetailPage({
     } catch (err) {
       console.error("Failed to decrypt note", err);
       initialNote = "";
+      noteReadable = false;
     }
   }
 
@@ -173,7 +176,12 @@ export default async function SessionDetailPage({
               <CardTitle>סיכום הפגישה</CardTitle>
             </CardHeader>
             <CardContent>
-              <NoteEditor sessionId={sess.id} initialContent={initialNote} />
+              <NoteEditor
+                sessionId={sess.id}
+                initialContent={initialNote}
+                initialVersion={noteVersion(sess.note?.updatedAt)}
+                readable={noteReadable}
+              />
             </CardContent>
           </Card>
 

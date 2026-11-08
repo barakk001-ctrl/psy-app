@@ -16,6 +16,18 @@ export type UnsavedWork = {
 
 const registry = new Map<symbol, UnsavedWork>();
 
+// Set by the automatic sign-out just before it leaves the page, so an editor's
+// "leave this page?" prompt doesn't hold a signed-out screen open.
+let leaving = false;
+
+export function markLeavingPage(): void {
+  leaving = true;
+}
+
+export function isLeavingPage(): boolean {
+  return leaving;
+}
+
 /** Adds an entry; call the returned function to remove it. */
 export function registerUnsavedWork(work: UnsavedWork): () => void {
   const key = Symbol(work.label);
