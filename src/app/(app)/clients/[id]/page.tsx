@@ -20,6 +20,7 @@ import { parseCategory } from "@/lib/client-documents";
 import { tookPlace } from "@/lib/income";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { KEEP_REASON_LABELS, type KeepReason } from "@/lib/bulk-delete";
+import { documentsEnabled } from "@/lib/features";
 
 export const metadata = { title: "תיק לקוח/ה — מרפאה אישית" };
 
@@ -222,7 +223,8 @@ export default async function ClientDetailPage({
             <p className="text-sm text-ink-muted mt-1">
               <b className="text-ink">{past.length} פגישות התקיימו</b>
               {upcoming.length > 0 && <> · {upcoming.length} עתידיות</>} ·{" "}
-              {client._count.sessions} פגישות סה״כ · {client._count.invoices} חשבוניות
+              {client._count.sessions} פגישות סה״כ
+              {documentsEnabled() && <> · {client._count.invoices} חשבוניות</>}
               {client.intakeDate && <> · נפתח תיק ב-{formatDate(client.intakeDate)}</>}
             </p>
           </div>
@@ -234,11 +236,13 @@ export default async function ClientDetailPage({
               עריכה
             </Button>
           </Link>
-          <Link href={`/invoices/new?clientId=${client.id}`}>
-            <Button variant="secondary" size="sm">
-              חשבונית / קבלה
-            </Button>
-          </Link>
+          {documentsEnabled() && (
+            <Link href={`/invoices/new?clientId=${client.id}`}>
+              <Button variant="secondary" size="sm">
+                חשבונית / קבלה
+              </Button>
+            </Link>
+          )}
           <Link href={`/sessions/new?clientId=${client.id}`}>
             <Button size="sm">
               <CalIcon className="w-4 h-4" />

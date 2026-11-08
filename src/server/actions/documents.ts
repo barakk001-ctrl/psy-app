@@ -1,5 +1,7 @@
 "use server";
 
+import { documentsEnabled, DOCUMENTS_OFF_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -214,6 +216,8 @@ function revalidateDocument(id: string, clientId: string | null, sessionIds: (st
  */
 export async function saveDocumentAction(json: string): Promise<SaveDocumentResult> {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) return { error: DOCUMENTS_OFF_ERROR };
   if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const p = await parseDraft(userId, json, false);
   if (!p.ok) return p.result;
@@ -358,6 +362,8 @@ export async function creditNoteAction(
   invoiceId: string,
 ): Promise<{ error?: string; creditNoteId?: string }> {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) return { error: DOCUMENTS_OFF_ERROR };
   if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const orig = await db.invoice.findFirst({
     where: { id: invoiceId, userId },
@@ -437,6 +443,8 @@ export async function recordDocumentNumberAction(
   rawNumber: string,
 ): Promise<{ error?: string; saved?: boolean }> {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) return { error: DOCUMENTS_OFF_ERROR };
   if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const number = rawNumber.trim().slice(0, 30);
   if (!/^\d+$/.test(number)) return { error: "מספר המסמך הוא מספר (ספרות בלבד)." };

@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { HELP_ARTICLES, POPULAR_HELP_SLUGS, helpArticleBySlug } from "@/lib/help-articles";
+import { helpArticles, popularHelpSlugs } from "@/lib/help-articles";
 import { indexArticles, searchHelp, type HelpArticle, type HelpBlock } from "@/lib/help-search";
 import { SupportForm, type SupportUser } from "./support-form";
 
@@ -24,12 +24,12 @@ type Tab = "home" | "articles" | "contact";
 const RECENT_KEY = "help.recent";
 const RECENT_MAX = 5;
 
-function readRecent(): string[] {
+function readRecent(exists: (slug: string) => boolean): string[] {
   try {
     const raw = window.localStorage.getItem(RECENT_KEY);
     const list = raw ? (JSON.parse(raw) as unknown) : [];
     return Array.isArray(list)
-      ? list.filter((s): s is string => typeof s === "string" && !!helpArticleBySlug(s)).slice(0, RECENT_MAX)
+      ? list.filter((s): s is string => typeof s === "string" && exists(s)).slice(0, RECENT_MAX)
       : [];
   } catch {
     return [];
@@ -53,7 +53,14 @@ const FOCUSABLE =
  * on desktop, a full-height sheet on phones. Focus is trapped while open; Esc
  * closes it and returns focus to the button.
  */
-export function HelpWidget({ user }: { user: SupportUser }) {
+export function HelpWidget({ user, documents }: { user: SupportUser; documents: boolean }) {
+  // Without the income/expense document articles while documents are hidden
+  const articles = useMemo(() => helpArticles(documents), [documents]);
+  const popular = useMemo(() => popularHelpSlugs(documents), [documents]);
+  const helpArticleBySlug = useCallback(
+    (slug: string) => articles.find((a) => a.slug === slug),
+    [articles],
+  );
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("home");
@@ -68,7 +75,7 @@ export function HelpWidget({ user }: { user: SupportUser }) {
   const wasOpen = useRef(false);
   const titleId = useId();
 
-  const index = useMemo(() => indexArticles(HELP_ARTICLES), []);
+  const index = useMemo(() => indexArticles(articles), [articles]);
   const results = useMemo(() => searchHelp(query, index), [query, index]);
   const article = articleSlug ? helpArticleBySlug(articleSlug) : undefined;
 
@@ -96,7 +103,7 @@ export function HelpWidget({ user }: { user: SupportUser }) {
   // Close: give focus back to the "?" button.
   useEffect(() => {
     if (open) {
-      setRecent(readRecent());
+      setRecent(readRecent((slug) => !!helpArticleBySlug(slug)));
       const prev = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       panelRef.current?.focus();
@@ -109,7 +116,7 @@ export function HelpWidget({ user }: { user: SupportUser }) {
       wasOpen.current = false;
       fabRef.current?.focus();
     }
-  }, [open]);
+  }, [open, helpArticleBySlug]);
 
   // New view → back to the top
   useEffect(() => {
@@ -144,7 +151,7 @@ export function HelpWidget({ user }: { user: SupportUser }) {
 
   function openArticle(slug: string) {
     setArticleSlug(slug);
-    const next = [slug, ...readRecent().filter((s) => s !== slug)].slice(0, RECENT_MAX);
+    const next = [slug, ...readRecent((x) => !!helpArticleBySlug(x)).filter((s) => s !== slug)].slice(0, RECENT_MAX);
     writeRecent(next);
     setRecent(next);
   }
@@ -278,7 +285,7 @@ export function HelpWidget({ user }: { user: SupportUser }) {
                         )}
                         <ArticleList
                           title="מאמרים מומלצים"
-                          articles={POPULAR_HELP_SLUGS.map(helpArticleBySlug).filter(
+                          articles={popular.map(helpArticleBySlug).filter(
                             (a): a is HelpArticle => !!a && !recent.includes(a.slug),
                           )}
                           onOpen={openArticle}
@@ -300,7 +307,7 @@ export function HelpWidget({ user }: { user: SupportUser }) {
                         empty="לא נמצאו מאמרים. אפשר לנסח אחרת, או לשלוח לנו פנייה."
                       />
                     ) : (
-                      groupByCategory(HELP_ARTICLES).map(([category, list]) => (
+                      groupByCategory(articles).map(([category, list]) => (
                         <ArticleList key={category} title={category} articles={list} onOpen={openArticle} />
                       ))
                     )}

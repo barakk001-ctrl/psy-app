@@ -15,6 +15,7 @@ import { fromZonedDateTimeLocal, toZonedDateTimeLocal } from "@/lib/timezone";
 import { expectedIncome, sumAmounts } from "@/lib/income";
 import { loadIncome, loadOpenDocuments } from "@/lib/income-data";
 import { getPeriodRange, periodLabel } from "@/lib/report-periods";
+import { documentsEnabled } from "@/lib/features";
 import {
   Calendar,
   UserPlus,
@@ -29,6 +30,8 @@ export const metadata = { title: "בית — מרפאה אישית" };
 export default async function DashboardPage() {
   const session = await auth();
   const userId = session!.user.id;
+  // Income/expense documents are hidden until they can be issued (src/lib/features.ts)
+  const documents = documentsEnabled();
 
   const now = new Date();
   // This month by the clinic's calendar — the same rules as the reports page
@@ -267,7 +270,7 @@ export default async function DashboardPage() {
                         </Link>
                         <Link
                           href={
-                            s.invoiceItem
+                            s.invoiceItem && documents
                               ? `/invoices/${s.invoiceItem.invoiceId}`
                               : `/sessions/${s.id}#billing`
                           }
@@ -319,13 +322,15 @@ export default async function DashboardPage() {
               <Calendar className="w-4 h-4 text-sage-600" />
               <span className="text-sm">קביעת פגישה</span>
             </Link>
-            <Link
-              href="/invoices"
-              className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
-            >
-              <FileText className="w-4 h-4 text-sage-600" />
-              <span className="text-sm">מסמך חדש</span>
-            </Link>
+            {documents && (
+              <Link
+                href="/invoices"
+                className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
+              >
+                <FileText className="w-4 h-4 text-sage-600" />
+                <span className="text-sm">מסמך חדש</span>
+              </Link>
+            )}
             <Link
               href="/import"
               className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"

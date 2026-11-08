@@ -13,5 +13,9 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
     environment: "node",
+    // Income/expense documents are hidden in production (src/lib/features.ts).
+    // Every suite runs with them on, so their code keeps being tested;
+    // documents-switch.test.ts turns them off to test the hiding itself.
+    env: { DOCUMENTS_ENABLED: "true" },
   },
 });

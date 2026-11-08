@@ -38,11 +38,14 @@ async function toThumbnail(file: File): Promise<string> {
 
 export function BrandingCard({
   initial,
+  documents = true,
   formId,
   onSaved,
   hideSave = false,
 }: {
   initial: { brandName: string | null; logoUrl: string | null; logoOnDocuments?: boolean };
+  /** income/expense documents shown (src/lib/features.ts); hidden → no "logo on documents" choice */
+  documents?: boolean;
   /** the setup wizard submits this form from its own "הבא" button */
   formId?: string;
   onSaved?: () => void;
@@ -79,8 +82,8 @@ export function BrandingCard({
         <CardContent className="space-y-5">
           <h2 className="font-display text-xl text-ink">מיתוג</h2>
           <p className="text-xs text-ink-muted">
-            שם העסק ותמונה או לוגו שיופיעו בראש האפליקציה, ליד ״מרפאה אישית״, ואם רוצים גם
-            בראש מסמכי ההכנסות.
+            שם העסק ותמונה או לוגו שיופיעו בראש האפליקציה, ליד ״מרפאה אישית״
+            {documents ? ", ואם רוצים גם בראש מסמכי ההכנסות." : "."}
           </p>
 
           <div className="rounded-2xl border border-cream-200 bg-white/60 px-4 py-3">
@@ -149,6 +152,10 @@ export function BrandingCard({
             {readError && <p className="text-xs text-terracotta-600 mt-1">{readError}</p>}
           </div>
 
+          {!documents ? (
+            // The choice is hidden with the documents; send what is stored so a save keeps it
+            onDocuments && <input type="hidden" name="logoOnDocuments" value="on" />
+          ) : (
           <div>
             <label className="flex items-start gap-3 cursor-pointer">
               <input
@@ -166,6 +173,7 @@ export function BrandingCard({
               {onDocuments && !logo && " עדיין לא נבחרה תמונה."}
             </p>
           </div>
+          )}
         </CardContent>
       </Card>
 

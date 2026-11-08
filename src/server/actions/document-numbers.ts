@@ -1,5 +1,7 @@
 "use server";
 
+import { documentsEnabled, DOCUMENTS_OFF_PATH } from "@/lib/features";
+
 // Numbers of documents issued outside the app, typed onto a meeting
 // ("מספר המסמך שהופק"), and the documents imported from morning before the
 // integration was removed (2026-11-08): no new ones arrive, the ones already
@@ -105,6 +107,8 @@ export async function attachDocumentNumberToSessionAction(
 /** Assigns a document imported from morning (before 2026-11-08) to a client. */
 export async function assignImportedDocumentAction(formData: FormData) {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) redirect(DOCUMENTS_OFF_PATH);
   await requireWritable(userId);
   const docId = String(formData.get("docId") ?? "");
   const clientId = String(formData.get("clientId") ?? "");

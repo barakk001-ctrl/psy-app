@@ -1,5 +1,8 @@
 "use server";
 
+import { documentsEnabled, DOCUMENTS_OFF_ERROR, DOCUMENTS_OFF_PATH } from "@/lib/features";
+import { redirect } from "next/navigation";
+
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { isReadOnly, requireWritable } from "@/lib/subscription-server";
 import { revalidatePath } from "next/cache";
@@ -25,6 +28,8 @@ export async function recordPaymentAction(
   formData: FormData,
 ): Promise<PaymentFormState> {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) return { error: DOCUMENTS_OFF_ERROR };
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
   const parsed = recordPaymentSchema.safeParse({
@@ -97,6 +102,8 @@ export async function recordPaymentAction(
 
 export async function deletePaymentAction(formData: FormData) {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) redirect(DOCUMENTS_OFF_PATH);
   await requireWritable(userId);
   const id = String(formData.get("id") ?? "");
   if (!id) return;

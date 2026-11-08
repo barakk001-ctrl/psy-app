@@ -1,3 +1,4 @@
+import { requireDocumentsPage } from "@/lib/features-server";
 import Link from "next/link";
 import { FileOutput } from "lucide-react";
 import { auth } from "@/auth";
@@ -28,6 +29,8 @@ export default async function ExpensesPage({
 }: {
   searchParams: Promise<{ view?: string }>;
 }) {
+  // Hidden until documents can be issued (src/lib/features.ts)
+  requireDocumentsPage();
   const session = await auth();
   const userId = session!.user.id;
   const drafts = (await searchParams).view === "drafts";

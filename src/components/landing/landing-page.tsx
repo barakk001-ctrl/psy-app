@@ -87,11 +87,16 @@ const SECURITY: { title: string; text: string }[] = [
   },
 ];
 
-const GOOD_TO_KNOW: string[] = [
-  "תזכורות אוטומטיות ללקוחות עדיין לא פעילות. אפשר לשלוח תזכורת בוואטסאפ בלחיצה, מהודעה מוכנה.",
-  "המערכת עדיין לא מפיקה מסמכי מס בעצמה. בינתיים מכינים כאן טיוטה ורושמים את מספר המסמך שהופק, גם על כל פגישה.",
-  `בתקופת הניסיון אפשר לקבוע פגישות עד ${TRIAL_DAYS} יום קדימה.`,
-];
+/** The honest limits. The document line follows the documents switch (src/lib/features.ts). */
+function goodToKnow(documents: boolean): string[] {
+  return [
+    "תזכורות אוטומטיות ללקוחות עדיין לא פעילות. אפשר לשלוח תזכורת בוואטסאפ בלחיצה, מהודעה מוכנה.",
+    documents
+      ? "המערכת עדיין לא מפיקה מסמכי מס בעצמה. בינתיים מכינים כאן טיוטה ורושמים את מספר המסמך שהופק, גם על כל פגישה."
+      : "המערכת לא מפיקה חשבוניות וקבלות. מפיקים אותן במערכת שבה מפיקים היום, ורושמים על כל פגישה את מספר המסמך שהופק.",
+    `בתקופת הניסיון אפשר לקבוע פגישות עד ${TRIAL_DAYS} יום קדימה.`,
+  ];
+}
 
 /** What the silent video shows, for anyone who can't watch it. */
 const VIDEO_TEXT: string[] = [
@@ -101,12 +106,11 @@ const VIDEO_TEXT: string[] = [
   "עריכה מהירה: לחיצה על פגישה ושינוי מועד לפגישה אחת או לכל הבאות.",
   "תיקי לקוחות, רשימת המתנה ותיעוד פגישות.",
   "אישורי תשלום: אילו פגישות עוד לא שולמו.",
-  "מסך ״מסמך חדש״ להכנת קבלה או חשבונית, עם תצוגה מקדימה (ההפקה מתוך האפליקציה תגיע בהמשך).",
   "דוחות הכנסות עם ייצוא ל-PDF.",
   "מסלולים, פרטיות ואבטחה.",
 ];
 
-export function LandingPage({ byInvite }: { byInvite: boolean }) {
+export function LandingPage({ byInvite, documents }: { byInvite: boolean; documents: boolean }) {
   const ctaLabel = byInvite ? "בקשת הצטרפות" : `התחלת ${TRIAL_DAYS} יום חינם`;
 
   return (
@@ -305,7 +309,7 @@ export function LandingPage({ byInvite }: { byInvite: boolean }) {
             כדאי לדעת
           </h2>
           <ul className="mt-4 max-w-2xl space-y-2 text-ink-soft leading-relaxed list-disc ps-5 marker:text-sage-500">
-            {GOOD_TO_KNOW.map((t) => (
+            {goodToKnow(documents).map((t) => (
               <li key={t}>{t}</li>
             ))}
           </ul>

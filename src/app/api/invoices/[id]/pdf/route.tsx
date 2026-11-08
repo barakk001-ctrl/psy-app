@@ -1,3 +1,4 @@
+import { documentsOffResponse } from "@/lib/features-server";
 import { renderToStream } from "@react-pdf/renderer";
 import { auth } from "@/auth";
 import { loadDocumentPdfData, loadInvoicePdfData } from "@/lib/invoice-pdf-data";
@@ -12,6 +13,9 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // Hidden until documents can be issued (src/lib/features.ts)
+  const off = documentsOffResponse();
+  if (off) return off;
   const session = await auth();
   if (!session?.user?.id) {
     return new Response("Unauthorized", { status: 401 });

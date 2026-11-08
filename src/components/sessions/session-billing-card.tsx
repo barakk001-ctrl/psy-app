@@ -86,9 +86,12 @@ export function SessionBillingCard({
   payment,
   docNumbers,
   invoiced = false,
+  documents = true,
 }: {
   /** the meeting is already on a document (app invoice / "מסמך חדש") */
   invoiced?: boolean;
+  /** income/expense documents shown (src/lib/features.ts); hidden → no "מסמך חדש" link */
+  documents?: boolean;
   sessionId: string;
   rate: string | null;
   payment: {
@@ -225,7 +228,7 @@ export function SessionBillingCard({
             המסמך הופק במקום אחר? רושמים כאן את המספר — חשבונית מס וקבלה בנפרד, או
             חשבונית מס/קבלה מאוחדת.
           </p>
-          {!invoiced && (
+          {!invoiced && documents && (
             <Link
               href={`/invoices/new?sessionId=${sessionId}`}
               className="inline-flex items-center gap-1 text-sm text-sage-600 hover:text-sage-700 font-medium"

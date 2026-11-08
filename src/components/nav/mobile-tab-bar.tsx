@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { PRIMARY_MOBILE_ITEMS } from "./nav-items";
+import { primaryMobileItems } from "./nav-items";
 
-export function MobileTabBar() {
+export function MobileTabBar({ documents }: { documents: boolean }) {
   const pathname = usePathname();
   const [hidden, setHidden] = useState(false);
 
@@ -35,7 +35,7 @@ export function MobileTabBar() {
       aria-label="ניווט ראשי"
     >
       <ul className="flex items-stretch px-1.5 py-1.5">
-        {PRIMARY_MOBILE_ITEMS.map((item) => {
+        {primaryMobileItems(documents).map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;

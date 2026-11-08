@@ -1,5 +1,7 @@
 "use server";
 
+import { documentsEnabled, DOCUMENTS_OFF_ERROR, DOCUMENTS_OFF_PATH } from "@/lib/features";
+
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { isReadOnly, requireWritable } from "@/lib/subscription-server";
 import { revalidatePath } from "next/cache";
@@ -20,6 +22,8 @@ async function requireUserId(): Promise<string> {
 
 export async function markInvoiceSentAction(formData: FormData) {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) redirect(DOCUMENTS_OFF_PATH);
   await requireWritable(userId);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
@@ -34,6 +38,8 @@ export async function markInvoiceSentAction(formData: FormData) {
 
 export async function cancelInvoiceAction(formData: FormData) {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) redirect(DOCUMENTS_OFF_PATH);
   await requireWritable(userId);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
@@ -86,6 +92,8 @@ export async function sendInvoiceEmailAction(
   formData: FormData,
 ): Promise<SendInvoiceEmailState> {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) return { error: DOCUMENTS_OFF_ERROR };
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "מזהה חשבונית חסר" };

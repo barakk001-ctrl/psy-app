@@ -1,3 +1,4 @@
+import { requireDocumentsPage } from "@/lib/features-server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -13,6 +14,8 @@ import { decryptSecret } from "@/lib/crypto";
 export const metadata = { title: "מסמך הוצאה — מרפאה אישית" };
 
 export default async function ExpensePage({ params }: { params: Promise<{ id: string }> }) {
+  // Hidden until documents can be issued (src/lib/features.ts)
+  requireDocumentsPage();
   const session = await auth();
   const userId = session!.user.id;
   const { id } = await params;

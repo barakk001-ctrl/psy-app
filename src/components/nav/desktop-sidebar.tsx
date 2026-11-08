@@ -4,15 +4,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { signOutAction } from "@/server/actions/auth";
-import { NAV_ITEMS } from "./nav-items";
+import { navItems } from "./nav-items";
 import { BrandMark, type Branding } from "@/components/layout/brand-mark";
 
 export function DesktopSidebar({
   userName,
   branding,
+  documents,
 }: {
   userName?: string | null;
   branding?: Branding;
+  /** income/expense documents shown (src/lib/features.ts) */
+  documents: boolean;
 }) {
   const pathname = usePathname();
 
@@ -24,7 +27,7 @@ export function DesktopSidebar({
 
       <nav className="flex-1 p-3 overflow-y-auto">
         <ul className="space-y-1">
-          {NAV_ITEMS.map((item) => {
+          {navItems(documents).map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;

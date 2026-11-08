@@ -1,5 +1,7 @@
 "use server";
 
+import { documentsEnabled, DOCUMENTS_OFF_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -32,6 +34,8 @@ function revalidateExpenses(id?: string) {
 /** One file per call, as with client documents. It starts as a draft to fill in. */
 export async function uploadExpenseAction(formData: FormData): Promise<ExpenseResult> {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) return { error: DOCUMENTS_OFF_ERROR };
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
   const file = formData.get("file");
@@ -64,6 +68,8 @@ export async function uploadExpenseAction(formData: FormData): Promise<ExpenseRe
 /** The form below the file: "אישור" checks it, "העברה לטיוטה" keeps it as it is. */
 export async function saveExpenseAction(formData: FormData): Promise<ExpenseResult> {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) return { error: DOCUMENTS_OFF_ERROR };
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = text(formData, "id", 60);
   const approve = text(formData, "intent", 10) === "approve";
@@ -104,6 +110,8 @@ export async function saveExpenseAction(formData: FormData): Promise<ExpenseResu
 
 export async function deleteExpenseAction(formData: FormData): Promise<ExpenseResult> {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) return { error: DOCUMENTS_OFF_ERROR };
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = text(formData, "id", 60);
   if (!id) return { error: "מזהה ההוצאה חסר" };

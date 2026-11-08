@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { auth } from "@/auth";
 import {
   loadAllPeriodsReport,
@@ -15,6 +14,8 @@ import { BreakdownList } from "@/components/reports/breakdown-list";
 import { ExpectedVsReceivedChart } from "@/components/reports/expected-vs-received-chart";
 import { IncomeExportForm } from "@/components/reports/income-export-form";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { documentsEnabled } from "@/lib/features";
+import { MaybeLink } from "@/components/ui/maybe-link";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,8 @@ export default async function ReportsPage({
     : "this-month";
 
   const data = await loadAllPeriodsReport(userId);
+  // Document pages are hidden until they can be issued: the rows stay, without links
+  const documents = documentsEnabled();
 
   const today = new Date();
   const overdue = (dueDate: Date | null) =>
@@ -195,8 +198,8 @@ export default async function ReportsPage({
                 const isOverdue = overdue(inv.dueDate);
                 return (
                   <li key={inv.id}>
-                    <Link
-                      href={`/invoices/${inv.id}`}
+                    <MaybeLink
+                      href={documents ? `/invoices/${inv.id}` : null}
                       className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-cream-100/60 transition-colors"
                     >
                       <div className="font-display text-xs sm:text-sm text-ink shrink-0 w-12 sm:w-16">
@@ -225,7 +228,7 @@ export default async function ReportsPage({
                           </div>
                         )}
                       </div>
-                    </Link>
+                    </MaybeLink>
                   </li>
                 );
               })}

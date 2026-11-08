@@ -31,13 +31,20 @@ type Props = {
   };
   /** the full form, with the document contact details and the English details */
   full?: boolean;
+  /**
+   * Income/expense documents shown (src/lib/features.ts). When hidden, the
+   * fields that exist only for documents (description line, email on
+   * documents, English details) are left out; the action keeps a field the
+   * form didn't send, so nothing stored is lost.
+   */
+  documents?: boolean;
   /** the setup wizard submits this form from its own "הבא" button */
   formId?: string;
   onSaved?: () => void;
   hideSave?: boolean;
 };
 
-export function BusinessInfoForm({ initial, full = false, formId, onSaved, hideSave = false }: Props) {
+export function BusinessInfoForm({ initial, full = false, documents = true, formId, onSaved, hideSave = false }: Props) {
   const [state, formAction, pending] = useActionState<SettingsFormState, FormData>(
     updateBusinessInfoAction,
     null,
@@ -69,9 +76,11 @@ export function BusinessInfoForm({ initial, full = false, formId, onSaved, hideS
       <Card>
         <CardContent className="space-y-5">
           <h2 className="font-display text-xl text-ink">פרטי העסק</h2>
-          <p className="text-xs text-ink-muted">
-            פרטים אלו מופיעים בראש מסמכי ההכנסות.
-          </p>
+          {documents && (
+            <p className="text-xs text-ink-muted">
+              פרטים אלו מופיעים בראש מסמכי ההכנסות.
+            </p>
+          )}
 
           <div>
             <Label htmlFor="businessName">שם העסק</Label>
@@ -97,6 +106,7 @@ export function BusinessInfoForm({ initial, full = false, formId, onSaved, hideS
                 />
                 {err("occupation")}
               </div>
+              {documents && (
               <div>
                 <Label htmlFor="businessDescription">שורת תיאור למסמכים</Label>
                 <Input
@@ -113,6 +123,7 @@ export function BusinessInfoForm({ initial, full = false, formId, onSaved, hideS
                 </p>
                 {err("businessDescription")}
               </div>
+              )}
             </>
           )}
 
@@ -155,7 +166,7 @@ export function BusinessInfoForm({ initial, full = false, formId, onSaved, hideS
               <option value="false">עוסק פטור — ללא מע״מ (ברירת מחדל)</option>
               <option value="true">עוסק מורשה — המחירים כוללים מע״מ</option>
             </Select>
-            <p className="text-xs text-ink-muted mt-1">
+            <p className={documents ? "text-xs text-ink-muted mt-1" : "hidden"}>
               לעוסק מורשה, החשבוניות יציגו פירוט מע״מ (המחיר ללקוח נשאר זהה —
               המע״מ מחושב מתוכו).
             </p>
@@ -166,13 +177,13 @@ export function BusinessInfoForm({ initial, full = false, formId, onSaved, hideS
       {full && (
         <Card>
           <CardContent className="space-y-5">
-            <h2 className="font-display text-xl text-ink">פרטי קשר למסמכים</h2>
-            <p className="text-xs text-ink-muted">מופיעים בראש המסמכים, מתחת לשם העסק.</p>
+            <h2 className="font-display text-xl text-ink">{documents ? "פרטי קשר למסמכים" : "פרטי קשר"}</h2>
+            {documents && <p className="text-xs text-ink-muted">מופיעים בראש המסמכים, מתחת לשם העסק.</p>}
             <div>
               <Label htmlFor="address">כתובת</Label>
               <Input id="address" name="address" maxLength={200} defaultValue={initial.address ?? ""} />
             </div>
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className={documents ? "grid sm:grid-cols-2 gap-4" : undefined}>
               <div>
                 <Label htmlFor="bizPhone">טלפון</Label>
                 <Input
@@ -186,6 +197,7 @@ export function BusinessInfoForm({ initial, full = false, formId, onSaved, hideS
                 />
                 {err("phone")}
               </div>
+              {documents && (
               <div>
                 <Label htmlFor="docEmail">אימייל</Label>
                 <Input
@@ -200,6 +212,7 @@ export function BusinessInfoForm({ initial, full = false, formId, onSaved, hideS
                 />
                 {err("docEmail")}
               </div>
+              )}
             </div>
             <div>
               <Label htmlFor="website">אתר</Label>
@@ -218,7 +231,7 @@ export function BusinessInfoForm({ initial, full = false, formId, onSaved, hideS
         </Card>
       )}
 
-      {full && (
+      {full && documents && (
         <Card>
           <CardContent className="space-y-5">
             <h2 className="font-display text-xl text-ink">פרטי העסק באנגלית</h2>

@@ -13,6 +13,7 @@ import { ClinicBanner } from "@/components/layout/clinic-banner";
 import { SubscriptionBanner } from "@/components/layout/subscription-banner";
 import { subscriptionStateFor } from "@/lib/subscription-server";
 import { db } from "@/lib/db";
+import { documentsEnabled } from "@/lib/features";
 
 export default async function AppLayout({
   children,
@@ -43,6 +44,8 @@ export default async function AppLayout({
   if (branding?.closedAt) redirect("/account-closed");
   // A new account starts in the setup wizard (existing ones are marked done)
   if (branding && shouldEnterSetup(branding, sub.status)) redirect("/setup");
+  // Income/expense documents are hidden until they can be issued (src/lib/features.ts)
+  const documents = documentsEnabled();
   const brand = branding ? { brandName: branding.brandName, logoUrl: branding.logoUrl } : undefined;
   const showBanner =
     sub.status === "expired" ||
@@ -56,9 +59,9 @@ export default async function AppLayout({
         idleMinutes={normalizeIdleTimeout(branding?.idleTimeoutMinutes)}
         authTime={session.authTime ?? null}
       />
-      <DesktopSidebar userName={session.user.name} branding={brand} />
+      <DesktopSidebar userName={session.user.name} branding={brand} documents={documents} />
       <div className="flex-1 min-w-0 flex flex-col">
-        <MobileTopBar userName={session.user.name} branding={brand} />
+        <MobileTopBar userName={session.user.name} branding={brand} documents={documents} />
         <main id="main-content" tabIndex={-1} className="flex-1">
           {/* pb-28 on mobile so content isn't hidden behind the floating tab bar */}
           <div className="container-page py-6 lg:py-8 pb-28 lg:pb-8 animate-page">
@@ -72,9 +75,10 @@ export default async function AppLayout({
             {children}
           </div>
         </main>
-        <MobileTabBar />
+        <MobileTabBar documents={documents} />
       </div>
       <HelpWidget
+        documents={documents}
         user={{
           name: branding?.name ?? session.user.name ?? "",
           email: branding?.email ?? session.user.email ?? "",

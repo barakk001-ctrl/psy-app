@@ -1,3 +1,4 @@
+import { requireDocumentsPage } from "@/lib/features-server";
 import { clientIdNumber } from "@/lib/sensitive-fields";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
@@ -28,6 +29,8 @@ export default async function NewDocumentPage({
 }: {
   searchParams: Promise<{ clientId?: string; sessionId?: string; kind?: string; forInvoice?: string; draft?: string }>;
 }) {
+  // Hidden until documents can be issued (src/lib/features.ts)
+  requireDocumentsPage();
   const params = await searchParams;
   const session = await auth();
   const userId = session!.user.id;

@@ -7,6 +7,7 @@ import { READ_ONLY_PATH, subscriptionStateFor } from "@/lib/subscription-server"
 import { BiometricLockOverlay } from "@/components/security/biometric-lock-overlay";
 import { IdleGuard } from "@/components/security/idle-guard";
 import { SetupWizard } from "@/components/setup/setup-wizard";
+import { documentsEnabled } from "@/lib/features";
 
 export const metadata = { title: "הגדרה ראשונית — מרפאה אישית" };
 export const dynamic = "force-dynamic";
@@ -63,6 +64,7 @@ export default async function SetupPage({
       <SetupWizard
         key={step}
         step={step}
+        documents={documentsEnabled()}
         brand={{
           brandName: user.brandName,
           logoUrl: user.logoUrl,

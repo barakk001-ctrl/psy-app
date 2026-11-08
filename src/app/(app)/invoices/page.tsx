@@ -1,3 +1,4 @@
+import { requireDocumentsPage } from "@/lib/features-server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,8 @@ export default async function InvoicesPage({
 }: {
   searchParams: Promise<{ view?: string; period?: string; from?: string; to?: string; type?: string; status?: string }>;
 }) {
+  // Hidden until documents can be issued (src/lib/features.ts)
+  requireDocumentsPage();
   const session = await auth();
   const userId = session!.user.id;
   const filters = parseDocListFilters(await searchParams);

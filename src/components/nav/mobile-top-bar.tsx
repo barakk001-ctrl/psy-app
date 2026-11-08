@@ -6,16 +6,19 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOutAction } from "@/server/actions/auth";
-import { NAV_ITEMS } from "./nav-items";
+import { navItems } from "./nav-items";
 import { BrandMark, type Branding } from "@/components/layout/brand-mark";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 
 export function MobileTopBar({
   userName,
   branding,
+  documents,
 }: {
   userName?: string | null;
   branding?: Branding;
+  /** income/expense documents shown (src/lib/features.ts) */
+  documents: boolean;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -111,7 +114,7 @@ export function MobileTopBar({
 
         <nav className="flex-1 p-3 overflow-y-auto">
           <ul className="space-y-1">
-            {NAV_ITEMS.map((item) => {
+            {navItems(documents).map((item) => {
               const active =
                 pathname === item.href || pathname.startsWith(item.href + "/");
               const Icon = item.icon;

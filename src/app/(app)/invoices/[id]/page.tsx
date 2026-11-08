@@ -1,3 +1,4 @@
+import { requireDocumentsPage } from "@/lib/features-server";
 import { clientIdNumber } from "@/lib/sensitive-fields";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -38,6 +39,8 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ saved?: string; recorded?: string }>;
 }) {
+  // Hidden until documents can be issued (src/lib/features.ts)
+  requireDocumentsPage();
   const { id } = await params;
   const sp = await searchParams;
   const session = await auth();

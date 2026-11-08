@@ -21,6 +21,8 @@ type Props = {
   business: React.ComponentProps<typeof BusinessInfoForm>["initial"];
   meetingTypes: React.ComponentProps<typeof MeetingTypesCard>["types"];
   defaultMinutes: number;
+  /** income/expense documents shown (src/lib/features.ts) */
+  documents: boolean;
 };
 
 /**
@@ -28,7 +30,7 @@ type Props = {
  * card's own form through its own server action and moves on once it saved;
  * "דילוג" moves on without saving. Nothing is required.
  */
-export function SetupWizard({ step, brand, business, meetingTypes, defaultMinutes }: Props) {
+export function SetupWizard({ step, brand, business, meetingTypes, defaultMinutes, documents }: Props) {
   const router = useRouter();
   const [busy, startBusy] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -118,8 +120,8 @@ export function SetupWizard({ step, brand, business, meetingTypes, defaultMinute
             <p className="mt-1 text-sm leading-relaxed text-ink-muted">{current.subtitle}</p>
           </div>
 
-          {current.id === "brand" && <BrandingCard initial={brand} {...shared} hideSave />}
-          {current.id === "business" && <BusinessInfoForm initial={business} {...shared} hideSave />}
+          {current.id === "brand" && <BrandingCard initial={brand} documents={documents} {...shared} hideSave />}
+          {current.id === "business" && <BusinessInfoForm initial={business} documents={documents} {...shared} hideSave />}
           {current.id === "types" && (
             <MeetingTypesCard types={meetingTypes} defaultMinutes={defaultMinutes} {...shared} hideSave />
           )}

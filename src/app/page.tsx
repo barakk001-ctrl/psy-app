@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LandingPage } from "@/components/landing/landing-page";
 import { inviteOnly } from "@/lib/signup-policy";
+import { documentsEnabled } from "@/lib/features";
 import { OG_IMAGE, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 
 // The public home. Signed-in users never reach this: the middleware sends them
@@ -26,5 +27,5 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
-  return <LandingPage byInvite={inviteOnly()} />;
+  return <LandingPage byInvite={inviteOnly()} documents={documentsEnabled()} />;
 }

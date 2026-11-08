@@ -25,6 +25,8 @@ import {
   type SearchParams,
 } from "@/lib/follow-up-filters";
 import { cn } from "@/lib/utils";
+import { documentsEnabled } from "@/lib/features";
+import { MaybeLink } from "@/components/ui/maybe-link";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +99,11 @@ export default async function CollectPage({
     (s) => s.badge === "pending" || s.badge === "unpaid",
   );
   const active = hasActiveFilters(filters, DEFAULT_COLLECT_STATUS);
+  // Document pages are hidden until they can be issued (src/lib/features.ts):
+  // open invoices already recorded still show (they are debt), without links,
+  // and the section is left out when there are none
+  const documents = documentsEnabled();
+  const showInvoices = documents || invoices.length > 0;
   const selectedClient = filters.clientId ? clients.find((c) => c.id === filters.clientId) : null;
 
   return (
@@ -105,7 +112,8 @@ export default async function CollectPage({
         <h1 className="font-display text-3xl text-ink">אישורי תשלום</h1>
         <p className="text-ink-muted mt-1 text-sm">
           פגישות {periodPhrase(filters)}
-          {filters.status === "pending" && " שעוד לא עודכן להן תשלום"}, וחשבוניות עם יתרה פתוחה.
+          {filters.status === "pending" && " שעוד לא עודכן להן תשלום"}
+          {showInvoices ? ", וחשבוניות עם יתרה פתוחה." : "."}
         </p>
       </header>
 
@@ -194,6 +202,7 @@ export default async function CollectPage({
         )}
       </section>
 
+      {showInvoices && (
       <section className="space-y-3">
         <h2 className="font-display text-xl text-ink">
           חשבוניות פתוחות
@@ -227,8 +236,8 @@ export default async function CollectPage({
                 const balance = inv.balance;
                 return (
                   <li key={inv.id}>
-                    <Link
-                      href={`/invoices/${inv.id}`}
+                    <MaybeLink
+                      href={documents ? `/invoices/${inv.id}` : null}
                       className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-cream-100/60 transition-colors"
                     >
                       <div>
@@ -252,7 +261,7 @@ export default async function CollectPage({
                           יתרה לתשלום
                         </div>
                       </div>
-                    </Link>
+                    </MaybeLink>
                   </li>
                 );
               })}
@@ -260,6 +269,7 @@ export default async function CollectPage({
           </Card>
         )}
       </section>
+      )}
     </div>
   );
 }

@@ -41,6 +41,7 @@ import { AdminPendingClosuresCard } from "@/components/settings/admin-pending-cl
 import { pendingClosures } from "@/lib/account-closure-data";
 import { reauthMethod } from "@/lib/reauth";
 import { ViewTabs } from "@/components/ui/view-tabs";
+import { documentsEnabled } from "@/lib/features";
 import {
   parseSettingsTab,
   settingsHref,
@@ -65,6 +66,8 @@ export default async function SettingsPage({
   }
   const session = await auth();
   const userId = session!.user.id;
+  // "הגדרות מסמכים" and the document-only fields are hidden with the documents (src/lib/features.ts)
+  const documents = documentsEnabled();
 
   const user = await db.user.findUnique({
     where: { id: userId },
@@ -218,6 +221,7 @@ export default async function SettingsPage({
         <div id="business" className="scroll-mt-24">
           <BusinessInfoForm
             full
+            documents={documents}
             initial={{
               businessName: user.businessName,
               businessId: user.businessId,
@@ -237,6 +241,7 @@ export default async function SettingsPage({
         </div>
         <div id="branding" className="scroll-mt-24">
           <BrandingCard
+            documents={documents}
             initial={{
               brandName: user.brandName,
               logoUrl: user.logoUrl,
@@ -246,7 +251,7 @@ export default async function SettingsPage({
         </div>
       </>
     ),
-    documents: (
+    documents: documents ? (
       <>
         <div id="document-defaults" className="scroll-mt-24">
           <DocumentDefaultsCard
@@ -279,7 +284,7 @@ export default async function SettingsPage({
           />
         </div>
       </>
-    ),
+    ) : null,
     calendar: (
       <>
         {/* the calendar links here: /settings?tab=calendar#meeting-types */}
@@ -323,7 +328,7 @@ export default async function SettingsPage({
     ) : null,
   };
 
-  const tabs = settingsTabs(user.isAdmin).map((t) => ({
+  const tabs = settingsTabs(user.isAdmin, documents).map((t) => ({
     key: t.key,
     label: t.label,
     href: settingsHref(t.key),
@@ -335,13 +340,15 @@ export default async function SettingsPage({
       <header>
         <h1 className="font-display text-3xl text-ink">הגדרות</h1>
         <p className="text-ink-muted text-sm mt-1">
-          הפרטים שלך ושל העסק, מסמכים, יומן ופגישות, אבטחה וחשבון.
+          {documents
+            ? "הפרטים שלך ושל העסק, מסמכים, יומן ופגישות, אבטחה וחשבון."
+            : "הפרטים שלך ושל העסק, יומן ופגישות, אבטחה וחשבון."}
         </p>
       </header>
 
       <ViewTabs
         tabs={tabs}
-        active={parseSettingsTab(sp.tab, user.isAdmin)}
+        active={parseSettingsTab(sp.tab, user.isAdmin, documents)}
         param="tab"
         scroll
         label="אזורי ההגדרות"

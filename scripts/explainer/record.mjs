@@ -195,19 +195,6 @@ await sleep(1200);
 await wheel(190, 700);
 await sleep(3000);
 
-// ── New document ─────────────────────────────────────────────────────────────
-await jump("/invoices/new");
-caption("מסמך חדש", "קבלה או חשבונית: בוחרים פגישות, בודקים בתצוגה מקדימה ושומרים");
-await sleep(500);
-await clickOn(await byText("main button", "חשבונית מס/קבלה"));
-await sleep(700);
-await moveTo(620, 420);
-await wheel(330);
-await page.select("#doc-client", await page.$eval("#doc-client option:nth-child(2)", (o) => o.value));
-await sleep(900);
-await wheel(390);
-await sleep(2300);
-
 // ── Reports ──────────────────────────────────────────────────────────────────
 await cut(() => page.evaluate(() => scrollTo(0, 0)));
 await nav("/reports");

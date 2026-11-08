@@ -1,3 +1,4 @@
+import { documentsOffResponse } from "@/lib/features-server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { decryptSecret } from "@/lib/crypto";
@@ -11,6 +12,9 @@ export const dynamic = "force-dynamic";
 // its owner gets it, anyone else gets 404. `?download=1` asks for an
 // attachment. Business records, not clinical, so not in the access log.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  // Hidden until documents can be issued (src/lib/features.ts)
+  const off = documentsOffResponse();
+  if (off) return off;
   const session = await auth();
   const { id } = await params;
   const download = new URL(req.url).searchParams.get("download") === "1";

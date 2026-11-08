@@ -1,5 +1,7 @@
 "use server";
 
+import { documentsEnabled, DOCUMENTS_OFF_ERROR } from "@/lib/features";
+
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { isReadOnly, requireWritable } from "@/lib/subscription-server";
 import { creatableKinds, documentDefaults } from "@/lib/billing-docs";
@@ -374,6 +376,8 @@ export async function updateDocumentDefaultsAction(
   formData: FormData,
 ): Promise<SettingsFormState> {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) return { error: DOCUMENTS_OFF_ERROR };
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const owner = await db.user.findUnique({ where: { id: userId }, select: { vatLiable: true } });
   const d = documentDefaults({
@@ -414,6 +418,8 @@ export async function updateDocumentLookAction(
   formData: FormData,
 ): Promise<SettingsFormState> {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) return { error: DOCUMENTS_OFF_ERROR };
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const template = String(formData.get("docTemplate") ?? "");
   const color = String(formData.get("docColor") ?? "");
@@ -441,6 +447,8 @@ export async function updateDocumentEmailAction(
   formData: FormData,
 ): Promise<SettingsFormState> {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) return { error: DOCUMENTS_OFF_ERROR };
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const subject = String(formData.get("docEmailSubject") ?? "");
   const body = String(formData.get("docEmailBody") ?? "");
@@ -472,6 +480,8 @@ export async function updateDocumentNumberingAction(
   formData: FormData,
 ): Promise<SettingsFormState> {
   const userId = await requireUserId();
+  // Hidden until documents can be issued (src/lib/features.ts)
+  if (!documentsEnabled()) return { error: DOCUMENTS_OFF_ERROR };
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const owner = await db.user.findUnique({ where: { id: userId }, select: { vatLiable: true } });
   const data: Partial<Record<(typeof NEXT_NUMBER_FIELDS)[keyof typeof NEXT_NUMBER_FIELDS], number>> = {};

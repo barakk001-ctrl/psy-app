@@ -29,6 +29,8 @@ import { DeleteSessionChoice } from "@/components/sessions/delete-session-choice
 import { sessionScopeInfoAction } from "@/server/actions/sessions";
 import { SessionFilesCard } from "@/components/sessions/session-files-card";
 import { buildWhatsappReminderText, buildWhatsappUrl } from "@/lib/whatsapp";
+import { documentsEnabled } from "@/lib/features";
+import { MaybeLink } from "@/components/ui/maybe-link";
 
 const LOCATION_LABELS = {
   OFFICE: "קליניקה",
@@ -200,6 +202,7 @@ export default async function SessionDetailPage({
         <SessionBillingCard
           sessionId={sess.id}
           invoiced={!!sess.invoiceItem}
+          documents={documentsEnabled()}
           rate={sess.rate ? sess.rate.toString() : null}
           payment={{
             status: sess.paymentStatus,
@@ -286,14 +289,14 @@ export default async function SessionDetailPage({
             {sess.invoiceItem?.invoice && (
               <div className="pt-3 border-t border-cream-200 space-y-1.5">
                 <span className="text-xs text-ink-muted block">חיוב</span>
-                <Link
-                  href={`/invoices/${sess.invoiceItem.invoice.id}`}
+                <MaybeLink
+                  href={documentsEnabled() ? `/invoices/${sess.invoiceItem.invoice.id}` : null}
                   className="text-ink-soft hover:text-sage-600 block"
                 >
                   {sess.invoiceItem.invoice.docType != null
                     ? `${docTypeLabel(sess.invoiceItem.invoice.docType)}${sess.invoiceItem.invoice.morningDocNumber ? "" : " (טיוטה)"}`
                     : `חשבונית #${String(sess.invoiceItem.invoice.number).padStart(4, "0")}`}
-                </Link>
+                </MaybeLink>
                 {sess.invoiceItem.invoice.morningDocNumber && (
                   <div className="text-xs text-ink-muted">
                     מספר המסמך:{" "}

@@ -1,5 +1,6 @@
 import { Home, Users, Calendar, FileInput, FileOutput, BarChart3, Settings, CreditCard } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { withoutDocumentLinks } from "@/lib/features";
 
 export type NavItem = {
   href: string;
@@ -20,4 +21,12 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/settings", label: "הגדרות", icon: Settings },
 ];
 
-export const PRIMARY_MOBILE_ITEMS = NAV_ITEMS.filter((i) => i.primaryMobile);
+/** The menu for this deployment: no document pages while they are hidden (src/lib/features.ts). */
+export function navItems(documents: boolean): NavItem[] {
+  return withoutDocumentLinks(NAV_ITEMS, documents);
+}
+
+/** The bottom tab bar on phones. */
+export function primaryMobileItems(documents: boolean): NavItem[] {
+  return navItems(documents).filter((i) => i.primaryMobile);
+}

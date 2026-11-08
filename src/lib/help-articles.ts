@@ -495,3 +495,87 @@ export const POPULAR_HELP_SLUGS = [
 export function helpArticleBySlug(slug: string): HelpArticle | undefined {
   return HELP_ARTICLES.find((a) => a.slug === slug);
 }
+
+// ── While income/expense documents are hidden (src/lib/features.ts) ─────────
+// Their articles are left out, and the two articles that mention them are
+// shown in a version without them. Turning documents back on restores the
+// articles above as they are.
+
+/** Articles about the hidden document pages. */
+export const DOCUMENT_HELP_SLUGS = ["invoices-receipts", "record-issued-document", "expenses"] as const;
+
+const WITHOUT_DOCUMENTS: Record<string, HelpArticle> = {
+  "record-payment": {
+    slug: "record-payment",
+    title: "רישום תשלום על פגישה",
+    category: "תשלומים וחשבוניות",
+    summary: "סימון ״שולם״, סכום ואמצעי תשלום, ומספרי מסמכים שהופקו.",
+    // Hidden search words: people may search by the name of the system they issue documents in
+    keywords: ["תשלום", "שולם", "גבייה", "ביט", "Bit", "מזומן", "העברה", "אמצעי תשלום", "חוב", "אישורי תשלום", "קבלה", "חשבונית", "מספר מסמך", "מסמך שהופק", "סינון", "לא עודכן תשלום", "טרם שולם", "morning", "מורנינג", "חשבונית ירוקה"],
+    body: [
+      {
+        type: "steps",
+        items: [
+          "בעמוד הפגישה, בכרטיס ״תשלום״, בוחרים ב״סטטוס תשלום״: ״שולם״, ״טרם שולם״ או ״ללא תשלום״.",
+          "ב״שולם״: בודקים את ״סכום (₪)״ (ממולא לפי התעריף) ובוחרים ״אמצעי תשלום״ — ביט, מזומן, העברה בנקאית ועוד.",
+          "לוחצים ״שמירת תשלום״.",
+        ],
+      },
+      {
+        type: "p",
+        text: "הפקתם חשבונית או קבלה במערכת שבה מפיקים היום? רושמים את המספר באותו כרטיס — ״מספר חשבונית מס שהופקה״, ״מספר קבלה שהופקה״ או ״מספר חשבונית מס/קבלה שהופקה״ — ולוחצים ״שמירה״ ליד השדה.",
+      },
+      {
+        type: "p",
+        text: "״אישורי תשלום״ בדף הבית מרכז את הפגישות מ-3 השבועות האחרונים שלא עודכן בהן תשלום. אפשר לסנן: ב״לקוח/ה״ מקלידים שם ובוחרים מהרשימה; ב״תקופה״ בוחרים 3 שבועות, 6 שבועות, 3 חודשים, שנה או ״טווח תאריכים״; וב״סטטוס״ — ״לא עודכן תשלום״ (ברירת המחדל), ״טרם שולם״, ״שולם״ או ״הכול״. בטלפון הסינון נפתח בלחיצה על ״סינון״.",
+      },
+      {
+        type: "tip",
+        text: "למעלה מופיע מספר הפגישות שנמצאו, ו״נקה סינון״ מחזיר לתצוגה הרגילה. ברשימות ארוכות לוחצים ״הצגת עוד״.",
+      },
+      { type: "link", href: "/collect", label: "לאישורי תשלום" },
+    ],
+  },
+  "settings-overview": {
+    slug: "settings-overview",
+    title: "הגדרות: פרטי העסק, סוגי מפגשים וסנכרון ליומן גוגל",
+    category: "הגדרות",
+    summary: "מה אפשר להגדיר — מפרטי העסק ועד צבעים ביומן וסנכרון לגוגל.",
+    keywords: ["הגדרות", "הגדרה ראשונית", "אשף", "פרטי העסק", "מיתוג", "לוגו", "לשוניות", "הגדרות עסק", "סוגי מפגשים", "צבע", "משך פגישה", "גוגל", "יומן גוגל", "סנכרון", "מע״מ"],
+    body: [
+      {
+        type: "p",
+        text: "בהרשמה מעבירה ״הגדרה ראשונית״ צעד אחר צעד על השם והתמונה, פרטי העסק וסוגי המפגשים. בכל צעד אפשר למלא ולהמשיך ב״הבא״ או לדלג, ומה שמולא נשמר מיד. אפשר לחזור אליה בכל זמן מהקישור ״הגדרה ראשונית״ בלשונית ״פרטים אישיים״ בהגדרות. עמוד ההגדרות מחולק ללשוניות: ״פרטים אישיים״, ״הגדרות עסק״, ״יומן ופגישות״ ו״אבטחה וחשבון״.",
+      },
+      {
+        type: "bullets",
+        items: [
+          "״פרטי העסק״ (ב״הגדרות עסק״) — שם העסק, עיסוק / מקצוע, מספר עוסק, תעריף ברירת מחדל וסטטוס מע״מ. מתחת: ״פרטי קשר״ (כתובת, טלפון, אתר).",
+          "״מיתוג״ (ב״הגדרות עסק״) — שם ולוגו שיופיעו בראש המערכת.",
+          "״סוגי מפגשים״ (ב״יומן ופגישות״) — משך פגישה כברירת מחדל, וסוגי מפגשים עם צבע לכל סוג ביומן (לחיצה על העיגול הצבעוני).",
+          "״סנכרון ליומן גוגל״ — ״הפעלת הסנכרון״ נותן קישור פרטי שמוסיפים בגוגל: ״יומנים אחרים״ ← + ← ״מכתובת URL״. אפשר לבחור אם יופיע שם פרטי בלבד, שם מלא או ללא שם. גוגל מתעדכן כל כמה שעות.",
+          "״קליטת הודעות מבחוץ״ — טופס בקשת פגישה שאפשר לשלוח ללקוחות, וקיצור דרך מוואטסאפ באייפון.",
+        ],
+      },
+      {
+        type: "tip",
+        text: "שינוי משך ברירת המחדל לא משנה פגישות שכבר נקבעו — רק פגישות חדשות.",
+      },
+      { type: "link", href: "/settings?tab=business", label: "להגדרות" },
+    ],
+  },
+};
+
+/** The articles this deployment shows. */
+export function helpArticles(documents: boolean): HelpArticle[] {
+  if (documents) return HELP_ARTICLES;
+  const hidden = new Set<string>(DOCUMENT_HELP_SLUGS);
+  return HELP_ARTICLES.filter((a) => !hidden.has(a.slug)).map((a) => WITHOUT_DOCUMENTS[a.slug] ?? a);
+}
+
+/** The "מאמרים מומלצים" list for this deployment (reports instead of the hidden one). */
+export function popularHelpSlugs(documents: boolean): string[] {
+  if (documents) return POPULAR_HELP_SLUGS;
+  const hidden = new Set<string>(DOCUMENT_HELP_SLUGS);
+  return [...POPULAR_HELP_SLUGS.filter((s) => !hidden.has(s)), "reports"];
+}
