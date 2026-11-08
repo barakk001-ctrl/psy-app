@@ -35,13 +35,20 @@ import { AccountClosureCard } from "@/components/settings/account-closure-card";
 import { AdminPendingClosuresCard } from "@/components/settings/admin-pending-closures-card";
 import { pendingClosures } from "@/lib/account-closure-data";
 import { reauthMethod } from "@/lib/reauth";
+import { ViewTabs } from "@/components/ui/view-tabs";
+import {
+  parseSettingsTab,
+  settingsHref,
+  settingsTabs,
+  type SettingsTabKey,
+} from "@/lib/settings-tabs";
 
 export const metadata = { title: "הגדרות — מרפאה אישית" };
 
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ paid?: string; payerr?: string; export?: string }>;
+  searchParams: Promise<{ paid?: string; payerr?: string; export?: string; tab?: string }>;
 }) {
   const sp = await searchParams;
   // Payment results used to land here; the plans page shows them now
@@ -62,6 +69,7 @@ export default async function SettingsPage({
       businessName: true,
       brandName: true,
       logoUrl: true,
+      logoOnDocuments: true,
       businessId: true,
       address: true,
       phone: true,
@@ -171,101 +179,137 @@ export default async function SettingsPage({
     ? `…${user.morningApiKeyId.slice(-6)}`
     : null;
 
+  const calendarOrigin = await (async () => {
+    const h = await headers();
+    const proto = h.get("x-forwarded-proto") ?? "https";
+    const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
+    return `${proto}://${host}`;
+  })();
+
+  // Each card sits under one tab. Links to a card's anchor (/settings#meeting-types)
+  // open its tab; SETTINGS_TABS (src/lib/settings-tabs.ts) names them.
+  const panels: Record<SettingsTabKey, React.ReactNode> = {
+    personal: (
+      <>
+        <Link
+          href="/setup?step=1"
+          className="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700"
+        >
+          <span>
+            <span className="font-medium">הגדרה ראשונית</span>
+            <span className="block text-xs text-sage-700/80">
+              מעבר צעד אחר צעד על השם, פרטי העסק, סוגי המפגשים וחיבור ל-<span dir="ltr">morning</span>
+            </span>
+          </span>
+          <span aria-hidden>←</span>
+        </Link>
+        <PersonalDetailsForm initial={{ name: user.name, email: user.email, phone: user.phone }} />
+      </>
+    ),
+    business: (
+      <>
+        <div id="business" className="scroll-mt-24">
+          <BusinessInfoForm
+            initial={{
+              businessName: user.businessName,
+              businessId: user.businessId,
+              address: user.address,
+              defaultRate: user.defaultRate ? user.defaultRate.toString() : null,
+              vatLiable: user.vatLiable,
+            }}
+          />
+        </div>
+        <div id="branding" className="scroll-mt-24">
+          <BrandingCard
+            initial={{
+              brandName: user.brandName,
+              logoUrl: user.logoUrl,
+              logoOnDocuments: user.logoOnDocuments,
+            }}
+          />
+        </div>
+      </>
+    ),
+    documents: (
+      <>
+        <div id="document-defaults" className="scroll-mt-24">
+          <DocumentDefaultsCard defaults={documentDefaults(user)} vatLiable={user.vatLiable} />
+        </div>
+        <div id="morning" className="scroll-mt-24">
+          <MorningSettingsForm
+            connected={morningConnected}
+            keyIdMasked={keyIdMasked}
+            sandbox={user.morningSandbox}
+            docType={user.morningDocType}
+          />
+        </div>
+      </>
+    ),
+    calendar: (
+      <>
+        {/* the calendar links here: /settings?tab=calendar#meeting-types */}
+        <div id="meeting-types" className="scroll-mt-24">
+          <MeetingTypesCard types={meetingTypes} defaultMinutes={user.defaultSessionMinutes} />
+        </div>
+        <CalendarFeedCard token={user.calendarToken} mode={user.calendarNameMode} origin={calendarOrigin} />
+        <InboxSettings token={user.inboxToken} apiToken={user.inboxApiToken} />
+      </>
+    ),
+    security: (
+      <>
+        <ChangePasswordCard hasPassword={!!user.hashedPassword} email={user.email} />
+        <TwoFactorSettings
+          enabled={user.totpEnabled}
+          backupCount={
+            user.totpBackupCodes ? (JSON.parse(user.totpBackupCodes) as string[]).length : 0
+          }
+        />
+        <IdleTimeoutCard minutes={normalizeIdleTimeout(user.idleTimeoutMinutes)} />
+        <BiometricSettings userEmail={user.email} userName={user.name} />
+        <div id="audit-log" className="scroll-mt-24">
+          <AuditLogCard entries={auditEntries} />
+        </div>
+        <div id="subscription" className="scroll-mt-24">
+          <SubscriptionCard state={subState} />
+        </div>
+        <div id="account-data" className="scroll-mt-24">
+          <AccountExportCard method={reauthMethod(user)} email={user.email} message={sp.export} />
+        </div>
+        <AccountClosureCard method={reauthMethod(user)} email={user.email} isAdmin={user.isAdmin} />
+      </>
+    ),
+    admin: user.isAdmin ? (
+      <>
+        <AdminSubscriptionsCard users={adminUsers} meId={userId} />
+        <AdminInvitesCard invites={adminInvites} origin={inviteOrigin} />
+        <AdminSupportRequestsCard requests={supportRequests} />
+        <AdminPendingClosuresCard rows={closures} now={new Date()} />
+      </>
+    ) : null,
+  };
+
+  const tabs = settingsTabs(user.isAdmin).map((t) => ({
+    key: t.key,
+    label: t.label,
+    href: settingsHref(t.key),
+    panel: panels[t.key],
+  }));
+
   return (
     <div className="max-w-2xl space-y-6">
       <header>
         <h1 className="font-display text-3xl text-ink">הגדרות</h1>
         <p className="text-ink-muted text-sm mt-1">
-          הפרטים שלך ושל העסק, מיתוג, סוגי מפגשים, חיבור ל-<span dir="ltr">morning</span>,
-          אבטחה ויומן הגישה לרשומות.
+          הפרטים שלך ושל העסק, מסמכים, יומן ופגישות, אבטחה וחשבון.
         </p>
       </header>
 
-      <Link
-        href="/setup?step=1"
-        className="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700"
-      >
-        <span>
-          <span className="font-medium">הגדרה ראשונית</span>
-          <span className="block text-xs text-sage-700/80">
-            מעבר צעד אחר צעד על השם, פרטי העסק, סוגי המפגשים וחיבור ל-<span dir="ltr">morning</span>
-          </span>
-        </span>
-        <span aria-hidden>←</span>
-      </Link>
-
-      <PersonalDetailsForm
-        initial={{ name: user.name, email: user.email, phone: user.phone }}
-      />
-
-      <BusinessInfoForm
-        initial={{
-          businessName: user.businessName,
-          businessId: user.businessId,
-          address: user.address,
-          defaultRate: user.defaultRate ? user.defaultRate.toString() : null,
-          vatLiable: user.vatLiable,
-        }}
-      />
-
-      <BrandingCard initial={{ brandName: user.brandName, logoUrl: user.logoUrl }} />
-
-      {/* the calendar links here: /settings#meeting-types */}
-      <div id="meeting-types" className="scroll-mt-24">
-        <MeetingTypesCard types={meetingTypes} defaultMinutes={user.defaultSessionMinutes} />
-      </div>
-
-      <CalendarFeedCard
-        token={user.calendarToken}
-        mode={user.calendarNameMode}
-        origin={await (async () => {
-          const h = await headers();
-          const proto = h.get("x-forwarded-proto") ?? "https";
-          const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-          return `${proto}://${host}`;
-        })()}
-      />
-
-      <InboxSettings token={user.inboxToken} apiToken={user.inboxApiToken} />
-
-      <ChangePasswordCard hasPassword={!!user.hashedPassword} email={user.email} />
-
-      <TwoFactorSettings
-        enabled={user.totpEnabled}
-        backupCount={
-          user.totpBackupCodes ? (JSON.parse(user.totpBackupCodes) as string[]).length : 0
-        }
-      />
-
-      <IdleTimeoutCard minutes={normalizeIdleTimeout(user.idleTimeoutMinutes)} />
-
-      <BiometricSettings userEmail={user.email} userName={user.name} />
-
-      <SubscriptionCard state={subState} />
-
-      <div id="account-data" className="scroll-mt-24">
-        <AccountExportCard method={reauthMethod(user)} email={user.email} message={sp.export} />
-      </div>
-
-      <AccountClosureCard method={reauthMethod(user)} email={user.email} isAdmin={user.isAdmin} />
-
-      {user.isAdmin && <AdminSubscriptionsCard users={adminUsers} meId={userId} />}
-
-      {user.isAdmin && <AdminInvitesCard invites={adminInvites} origin={inviteOrigin} />}
-
-      {user.isAdmin && <AdminSupportRequestsCard requests={supportRequests} />}
-
-      {user.isAdmin && <AdminPendingClosuresCard rows={closures} now={new Date()} />}
-
-      <AuditLogCard entries={auditEntries} />
-
-      <DocumentDefaultsCard defaults={documentDefaults(user)} vatLiable={user.vatLiable} />
-
-      <MorningSettingsForm
-        connected={morningConnected}
-        keyIdMasked={keyIdMasked}
-        sandbox={user.morningSandbox}
-        docType={user.morningDocType}
+      <ViewTabs
+        tabs={tabs}
+        active={parseSettingsTab(sp.tab, user.isAdmin)}
+        param="tab"
+        scroll
+        label="אזורי ההגדרות"
       />
     </div>
   );

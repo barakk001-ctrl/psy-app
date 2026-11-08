@@ -77,7 +77,7 @@ export default async function InvoicesPage({
               <>
                 מסמך חדש מכין את המסמך ושומר טיוטה (לא מסמך מס); את המסמך הרשמי מפיקים{" "}
                 {inMorning}. כדי שיופק מכאן אוטומטית, מחברים את morning ב
-                <Link href="/settings" className="text-sage-600 hover:text-sage-700 hover:underline">
+                <Link href="/settings?tab=documents#morning" className="text-sage-600 hover:text-sage-700 hover:underline">
                   הגדרות
                 </Link>
                 .

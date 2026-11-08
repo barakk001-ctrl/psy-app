@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 const back = (reason: string) =>
   new Response(null, {
     status: 303,
-    headers: { Location: `/settings?export=${reason}#account-data` },
+    headers: { Location: `/settings?tab=security&export=${reason}#account-data` },
   });
 
 export async function POST(req: Request) {

@@ -78,7 +78,7 @@ export default async function CalendarPage() {
           </p>
           <p className="text-ink-muted text-xs hidden sm:block">
             לעריכת סוג וצבע מפגש —{" "}
-            <Link href="/settings#meeting-types" className="underline underline-offset-2 hover:text-ink">
+            <Link href="/settings?tab=calendar#meeting-types" className="underline underline-offset-2 hover:text-ink">
               הגדרות ← סוגי מפגשים
             </Link>
           </p>

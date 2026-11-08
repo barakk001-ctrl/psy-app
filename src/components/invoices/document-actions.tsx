@@ -158,7 +158,7 @@ export function DraftDocumentActions({
           </div>
           <p className="text-xs text-ink-muted">
             רוצים שהמסמך יופק מכאן אוטומטית? מחברים את morning ב
-            <Link href="/settings" className="text-sage-600 hover:underline">
+            <Link href="/settings?tab=documents#morning" className="text-sage-600 hover:underline">
               הגדרות
             </Link>
             .
