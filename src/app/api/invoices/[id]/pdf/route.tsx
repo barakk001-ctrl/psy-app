@@ -1,7 +1,9 @@
 import { renderToStream } from "@react-pdf/renderer";
 import { auth } from "@/auth";
-import { loadInvoicePdfData } from "@/lib/invoice-pdf-data";
+import { loadDocumentPdfData, loadInvoicePdfData } from "@/lib/invoice-pdf-data";
 import { InvoicePDF, renderPdf } from "@/components/invoices/invoice-pdf";
+import { DocumentPDF } from "@/components/invoices/document-pdf";
+import { pdfResponse } from "@/components/pdf/pdf-response";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +18,12 @@ export async function GET(
   }
 
   const { id } = await params;
+
+  // A "מסמך חדש" document: the same layout as its preview
+  const doc = await loadDocumentPdfData(id, session.user.id);
+  if (doc) {
+    return pdfResponse(<DocumentPDF data={doc.data} />, `document-${doc.invoice.number}.pdf`);
+  }
 
   const loaded = await loadInvoicePdfData(id, session.user.id);
   if (!loaded) return new Response("Not found", { status: 404 });

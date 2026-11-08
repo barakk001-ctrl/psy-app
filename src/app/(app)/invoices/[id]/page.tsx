@@ -10,7 +10,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { auth } from "@/auth";
-import { documentLogo } from "@/lib/branding";
+import { DOC_BUSINESS_SELECT, docBusiness } from "@/lib/document-business";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ export default async function InvoiceDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; recorded?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -56,31 +56,12 @@ export default async function InvoiceDetailPage({
 
   // Documents from "מסמך חדש" have their own view
   if (invoice.docType != null) {
-    const owner = await db.user.findUnique({
-      where: { id: userId },
-      select: {
-        name: true,
-        businessName: true,
-        businessId: true,
-        address: true,
-        phone: true,
-        vatLiable: true,
-        logoUrl: true,
-        logoOnDocuments: true,
-      },
-    });
+    const owner = await db.user.findUnique({ where: { id: userId }, select: DOC_BUSINESS_SELECT });
     return (
       <DocumentView
         invoice={invoice}
-        business={{
-          name: owner?.businessName ?? owner?.name ?? "",
-          businessId: owner?.businessId ?? null,
-          address: owner?.address ?? null,
-          phone: owner?.phone ?? null,
-          vatLiable: !!owner?.vatLiable,
-          logoUrl: owner ? documentLogo(owner) : null,
-        }}
-        notice={{ saved: sp.saved === "1" }}
+        business={docBusiness(owner)}
+        notice={{ saved: sp.saved === "1", recorded: sp.recorded === "1" }}
       />
     );
   }

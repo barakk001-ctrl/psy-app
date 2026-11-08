@@ -14,7 +14,7 @@ import {
 export function PersonalDetailsForm({
   initial,
 }: {
-  initial: { name: string; email: string; phone: string | null };
+  initial: { name: string; email: string };
 }) {
   const [state, formAction, pending] = useActionState<SettingsFormState, FormData>(
     updatePersonalDetailsAction,
@@ -61,16 +61,6 @@ export function PersonalDetailsForm({
               {fieldErr.email && (
                 <p role="alert" className="text-xs text-terracotta-600 mt-1">{fieldErr.email[0]}</p>
               )}
-            </div>
-            <div>
-              <Label htmlFor="pdPhone">טלפון</Label>
-              <Input
-                id="pdPhone"
-                name="phone"
-                type="tel"
-                dir="ltr"
-                defaultValue={initial.phone ?? ""}
-              />
             </div>
           </div>
 

@@ -28,7 +28,7 @@ export async function DocumentView({
 }: {
   invoice: InvoiceWithParts;
   business: PreviewBusiness;
-  notice: { saved?: boolean };
+  notice: { saved?: boolean; recorded?: boolean };
 }) {
   const info = docKindByCode(invoice.docType)!;
   const draft = draftFromInvoice(invoice)!;
@@ -142,6 +142,11 @@ export async function DocumentView({
         </div>
       </header>
 
+      {notice.recorded && issued && (
+        <div role="status" className="rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700">
+          מספר המסמך נשמר. מעכשיו המסמך נספר בהכנסות ובחובות.
+        </div>
+      )}
       {notice.saved && !issued && (
         <div className="rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700">
           הטיוטה נשמרה.

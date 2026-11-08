@@ -2,7 +2,19 @@
 
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { isReadOnly, requireWritable } from "@/lib/subscription-server";
-import { documentDefaults } from "@/lib/billing-docs";
+import { creatableKinds, documentDefaults } from "@/lib/billing-docs";
+import {
+  DEFAULT_EMAIL_BODY,
+  DEFAULT_EMAIL_SUBJECT,
+  EMAIL_BODY_MAX,
+  EMAIL_SUBJECT_MAX,
+  NEXT_NUMBER_FIELDS,
+  isDocColor,
+  isDocTemplate,
+  isValidSignatureDataUrl,
+  parseNextNumber,
+  storedEmailText,
+} from "@/lib/document-look";
 import { canCreateAccount } from "@/lib/signup-policy";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -81,12 +93,25 @@ export async function updateBusinessInfoAction(
   const userId = await requireUserId();
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
 
+  // The setup wizard's shorter form sends only some fields: absent ones stay as they are
+  const OPTIONAL_FIELDS = [
+    "occupation",
+    "businessDescription",
+    "phone",
+    "docEmail",
+    "website",
+    "businessNameEn",
+    "addressEn",
+    "descriptionEn",
+  ] as const;
+  const sent = OPTIONAL_FIELDS.filter((f) => formData.has(f));
   const parsed = businessInfoSchema.safeParse({
     businessName: formData.get("businessName") ?? "",
     businessId: formData.get("businessId") ?? "",
     vatLiable: formData.get("vatLiable") ?? "false",
     address: formData.get("address") ?? "",
     defaultRate: formData.get("defaultRate") ?? "",
+    ...Object.fromEntries(sent.map((f) => [f, formData.get(f) ?? ""])),
   });
 
   if (!parsed.success) {
@@ -105,10 +130,12 @@ export async function updateBusinessInfoAction(
       vatLiable: data.vatLiable,
       address: data.address || null,
       defaultRate: data.defaultRate ?? null,
+      ...Object.fromEntries(sent.map((f) => [f, data[f] || null])),
     },
   });
 
   revalidatePath("/settings");
+  revalidatePath("/invoices", "layout");
   return { saved: true };
 }
 
@@ -233,7 +260,8 @@ export async function updatePersonalDetailsAction(
     data: {
       name: parsed.data.name,
       email,
-      phone: parsed.data.phone || null,
+      // The phone moved to Settings → הגדרות עסק; an older form may still send it
+      ...(formData.has("phone") ? { phone: parsed.data.phone || null } : {}),
     },
   });
 
@@ -373,5 +401,92 @@ export async function updateDocumentDefaultsAction(
   });
   revalidatePath("/settings");
   revalidatePath("/invoices/new");
+  return { saved: true };
+}
+
+/**
+ * Settings → הגדרות מסמכים → "מראה המסמך": template, color and the signature
+ * image. `signature` is "" to keep the stored one, "REMOVE" to clear it, or a
+ * new PNG/JPEG data: URL (checked here, like the logo).
+ */
+export async function updateDocumentLookAction(
+  _prev: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
+  const template = String(formData.get("docTemplate") ?? "");
+  const color = String(formData.get("docColor") ?? "");
+  const signature = String(formData.get("signature") ?? "");
+  if (!isDocTemplate(template) || !isDocColor(color)) return { error: "יש לבחור תבנית וצבע מהרשימה" };
+  if (signature && signature !== "REMOVE" && !isValidSignatureDataUrl(signature)) {
+    return { error: "קובץ החתימה לא תקין או גדול מדי — נסו תמונת PNG או JPG", fieldErrors: { signature: ["קובץ לא תקין"] } };
+  }
+  await db.user.update({
+    where: { id: userId },
+    data: {
+      docTemplate: template,
+      docColor: color,
+      ...(signature === "REMOVE" ? { signatureUrl: null } : signature ? { signatureUrl: signature } : {}),
+    },
+  });
+  revalidatePath("/settings");
+  revalidatePath("/invoices", "layout");
+  return { saved: true };
+}
+
+/** Settings → הגדרות מסמכים → "מייל ללקוח": the subject and message sent with a document (once issuing exists). */
+export async function updateDocumentEmailAction(
+  _prev: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
+  const subject = String(formData.get("docEmailSubject") ?? "");
+  const body = String(formData.get("docEmailBody") ?? "");
+  if (subject.trim().length > EMAIL_SUBJECT_MAX) {
+    return { error: `הנושא ארוך מדי (עד ${EMAIL_SUBJECT_MAX} תווים)`, fieldErrors: { docEmailSubject: ["ארוך מדי"] } };
+  }
+  if (body.trim().length > EMAIL_BODY_MAX) {
+    return { error: `ההודעה ארוכה מדי (עד ${EMAIL_BODY_MAX} תווים)`, fieldErrors: { docEmailBody: ["ארוכה מדי"] } };
+  }
+  await db.user.update({
+    where: { id: userId },
+    data: {
+      docEmailSubject: storedEmailText(subject, DEFAULT_EMAIL_SUBJECT),
+      docEmailBody: storedEmailText(body, DEFAULT_EMAIL_BODY),
+    },
+  });
+  revalidatePath("/settings");
+  return { saved: true };
+}
+
+/**
+ * Settings → הגדרות מסמכים → "מספור מסמכים": the number the next document of
+ * each type will get once the app issues documents. Whole numbers from 1. No
+ * document is issued from the app yet, so nothing can be passed; when issuing
+ * exists, a number must never go below one already used.
+ */
+export async function updateDocumentNumberingAction(
+  _prev: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  const userId = await requireUserId();
+  if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
+  const owner = await db.user.findUnique({ where: { id: userId }, select: { vatLiable: true } });
+  const data: Partial<Record<(typeof NEXT_NUMBER_FIELDS)[keyof typeof NEXT_NUMBER_FIELDS], number>> = {};
+  const fieldErrors: Record<string, string[]> = {};
+  for (const k of creatableKinds(!!owner?.vatLiable)) {
+    const field = NEXT_NUMBER_FIELDS[k.kind];
+    if (!formData.has(field)) continue;
+    const n = parseNextNumber(String(formData.get(field) ?? ""));
+    if (n === null) fieldErrors[field] = ["מספר שלם וחיובי (1 ומעלה)"];
+    else data[field] = n;
+  }
+  if (Object.keys(fieldErrors).length) {
+    return { error: "המספר של המסמך הבא צריך להיות מספר שלם וחיובי", fieldErrors };
+  }
+  await db.user.update({ where: { id: userId }, data });
+  revalidatePath("/settings");
   return { saved: true };
 }

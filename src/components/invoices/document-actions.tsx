@@ -42,7 +42,8 @@ export function DraftDocumentActions({
           setError(r.error);
           return;
         }
-        router.refresh();
+        // A new address renders the page afresh (a bare refresh was seen not to repaint)
+        router.replace(`/invoices/${invoiceId}?recorded=1`);
       } catch {
         setError("אין חיבור — נסו שוב.");
       }

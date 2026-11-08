@@ -11,11 +11,23 @@ export const personalDetailsSchema = z.object({
 
 export type PersonalDetailsInput = z.infer<typeof personalDetailsSchema>;
 
+const optionalText = (max: number, message = `עד ${max} תווים`) =>
+  z.string().trim().max(max, message).optional().or(z.literal(""));
+
 export const businessInfoSchema = z.object({
   businessName: z.string().max(120).optional().or(z.literal("")),
   businessId: z.string().max(20).optional().or(z.literal("")),
   vatLiable: z.preprocess((v) => v === "true" || v === true, z.boolean()),
   address: z.string().max(200).optional().or(z.literal("")),
+  // Only in Settings (the setup wizard shows a shorter form): absent = unchanged
+  occupation: optionalText(80),
+  businessDescription: optionalText(160),
+  phone: optionalText(30),
+  docEmail: z.string().trim().max(120).email("כתובת אימייל לא תקינה").optional().or(z.literal("")),
+  website: optionalText(120),
+  businessNameEn: optionalText(120),
+  addressEn: optionalText(200),
+  descriptionEn: optionalText(160),
   defaultRate: z
     .union([z.string(), z.number()])
     .optional()

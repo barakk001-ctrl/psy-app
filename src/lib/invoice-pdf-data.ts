@@ -3,6 +3,10 @@ import { clientIdNumber } from "@/lib/sensitive-fields";
 import type { InvoicePDFData } from "@/components/invoices/invoice-pdf";
 import { documentClientName, docTypeLabel } from "@/lib/billing-docs";
 import { documentLogo, pdfLogo } from "@/lib/branding";
+import { draftFromInvoice } from "@/lib/billing-doc-data";
+import { DOC_BUSINESS_SELECT, docBusiness } from "@/lib/document-business";
+import type { DocumentPdfData } from "@/components/invoices/document-pdf";
+import { producedAtNow } from "@/components/invoices/document-preview";
 
 export type LoadedInvoice = NonNullable<Awaited<ReturnType<typeof loadInvoiceWithRelations>>>;
 
@@ -78,4 +82,38 @@ export async function loadInvoicePdfData(
   };
 
   return { invoice, data };
+}
+
+/**
+ * A "מסמך חדש" document (docType set) for its own PDF, laid out like the
+ * preview: null for older app invoices and for anything not the user's.
+ */
+export async function loadDocumentPdfData(
+  invoiceId: string,
+  userId: string,
+): Promise<{ invoice: { number: number }; data: DocumentPdfData } | null> {
+  const inv = await db.invoice.findFirst({
+    where: { id: invoiceId, userId, docType: { not: null } },
+    include: { items: true, payments: true, client: true },
+  });
+  if (!inv) return null;
+  const draft = draftFromInvoice(inv);
+  if (!draft) return null;
+  const owner = await db.user.findUnique({ where: { id: userId }, select: DOC_BUSINESS_SELECT });
+  const business = docBusiness(owner);
+  return {
+    invoice: { number: inv.number },
+    data: {
+      draft,
+      business: {
+        ...business,
+        // The PDF renderer reads PNG and JPEG only
+        logoUrl: pdfLogo(business.logoUrl ?? null),
+        signatureUrl: pdfLogo(business.signatureUrl ?? null),
+      },
+      number: inv.morningDocNumber,
+      status: inv.morningDocNumber ? "issued" : "draft",
+      producedAt: producedAtNow(),
+    },
+  };
 }

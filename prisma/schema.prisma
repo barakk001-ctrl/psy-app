@@ -30,6 +30,35 @@ model User {
   logoUrl         String?
   // Show the logo at the top of the app's document preview and draft PDFs
   logoOnDocuments Boolean   @default(false)
+
+  // More business details for documents (Settings → הגדרות עסק). `address`
+  // above and `phone` are the document's address and phone; docEmail is the
+  // address printed on documents (not the sign-in email).
+  occupation          String?   // "עיסוק / מקצוע"
+  businessDescription String?   // one line under the name on documents
+  docEmail            String?
+  website             String?
+  // "פרטי העסק באנגלית", for documents in English (later)
+  businessNameEn      String?
+  addressEn           String?
+  descriptionEn       String?
+
+  // How documents look (Settings → הגדרות מסמכים; src/lib/document-look.ts)
+  // A signature image shown at the bottom of documents: a small PNG/JPEG data:
+  // URL, scaled in the browser and checked on the server, like the logo
+  signatureUrl     String?
+  docTemplate      String   @default("classic")
+  docColor         String   @default("sage")
+  // The email to the client with a document (null = the default text); used
+  // once the app issues documents
+  docEmailSubject  String?
+  docEmailBody     String?
+  // The number the next document of each type will get, once the app issues
+  // documents ("המספר של המסמך הבא"). Never moves backwards after issuing.
+  docNextTaxInvoice        Int @default(1)
+  docNextTaxInvoiceReceipt Int @default(1)
+  docNextReceipt           Int @default(1)
+  docNextCreditNote        Int @default(1)
   // Name shown under "מרפאה אישית" in the header, so the app reads as theirs
   brandName       String?
 

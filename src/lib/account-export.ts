@@ -201,6 +201,22 @@ export async function buildExportEntries(userId: string): Promise<ExportEntry[]>
       address: true,
       brandName: true,
       logoUrl: true,
+      occupation: true,
+      businessDescription: true,
+      docEmail: true,
+      website: true,
+      businessNameEn: true,
+      addressEn: true,
+      descriptionEn: true,
+      signatureUrl: true,
+      docTemplate: true,
+      docColor: true,
+      docEmailSubject: true,
+      docEmailBody: true,
+      docNextTaxInvoice: true,
+      docNextTaxInvoiceReceipt: true,
+      docNextReceipt: true,
+      docNextCreditNote: true,
       defaultRate: true,
       currency: true,
       timezone: true,
@@ -232,19 +248,21 @@ export async function buildExportEntries(userId: string): Promise<ExportEntry[]>
   const clientName = (id: string | null) => (id ? (clients.get(id)?.name ?? "") : "");
   const folder = (id: string) => clients.get(id)?.folder ?? id;
 
-  const { logoUrl, ...profile } = account;
+  const { logoUrl, signatureUrl, ...profile } = account;
   const entries: ExportEntry[] = [
     textEntry("קראו אותי.txt", () => README_TEXT),
     textEntry("חשבון.json", () => `${JSON.stringify(profile, null, 2)}\n`),
   ];
 
-  const logo = logoUrl?.match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/);
-  if (logo) {
+  // The logo and the signature as image files, not data: URLs in the JSON
+  for (const [name, url] of [["לוגו", logoUrl], ["חתימה", signatureUrl]] as const) {
+    const image = url?.match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/);
+    if (!image) continue;
     entries.push({
-      path: `לוגו.${logo[1].replace("jpeg", "jpg")}`,
+      path: `${name}.${image[1].replace("jpeg", "jpg")}`,
       compress: false,
       async *body() {
-        yield Buffer.from(logo[2], "base64");
+        yield Buffer.from(image[2], "base64");
       },
     });
   }

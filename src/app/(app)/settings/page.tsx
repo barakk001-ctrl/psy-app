@@ -5,7 +5,13 @@ import { BusinessInfoForm } from "@/components/settings/business-info-form";
 import { BrandingCard } from "@/components/settings/branding-card";
 import { PersonalDetailsForm } from "@/components/settings/personal-details-form";
 import { DocumentDefaultsCard } from "@/components/settings/document-defaults-card";
-import { documentDefaults } from "@/lib/billing-docs";
+import { creatableKinds, documentDefaults } from "@/lib/billing-docs";
+import { DocumentLookCard } from "@/components/settings/document-look-card";
+import { DocumentEmailCard } from "@/components/settings/document-email-card";
+import { DocumentNumberingCard } from "@/components/settings/document-numbering-card";
+import { docLook, emailTexts } from "@/lib/document-look";
+import { DOC_BUSINESS_SELECT, docBusiness } from "@/lib/document-business";
+import { clinicDay } from "@/lib/billing-doc-data";
 import { BiometricSettings } from "@/components/settings/biometric-settings";
 import { InboxSettings } from "@/components/settings/inbox-settings";
 import { MeetingTypesCard } from "@/components/settings/meeting-types-card";
@@ -63,6 +69,7 @@ export default async function SettingsPage({
   const user = await db.user.findUnique({
     where: { id: userId },
     select: {
+      ...DOC_BUSINESS_SELECT,
       name: true,
       email: true,
       businessName: true,
@@ -82,6 +89,15 @@ export default async function SettingsPage({
       totpBackupCodes: true,
       hashedPassword: true,
       defaultDocType: true,
+      businessNameEn: true,
+      addressEn: true,
+      descriptionEn: true,
+      docEmailSubject: true,
+      docEmailBody: true,
+      docNextTaxInvoice: true,
+      docNextTaxInvoiceReceipt: true,
+      docNextReceipt: true,
+      docNextCreditNote: true,
       docCurrency: true,
       docLang: true,
       docVatType: true,
@@ -194,19 +210,28 @@ export default async function SettingsPage({
           </span>
           <span aria-hidden>←</span>
         </Link>
-        <PersonalDetailsForm initial={{ name: user.name, email: user.email, phone: user.phone }} />
+        <PersonalDetailsForm initial={{ name: user.name, email: user.email }} />
       </>
     ),
     business: (
       <>
         <div id="business" className="scroll-mt-24">
           <BusinessInfoForm
+            full
             initial={{
               businessName: user.businessName,
               businessId: user.businessId,
               address: user.address,
               defaultRate: user.defaultRate ? user.defaultRate.toString() : null,
               vatLiable: user.vatLiable,
+              occupation: user.occupation,
+              businessDescription: user.businessDescription,
+              phone: user.phone,
+              docEmail: user.docEmail,
+              website: user.website,
+              businessNameEn: user.businessNameEn,
+              addressEn: user.addressEn,
+              descriptionEn: user.descriptionEn,
             }}
           />
         </div>
@@ -228,6 +253,29 @@ export default async function SettingsPage({
             defaults={documentDefaults(user)}
             vatLiable={user.vatLiable}
             defaultDocType={user.defaultDocType}
+          />
+        </div>
+        <div id="document-look" className="scroll-mt-24">
+          <DocumentLookCard
+            business={docBusiness(user)}
+            look={docLook(user)}
+            logoUrl={user.logoUrl}
+            logoOnDocuments={user.logoOnDocuments}
+            today={clinicDay(new Date())}
+          />
+        </div>
+        <div id="document-email" className="scroll-mt-24">
+          <DocumentEmailCard {...emailTexts(user)} businessName={user.businessName || user.name} />
+        </div>
+        <div id="document-numbering" className="scroll-mt-24">
+          <DocumentNumberingCard
+            kinds={creatableKinds(user.vatLiable).map((k) => k.kind)}
+            numbers={{
+              TAX_INVOICE: user.docNextTaxInvoice,
+              TAX_INVOICE_RECEIPT: user.docNextTaxInvoiceReceipt,
+              RECEIPT: user.docNextReceipt,
+              CREDIT_NOTE: user.docNextCreditNote,
+            }}
           />
         </div>
       </>

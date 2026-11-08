@@ -2,7 +2,7 @@ import { clientIdNumber } from "@/lib/sensitive-fields";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
-import { documentLogo } from "@/lib/branding";
+import { DOC_BUSINESS_SELECT, docBusiness } from "@/lib/document-business";
 import { db } from "@/lib/db";
 import { creatableKinds, defaultKind, documentClientName, documentDefaults, docTypeLabel, DOC_KINDS, UNLINKED_SESSION, type DocKind } from "@/lib/billing-docs";
 import { clinicDay, draftFromInvoice, loadCreditableInvoices } from "@/lib/billing-doc-data";
@@ -54,14 +54,7 @@ export default async function NewDocumentPage({
     db.user.findUnique({
       where: { id: userId },
       select: {
-        name: true,
-        businessName: true,
-        businessId: true,
-        address: true,
-        phone: true,
-        vatLiable: true,
-        logoUrl: true,
-        logoOnDocuments: true,
+        ...DOC_BUSINESS_SELECT,
         defaultDocType: true,
         docCurrency: true,
         docLang: true,
@@ -115,7 +108,7 @@ export default async function NewDocumentPage({
     : null;
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       <Link
         href={forInvoice ? `/invoices/${forInvoice.id}` : "/invoices"}
         className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"
@@ -150,14 +143,7 @@ export default async function NewDocumentPage({
           })),
         }))}
         today={clinicDay(now)}
-        business={{
-          name: owner?.businessName ?? owner?.name ?? "",
-          businessId: owner?.businessId ?? null,
-          address: owner?.address ?? null,
-          phone: owner?.phone ?? null,
-          vatLiable,
-          logoUrl: owner ? documentLogo(owner) : null,
-        }}
+        business={docBusiness(owner)}
         clients={clients.map((c) => ({
           id: c.id,
           name: `${c.firstName} ${c.lastName}`.trim(),

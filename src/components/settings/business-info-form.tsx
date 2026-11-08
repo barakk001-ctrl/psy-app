@@ -19,14 +19,25 @@ type Props = {
     address: string | null;
     defaultRate: string | null;
     vatLiable: boolean;
+    /** Settings only (the setup wizard shows the short form) */
+    occupation?: string | null;
+    businessDescription?: string | null;
+    phone?: string | null;
+    docEmail?: string | null;
+    website?: string | null;
+    businessNameEn?: string | null;
+    addressEn?: string | null;
+    descriptionEn?: string | null;
   };
+  /** the full form, with the document contact details and the English details */
+  full?: boolean;
   /** the setup wizard submits this form from its own "הבא" button */
   formId?: string;
   onSaved?: () => void;
   hideSave?: boolean;
 };
 
-export function BusinessInfoForm({ initial, formId, onSaved, hideSave = false }: Props) {
+export function BusinessInfoForm({ initial, full = false, formId, onSaved, hideSave = false }: Props) {
   const [state, formAction, pending] = useActionState<SettingsFormState, FormData>(
     updateBusinessInfoAction,
     null,
@@ -35,6 +46,13 @@ export function BusinessInfoForm({ initial, formId, onSaved, hideSave = false }:
     if (state?.saved) onSaved?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per save
   }, [state]);
+  const fieldErr = state?.fieldErrors ?? {};
+  const err = (name: string) =>
+    fieldErr[name]?.[0] ? (
+      <p id={`${name}-error`} role="alert" className="text-xs text-terracotta-600 mt-1">
+        {fieldErr[name][0]}
+      </p>
+    ) : null;
 
   return (
     <form
@@ -52,7 +70,7 @@ export function BusinessInfoForm({ initial, formId, onSaved, hideSave = false }:
         <CardContent className="space-y-5">
           <h2 className="font-display text-xl text-ink">פרטי העסק</h2>
           <p className="text-xs text-ink-muted">
-            פרטים אלו מופיעים בראש החשבוניות שאתם מפיקים.
+            פרטים אלו מופיעים בראש מסמכי ההכנסות.
           </p>
 
           <div>
@@ -64,6 +82,39 @@ export function BusinessInfoForm({ initial, formId, onSaved, hideSave = false }:
               placeholder="אם ריק, יוצג השם המלא"
             />
           </div>
+
+          {full && (
+            <>
+              <div>
+                <Label htmlFor="occupation">עיסוק / מקצוע</Label>
+                <Input
+                  id="occupation"
+                  name="occupation"
+                  maxLength={80}
+                  defaultValue={initial.occupation ?? ""}
+                  placeholder="למשל: פסיכולוגיה קלינית"
+                  invalid={!!fieldErr.occupation}
+                />
+                {err("occupation")}
+              </div>
+              <div>
+                <Label htmlFor="businessDescription">שורת תיאור למסמכים</Label>
+                <Input
+                  id="businessDescription"
+                  name="businessDescription"
+                  maxLength={160}
+                  defaultValue={initial.businessDescription ?? ""}
+                  placeholder="למשל: טיפול רגשי למבוגרים ולמתבגרים"
+                  aria-describedby="businessDescription-hint"
+                  invalid={!!fieldErr.businessDescription}
+                />
+                <p id="businessDescription-hint" className="text-xs text-ink-muted mt-1">
+                  שורה אחת שמופיעה מתחת לשם העסק במסמכים.
+                </p>
+                {err("businessDescription")}
+              </div>
+            </>
+          )}
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
@@ -87,14 +138,12 @@ export function BusinessInfoForm({ initial, formId, onSaved, hideSave = false }:
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="address">כתובת</Label>
-            <Input
-              id="address"
-              name="address"
-              defaultValue={initial.address ?? ""}
-            />
-          </div>
+          {!full && (
+            <div>
+              <Label htmlFor="address">כתובת</Label>
+              <Input id="address" name="address" defaultValue={initial.address ?? ""} />
+            </div>
+          )}
 
           <div>
             <Label htmlFor="vatLiable">סטטוס מע״מ</Label>
@@ -113,6 +162,94 @@ export function BusinessInfoForm({ initial, formId, onSaved, hideSave = false }:
           </div>
         </CardContent>
       </Card>
+
+      {full && (
+        <Card>
+          <CardContent className="space-y-5">
+            <h2 className="font-display text-xl text-ink">פרטי קשר למסמכים</h2>
+            <p className="text-xs text-ink-muted">מופיעים בראש המסמכים, מתחת לשם העסק.</p>
+            <div>
+              <Label htmlFor="address">כתובת</Label>
+              <Input id="address" name="address" maxLength={200} defaultValue={initial.address ?? ""} />
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="bizPhone">טלפון</Label>
+                <Input
+                  id="bizPhone"
+                  name="phone"
+                  type="tel"
+                  dir="ltr"
+                  maxLength={30}
+                  defaultValue={initial.phone ?? ""}
+                  invalid={!!fieldErr.phone}
+                />
+                {err("phone")}
+              </div>
+              <div>
+                <Label htmlFor="docEmail">אימייל</Label>
+                <Input
+                  id="docEmail"
+                  name="docEmail"
+                  type="email"
+                  dir="ltr"
+                  maxLength={120}
+                  defaultValue={initial.docEmail ?? ""}
+                  invalid={!!fieldErr.docEmail}
+                  aria-describedby={fieldErr.docEmail ? "docEmail-error" : undefined}
+                />
+                {err("docEmail")}
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="website">אתר</Label>
+              <Input
+                id="website"
+                name="website"
+                dir="ltr"
+                maxLength={120}
+                defaultValue={initial.website ?? ""}
+                placeholder="www.example.co.il"
+                invalid={!!fieldErr.website}
+              />
+              {err("website")}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {full && (
+        <Card>
+          <CardContent className="space-y-5">
+            <h2 className="font-display text-xl text-ink">פרטי העסק באנגלית</h2>
+            <p className="text-xs text-ink-muted">לא חובה. ישמשו למסמכים באנגלית.</p>
+            <div>
+              <Label htmlFor="businessNameEn">שם העסק באנגלית</Label>
+              <Input
+                id="businessNameEn"
+                name="businessNameEn"
+                dir="ltr"
+                maxLength={120}
+                defaultValue={initial.businessNameEn ?? ""}
+              />
+            </div>
+            <div>
+              <Label htmlFor="addressEn">כתובת באנגלית</Label>
+              <Input id="addressEn" name="addressEn" dir="ltr" maxLength={200} defaultValue={initial.addressEn ?? ""} />
+            </div>
+            <div>
+              <Label htmlFor="descriptionEn">שורת תיאור באנגלית</Label>
+              <Input
+                id="descriptionEn"
+                name="descriptionEn"
+                dir="ltr"
+                maxLength={160}
+                defaultValue={initial.descriptionEn ?? ""}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {state?.error && (
         <div role="alert" className="rounded border border-terracotta-500/30 bg-terracotta-500/10 px-3 py-2 text-sm text-terracotta-600">
