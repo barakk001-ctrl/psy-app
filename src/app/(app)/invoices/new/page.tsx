@@ -2,6 +2,7 @@ import { clientIdNumber } from "@/lib/sensitive-fields";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { auth } from "@/auth";
+import { documentLogo } from "@/lib/branding";
 import { db } from "@/lib/db";
 import { getMorningCredentials } from "@/lib/morning";
 import { creatableKinds, defaultKind, documentClientName, documentDefaults, docTypeLabel, DOC_KINDS, UNLINKED_SESSION, type DocKind } from "@/lib/billing-docs";
@@ -60,6 +61,8 @@ export default async function NewDocumentPage({
         address: true,
         phone: true,
         vatLiable: true,
+        logoUrl: true,
+        logoOnDocuments: true,
         morningDocType: true,
         docCurrency: true,
         docLang: true,
@@ -158,6 +161,7 @@ export default async function NewDocumentPage({
           address: owner?.address ?? null,
           phone: owner?.phone ?? null,
           vatLiable,
+          logoUrl: owner ? documentLogo(owner) : null,
         }}
         clients={clients.map((c) => ({
           id: c.id,

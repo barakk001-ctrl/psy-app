@@ -171,6 +171,7 @@ export async function updateBrandingAction(
     where: { id: userId },
     data: {
       brandName: brandName || null,
+      logoOnDocuments: formData.get("logoOnDocuments") === "on",
       ...(logo === "REMOVE" ? { logoUrl: null } : logo ? { logoUrl: logo } : {}),
     },
   });

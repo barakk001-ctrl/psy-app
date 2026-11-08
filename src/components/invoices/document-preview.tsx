@@ -3,11 +3,11 @@ import {
   DEAL_TYPE_LABELS,
   DOC_KINDS,
   PAYMENT_DETAIL_FIELDS,
-  PAYMENT_DETAIL_LABELS,
   PAYMENT_KIND_LABELS,
   documentTotals,
   formatDocMoney,
   lineAgorot,
+  paymentDetailLabel,
   type CardType,
   type DealType,
   type DocumentDraft,
@@ -19,6 +19,8 @@ export type PreviewBusiness = {
   address: string | null;
   phone: string | null;
   vatLiable: boolean;
+  /** Settings → מיתוג, when "גם בראש מסמכי ההכנסות" is ticked */
+  logoUrl?: string | null;
 };
 
 function heDate(day: string | null | undefined): string {
@@ -59,16 +61,27 @@ export function DocumentPreview({
       )}
       <div className="p-5 sm:p-7 space-y-6">
         <header className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="font-display text-lg">{business.name}</div>
-            <div className="text-xs text-ink-muted mt-1 space-y-0.5">
-              {business.businessId && (
-                <div>
-                  {business.vatLiable ? "עוסק מורשה" : "עוסק פטור"} {business.businessId}
-                </div>
-              )}
-              {business.address && <div>{business.address}</div>}
-              {business.phone && <div dir="ltr" className="text-end">{business.phone}</div>}
+          <div className="flex items-start gap-3">
+            {business.logoUrl && (
+              // A small data: URL from Settings → מיתוג; next/image adds nothing here
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={business.logoUrl}
+                alt=""
+                className="w-14 h-14 rounded-xl object-cover shrink-0 border border-cream-200"
+              />
+            )}
+            <div>
+              <div className="font-display text-lg">{business.name}</div>
+              <div className="text-xs text-ink-muted mt-1 space-y-0.5">
+                {business.businessId && (
+                  <div>
+                    {business.vatLiable ? "עוסק מורשה" : "עוסק פטור"} {business.businessId}
+                  </div>
+                )}
+                {business.address && <div>{business.address}</div>}
+                {business.phone && <div dir="ltr" className="text-end">{business.phone}</div>}
+              </div>
             </div>
           </div>
           <div className="text-end">
@@ -149,7 +162,7 @@ export function DocumentPreview({
                         : f === "dealType"
                           ? DEAL_TYPE_LABELS[v as DealType]
                           : String(v);
-                    return `${PAYMENT_DETAIL_LABELS[f]}: ${shown}`;
+                    return `${paymentDetailLabel(p.method, f)}: ${shown}`;
                   })
                   .filter(Boolean);
                 return (

@@ -9,6 +9,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { auth } from "@/auth";
+import { documentLogo } from "@/lib/branding";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,16 @@ export default async function InvoiceDetailPage({
     const [owner, creds] = await Promise.all([
       db.user.findUnique({
         where: { id: userId },
-        select: { name: true, businessName: true, businessId: true, address: true, phone: true, vatLiable: true },
+        select: {
+          name: true,
+          businessName: true,
+          businessId: true,
+          address: true,
+          phone: true,
+          vatLiable: true,
+          logoUrl: true,
+          logoOnDocuments: true,
+        },
       }),
       getMorningCredentials(userId),
     ]);
@@ -73,6 +83,7 @@ export default async function InvoiceDetailPage({
           address: owner?.address ?? null,
           phone: owner?.phone ?? null,
           vatLiable: !!owner?.vatLiable,
+          logoUrl: owner ? documentLogo(owner) : null,
         }}
         notice={{
           issued: sp.issued === "1",

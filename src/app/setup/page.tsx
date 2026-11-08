@@ -32,6 +32,7 @@ export default async function SetupPage({
       select: {
         brandName: true,
         logoUrl: true,
+        logoOnDocuments: true,
         businessName: true,
         businessId: true,
         address: true,
@@ -66,7 +67,11 @@ export default async function SetupPage({
       <SetupWizard
         key={step}
         step={step}
-        brand={{ brandName: user.brandName, logoUrl: user.logoUrl }}
+        brand={{
+          brandName: user.brandName,
+          logoUrl: user.logoUrl,
+          logoOnDocuments: user.logoOnDocuments,
+        }}
         business={{
           businessName: user.businessName,
           businessId: user.businessId,

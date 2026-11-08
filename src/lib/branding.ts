@@ -14,3 +14,21 @@ const LOGO_RE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/;
 export function isValidLogoDataUrl(value: string): boolean {
   return value.length <= LOGO_MAX_CHARS && LOGO_RE.test(value);
 }
+
+/**
+ * The logo for the top of the app's own document preview and draft PDFs, or
+ * null: only when Settings → מיתוג has "גם בראש מסמכי ההכנסות" ticked. The
+ * documents morning issues carry the logo of the morning account instead: its
+ * API takes no logo with a document.
+ */
+export function documentLogo(user: {
+  logoUrl: string | null;
+  logoOnDocuments: boolean;
+}): string | null {
+  return user.logoOnDocuments && user.logoUrl && isValidLogoDataUrl(user.logoUrl) ? user.logoUrl : null;
+}
+
+/** The PDF renderer reads PNG and JPEG only, so a WebP logo stays off the PDF. */
+export function pdfLogo(logo: string | null): string | null {
+  return logo && /^data:image\/(png|jpeg);base64,/.test(logo) ? logo : null;
+}

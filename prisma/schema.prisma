@@ -28,6 +28,9 @@ model User {
   // Logo or photo shown in the app header (a small data: URL resized in the
   // browser, so no file storage is needed)
   logoUrl         String?
+  // Show the logo at the top of the app's own document preview and draft PDFs
+  // (morning's documents use the logo set in the morning account)
+  logoOnDocuments Boolean   @default(false)
   // Name shown under "מרפאה אישית" in the header, so the app reads as theirs
   brandName       String?
 
@@ -649,6 +652,10 @@ enum PaymentMethod {
   CREDIT_CARD
   PAYPAL
   OTHER
+  PAYONEER
+  GOOGLE_PAY
+  APPLE_PAY
+  GIFT_VOUCHER
 }
 
 // ─────────────────────────────────────────────────────────────

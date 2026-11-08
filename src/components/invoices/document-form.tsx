@@ -24,12 +24,14 @@ import {
   DOC_ROUNDING_LABELS,
   DOC_VAT_TYPES,
   DOC_VAT_TYPE_LABELS,
+  MANUAL_ONLY_PAYMENT_KINDS,
   PAYMENT_DETAIL_FIELDS,
   PAYMENT_KINDS,
   PAYMENT_KIND_LABELS,
   agorotToDecimalString,
   documentProblems,
   documentTotals,
+  morningPaymentProblems,
   formatDocMoney,
   lastDayOfMonth,
   morningCopyText,
@@ -209,6 +211,7 @@ export function DocumentForm({
           chequeNumber: p.chequeNumber ?? undefined,
           cardLast4: p.cardLast4 ?? undefined,
           reference: p.reference ?? undefined,
+          details: p.details ?? undefined,
           installments: p.installments != null ? String(p.installments) : undefined,
         }))
       : [
@@ -270,6 +273,7 @@ export function DocumentForm({
             dealType: (p.dealType || null) as DocumentDraft["payments"][number]["dealType"],
             installments: p.installments ? Number(p.installments) : null,
             reference: p.reference || null,
+            details: p.method === "OTHER" ? p.details || null : null,
           }))
         : [],
     }),
@@ -341,7 +345,11 @@ export function DocumentForm({
   function askIssue() {
     setServerError(null);
     const d = submittable();
-    const found = documentProblems(d, business.vatLiable);
+    const found = [
+      ...documentProblems(d, business.vatLiable),
+      // Only the connection can't take it: by hand in morning it's fine
+      ...(morningConnected ? morningPaymentProblems(d) : []),
+    ];
     setProblems(found);
     if (found.length) {
       setShowPreview(false);
@@ -411,6 +419,7 @@ export function DocumentForm({
         dealType: p.dealType ?? "",
         installments: p.installments ?? "",
         reference: p.reference ?? "",
+        details: p.details ?? "",
       })),
     });
   }
@@ -669,7 +678,7 @@ export function DocumentForm({
               disabled={!!related || linked}
               onChange={(e) => pickClient(e.target.value)}
             >
-              <option value="">בחירת לקוח/ה מהרשימה</option>
+              <option value="">בחירת לקוח/ה מהרשימה (קבוע/מזדמן)</option>
               <option value={ONE_OFF}>לקוח מזדמן (לא ברשימה)</option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -728,6 +737,39 @@ export function DocumentForm({
           )}
         </CardContent>
       </Card>
+
+      {info.hasSessions && clientId && (
+        <Card>
+          <CardHeader>
+            <CardTitle>שיוך לפגישות</CardTitle>
+            <p className="text-xs text-ink-muted mt-1">
+              פנימי בלבד, לא מופיע במסמך. בהפקה מספר המסמך נרשם בפרטי התשלום של הפגישות שסומנו.
+            </p>
+          </CardHeader>
+          {clientSessions.length > 0 ? (
+            <ul className="divide-y divide-cream-200">
+              {clientSessions.map((s) => (
+                <li key={s.id}>
+                  <label className="flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-cream-100/60">
+                    <input
+                      type="checkbox"
+                      checked={sessionIds.includes(s.id)}
+                      onChange={() => toggleSession(s.id)}
+                      className="w-4 h-4 accent-sage-600"
+                    />
+                    <span className="flex-1 text-sm text-ink">{s.label}</span>
+                    {s.rate && <span className="text-sm text-ink-muted">₪{Number(s.rate)}</span>}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <CardContent>
+              <p className="text-sm text-ink-muted">אין פגישות שעוד לא שויך אליהן תשלום.</p>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {info.hasItems && (
         <Card>
@@ -807,34 +849,41 @@ export function DocumentForm({
                 המטבע משותף לכל שורות המסמך. דוחות ההכנסה בשקלים, ומסמך במטבע אחר לא נספר בהם.
               </p>
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setItems((prev) => [...prev, emptyItem(client?.rate)])}
-            >
-              <Plus className="w-4 h-4" /> הוספת שורה
-            </Button>
-            {business.vatLiable && vatType === 0 && (
-              <div className="inline-flex rounded-full border border-cream-300 bg-cream-100 p-1 text-sm">
-                {[
-                  { v: true, label: "המחירים כוללים מע״מ" },
-                  { v: false, label: "לא כוללים מע״מ" },
-                ].map((o) => (
-                  <button
-                    key={String(o.v)}
-                    type="button"
-                    onClick={() => setVatIncluded(o.v)}
-                    className={cn(
-                      "px-3 py-1 rounded-full",
-                      vatIncluded === o.v ? "bg-white text-ink shadow-soft" : "text-ink-muted",
-                    )}
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* RTL: the VAT switch first (right), "הוספת שורה" to its left */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+              {business.vatLiable && vatType === 0 && (
+                <div className="inline-flex rounded-full border border-cream-300 bg-cream-100 p-1 text-sm">
+                  {[
+                    { v: true, label: "המחירים כוללים מע״מ", short: "כולל מע״מ" },
+                    { v: false, label: "לא כוללים מע״מ", short: "לא כולל מע״מ" },
+                  ].map((o) => (
+                    <button
+                      key={String(o.v)}
+                      type="button"
+                      onClick={() => setVatIncluded(o.v)}
+                      aria-pressed={vatIncluded === o.v}
+                      className={cn(
+                        "px-2.5 sm:px-3 py-1 rounded-full whitespace-nowrap",
+                        vatIncluded === o.v ? "bg-white text-ink shadow-soft" : "text-ink-muted",
+                      )}
+                    >
+                      {/* Short at phone width, so "הוספת שורה" fits on the same row */}
+                      <span className="sm:hidden">{o.short}</span>
+                      <span className="hidden sm:inline">{o.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="whitespace-nowrap px-2 sm:px-3"
+                onClick={() => setItems((prev) => [...prev, emptyItem(client?.rate)])}
+              >
+                <Plus className="w-4 h-4" /> הוספת שורה
+              </Button>
+            </div>
             <div className="ms-auto max-w-xs space-y-1 text-sm">
               {business.vatLiable && vatType === 0 && (
                 <>
@@ -862,7 +911,7 @@ export function DocumentForm({
           <CardHeader>
             <CardTitle>פירוט תקבולים</CardTitle>
             <p className="text-xs text-ink-muted mt-1">
-              איך שילמו? אפשר כמה תקבולים, למשל חלק בביט וחלק במזומן.
+              איך שילמו? אפשר כמה תקבולים, למשל חלק ב-Bit וחלק במזומן.
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -959,15 +1008,21 @@ export function DocumentForm({
                           <Input
                             value={p[f] ?? ""}
                             onChange={(e) => updatePayment(p.key, { [f]: e.target.value })}
-                            inputMode={f === "bankName" || f === "reference" ? "text" : "numeric"}
-                            maxLength={f === "cardLast4" ? 4 : f === "installments" ? 2 : 60}
-                            dir={f === "bankName" ? undefined : "ltr"}
+                            inputMode={f === "bankName" || f === "reference" || f === "details" ? "text" : "numeric"}
+                            maxLength={f === "cardLast4" ? 4 : f === "installments" ? 2 : f === "details" ? 100 : 60}
+                            dir={f === "bankName" || f === "details" ? undefined : "ltr"}
+                            placeholder={f === "details" ? "מה התקבל" : undefined}
                             className="h-10 text-right"
                           />
                         )}
                       </div>
                     ))}
                   </div>
+                )}
+                {morningConnected && MANUAL_ONLY_PAYMENT_KINDS.includes(p.method) && (
+                  <p className="text-xs text-ink-muted">
+                    ל-morning אין סוג תקבול כזה: מסמך עם ״{PAYMENT_KIND_LABELS[p.method]}״ מפיקים ב-morning ידנית.
+                  </p>
                 )}
               </div>
             ))}
@@ -996,39 +1051,6 @@ export function DocumentForm({
               </span>
             </div>
           </CardContent>
-        </Card>
-      )}
-
-      {info.hasSessions && clientId && (
-        <Card>
-          <CardHeader>
-            <CardTitle>שיוך לפגישות</CardTitle>
-            <p className="text-xs text-ink-muted mt-1">
-              פנימי בלבד, לא מופיע במסמך. בהפקה מספר המסמך נרשם בפרטי התשלום של הפגישות שסומנו.
-            </p>
-          </CardHeader>
-          {clientSessions.length > 0 ? (
-            <ul className="divide-y divide-cream-200">
-              {clientSessions.map((s) => (
-                <li key={s.id}>
-                  <label className="flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-cream-100/60">
-                    <input
-                      type="checkbox"
-                      checked={sessionIds.includes(s.id)}
-                      onChange={() => toggleSession(s.id)}
-                      className="w-4 h-4 accent-sage-600"
-                    />
-                    <span className="flex-1 text-sm text-ink">{s.label}</span>
-                    {s.rate && <span className="text-sm text-ink-muted">₪{Number(s.rate)}</span>}
-                  </label>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <CardContent>
-              <p className="text-sm text-ink-muted">אין פגישות שעוד לא שויך אליהן תשלום.</p>
-            </CardContent>
-          )}
         </Card>
       )}
 

@@ -7,6 +7,7 @@ import {
   View,
   StyleSheet,
   Font,
+  Image,
 } from "@react-pdf/renderer";
 import { VAT_RATE, vatBreakdown } from "@/lib/vat";
 
@@ -138,6 +139,12 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     alignItems: "flex-end",
     maxWidth: 260,
+  },
+  logo: {
+    width: 52,
+    height: 52,
+    marginBottom: 8,
+    borderRadius: 8,
   },
   businessName: {
     fontSize: 18,
@@ -307,14 +314,18 @@ const styles = StyleSheet.create({
 });
 
 const METHOD_LABELS: Record<string, string> = {
-  PAYBOX: "פייבוקס",
+  PAYBOX: "PayBox",
   CASH: "מזומן",
-  BIT: "ביט",
-  CHECK: "המחאה",
+  BIT: "Bit",
+  CHECK: "המחאה (צ׳ק)",
   BANK_TRANSFER: "העברה בנקאית",
   CREDIT_CARD: "כרטיס אשראי",
   PAYPAL: "PayPal",
   OTHER: "אחר",
+  PAYONEER: "Payoneer",
+  GOOGLE_PAY: "Google Pay",
+  APPLE_PAY: "Apple Pay",
+  GIFT_VOUCHER: "שובר מתנה",
 };
 
 // Client-facing wording: internal workflow statuses (DRAFT/SENT) mean nothing
@@ -370,6 +381,8 @@ export type InvoicePDFData = {
     phone: string | null;
     email: string | null;
     vatLiable: boolean;
+    /** PNG/JPEG data: URL, only when Settings → מיתוג puts the logo on documents */
+    logo?: string | null;
   };
   client: {
     firstName: string;
@@ -407,6 +420,11 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.brandBlock}>
+            {data.business.logo && (
+              // react-pdf's Image (a PDF image object), not an HTML <img>: it takes no alt
+              // eslint-disable-next-line jsx-a11y/alt-text
+              <Image src={data.business.logo} style={styles.logo} />
+            )}
             <Text style={styles.businessName}>{data.business.name}</Text>
             {data.business.businessId && (
               <Text style={styles.businessLine}>

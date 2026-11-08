@@ -10,6 +10,7 @@ import {
   docKindByCode,
   documentClientName,
   documentProblems,
+  morningPaymentProblems,
   parseAgorot,
   splitEmails,
   type CardType,
@@ -90,6 +91,7 @@ export function draftFromInvoice(inv: InvoiceWithParts): DocumentDraft | null {
         dealType: (p.dealType as DealType | null) ?? null,
         installments: p.installments,
         reference: p.reference,
+        details: p.notes,
       })),
   };
 }
@@ -228,7 +230,7 @@ async function payloadFor(
   if (!draft) return { error: "זו חשבונית מהגרסה הקודמת — מפיקים לה קבלה בכפתור ״הפקת קבלה ב-morning״." };
   const owner = await db.user.findUnique({ where: { id: userId }, select: { vatLiable: true } });
   const vatLiable = !!owner?.vatLiable;
-  const problems = documentProblems(draft, vatLiable);
+  const problems = [...documentProblems(draft, vatLiable), ...morningPaymentProblems(draft)];
   if (problems.length) return { error: problems.join(" ") };
   const link = await linkOptions(userId, inv);
   if ("error" in link) return link;

@@ -22,6 +22,9 @@ import {
   splitEmails,
   morningNewDocumentUrl,
   parseAgorot,
+  PAYMENT_DETAIL_FIELDS,
+  PAYMENT_KINDS,
+  PAYMENT_KIND_LABELS,
   type DocumentDraft,
 } from "@/lib/billing-docs";
 
@@ -290,6 +293,32 @@ describe("per-document settings", () => {
   it("calls a payment app's reference an approval number", () => {
     expect(paymentDetailLabel("BIT", "reference")).toBe("מספר אישור");
     expect(paymentDetailLabel("PAYPAL", "reference")).toBe("מספר אסמכתה");
+    expect(paymentDetailLabel("GOOGLE_PAY", "reference")).toBe("מספר אישור");
+    expect(paymentDetailLabel("APPLE_PAY", "reference")).toBe("מספר אישור");
+    expect(paymentDetailLabel("GIFT_VOUCHER", "reference")).toBe("מספר שובר");
+    expect(paymentDetailLabel("OTHER", "details")).toBe("פירוט");
+  });
+  it("names the payment types as their apps do, every one of them", () => {
+    expect(PAYMENT_KIND_LABELS.BIT).toBe("Bit");
+    expect(PAYMENT_KIND_LABELS.PAYBOX).toBe("PayBox");
+    expect(PAYMENT_KIND_LABELS.CHECK).toBe("המחאה (צ׳ק)");
+    for (const k of PAYMENT_KINDS) {
+      expect(PAYMENT_KIND_LABELS[k]).toBeTruthy();
+      expect(PAYMENT_DETAIL_FIELDS[k]).toBeDefined();
+    }
+    // Only "אחר" asks what it was
+    expect(PAYMENT_KINDS.filter((k) => PAYMENT_DETAIL_FIELDS[k].includes("details"))).toEqual(["OTHER"]);
+  });
+  it("copies an \"אחר\" payment with what it was", () => {
+    const text = morningCopyText(
+      {
+        ...base,
+        kind: "RECEIPT",
+        payments: [{ method: "OTHER", date: "2026-10-14", amountAgorot: 45000, details: "שובר של הוועד" }],
+      },
+      false,
+    );
+    expect(text).toContain("• אחר ₪450.00 (2026-10-14) — פירוט: שובר של הוועד");
   });
 });
 

@@ -182,20 +182,37 @@ export const PAYMENT_KINDS = [
   "CASH",
   "CHECK",
   "PAYPAL",
+  "PAYONEER",
+  "GOOGLE_PAY",
+  "APPLE_PAY",
+  "GIFT_VOUCHER",
+  "OTHER",
 ] as const;
-// "אחר" isn't offered: morning's "other" payment needs a sub-type (vouchers,
-// crypto…) that doesn't fit a therapy practice.
 export type PaymentKind = (typeof PAYMENT_KINDS)[number];
 
+/** Payment apps keep their own (English) names, as in the apps themselves. */
 export const PAYMENT_KIND_LABELS: Record<PaymentKind, string> = {
   BANK_TRANSFER: "העברה בנקאית",
-  BIT: "ביט",
-  PAYBOX: "פייבוקס",
+  BIT: "Bit",
+  PAYBOX: "PayBox",
   CREDIT_CARD: "כרטיס אשראי",
   CASH: "מזומן",
-  CHECK: "המחאה",
+  CHECK: "המחאה (צ׳ק)",
   PAYPAL: "PayPal",
+  PAYONEER: "Payoneer",
+  GOOGLE_PAY: "Google Pay",
+  APPLE_PAY: "Apple Pay",
+  GIFT_VOUCHER: "שובר מתנה",
+  OTHER: "אחר",
 };
+
+/**
+ * morning has no payment type for these, so a document that has one can't be
+ * created through the connection: it is issued in morning by hand, where the
+ * type is chosen there. ("אחר" in morning needs one of its own sub-types:
+ * crypto, vouchers and the like.)
+ */
+export const MANUAL_ONLY_PAYMENT_KINDS: readonly PaymentKind[] = ["OTHER"];
 
 export type PaymentDetailField =
   | "bankName"
@@ -206,9 +223,10 @@ export type PaymentDetailField =
   | "cardLast4"
   | "dealType"
   | "installments"
-  | "reference";
+  | "reference"
+  | "details";
 
-/** The extra details each payment type asks for (all optional). */
+/** The extra details each payment type asks for (all optional but a cheque's). */
 export const PAYMENT_DETAIL_FIELDS: Record<PaymentKind, PaymentDetailField[]> = {
   BANK_TRANSFER: ["bankName", "bankBranch", "bankAccount"],
   CHECK: ["bankName", "bankBranch", "bankAccount", "chequeNumber"],
@@ -216,12 +234,22 @@ export const PAYMENT_DETAIL_FIELDS: Record<PaymentKind, PaymentDetailField[]> = 
   PAYPAL: ["reference"],
   BIT: ["reference"],
   PAYBOX: ["reference"],
+  GOOGLE_PAY: ["reference"],
+  APPLE_PAY: ["reference"],
+  // sent to morning as a bank transfer from "Payoneer", which has no reference
+  PAYONEER: [],
+  GIFT_VOUCHER: ["reference"],
+  OTHER: ["details", "reference"],
   CASH: [],
 };
 
+/** The payment apps: their receipt shows a confirmation number. */
+const PAYMENT_APPS: readonly PaymentKind[] = ["BIT", "PAYBOX", "GOOGLE_PAY", "APPLE_PAY"];
+
 /** "מספר אישור" on a payment app, as the app calls it. */
 export function paymentDetailLabel(method: PaymentKind, field: PaymentDetailField): string {
-  if (field === "reference" && (method === "BIT" || method === "PAYBOX")) return "מספר אישור";
+  if (field === "reference" && PAYMENT_APPS.includes(method)) return "מספר אישור";
+  if (field === "reference" && method === "GIFT_VOUCHER") return "מספר שובר";
   return PAYMENT_DETAIL_LABELS[field];
 }
 
@@ -235,6 +263,7 @@ export const PAYMENT_DETAIL_LABELS: Record<PaymentDetailField, string> = {
   dealType: "סוג עסקה",
   installments: "מספר תשלומים",
   reference: "מספר אסמכתה",
+  details: "פירוט",
 };
 
 export const CARD_TYPES = ["VISA", "MASTERCARD", "ISRACARD", "AMEX", "DINERS"] as const;
@@ -342,6 +371,8 @@ export type DraftPayment = {
   dealType?: DealType | null;
   installments?: number | null;
   reference?: string | null;
+  /** what an "אחר" payment was, in the practice's own words */
+  details?: string | null;
 };
 
 export type DocumentDraft = {
@@ -576,6 +607,22 @@ export function documentProblems(draft: DocumentDraft, vatLiable: boolean): stri
   return problems;
 }
 
+/**
+ * Why morning's API can't take this document as it is (issuing or morning's
+ * own preview through the connection). Drafts, the in-app preview and issuing
+ * by hand in morning are not affected.
+ */
+export function morningPaymentProblems(draft: DocumentDraft): string[] {
+  if (!DOC_KINDS[draft.kind].hasPayments) return [];
+  return draft.payments.flatMap((p, i) =>
+    MANUAL_ONLY_PAYMENT_KINDS.includes(p.method)
+      ? [
+          `בתקבול ${i + 1} (${PAYMENT_KIND_LABELS[p.method]}): ל-morning אין סוג תקבול כזה, ולכן אי אפשר להפיק את המסמך דרך החיבור. בוחרים סוג תקבול אחר, או מפיקים את המסמך ב-morning ידנית.`,
+        ]
+      : [],
+  );
+}
+
 // ── Without a connection: issuing in morning by hand ────────────────────────
 
 /** morning's own "new document" screen for this type. */
@@ -617,7 +664,7 @@ export function morningCopyText(draft: DocumentDraft, vatLiable: boolean): strin
               : f === "dealType"
                 ? DEAL_TYPE_LABELS[v as DealType]
                 : String(v);
-          return `${PAYMENT_DETAIL_LABELS[f]}: ${shown}`;
+          return `${paymentDetailLabel(p.method, f)}: ${shown}`;
         })
         .filter(Boolean)
         .join(", ");

@@ -157,12 +157,12 @@ export function SessionBillingCard({
                   name="paymentMethod"
                   defaultValue={payment.method ?? "BIT"}
                 >
-                  <option value="BIT">ביט</option>
-                  <option value="PAYBOX">פייבוקס</option>
+                  <option value="BIT">Bit</option>
+                  <option value="PAYBOX">PayBox</option>
                   <option value="CASH">מזומן</option>
                   <option value="BANK_TRANSFER">העברה בנקאית</option>
                   <option value="CREDIT_CARD">כרטיס אשראי</option>
-                  <option value="CHECK">המחאה</option>
+                  <option value="CHECK">המחאה (צ׳ק)</option>
                   <option value="PAYPAL">PayPal</option>
                   <option value="OTHER">אחר</option>
                 </Select>

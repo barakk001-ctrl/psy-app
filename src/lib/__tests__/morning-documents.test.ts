@@ -9,7 +9,7 @@ import {
   previewMorningDocument,
   testMorningConnection,
 } from "@/lib/morning";
-import type { DocumentDraft } from "@/lib/billing-docs";
+import { morningPaymentProblems, type DocumentDraft } from "@/lib/billing-docs";
 import { credentialsFromRow } from "@/lib/morning-credentials";
 
 describe("credentialsFromRow (the credential store)", () => {
@@ -86,6 +86,38 @@ describe("buildMorningDocumentPayload", () => {
     expect(p.remarks).toBe("תודה!");
     expect(p).not.toHaveProperty("description"); // empty → left out
     expect(p).not.toHaveProperty("dueDate");
+  });
+
+  it("sends every payment type with morning's own code", () => {
+    const one = (pm: DocumentDraft["payments"][number]) =>
+      (buildMorningDocumentPayload({ ...draft, payments: [pm] }, { vatLiable: true }) as Record<string, any>)
+        .payment[0];
+    const base = { date: "2026-10-14", amountAgorot: 94400 };
+    expect(one({ ...base, method: "GOOGLE_PAY", reference: "G-1" })).toEqual({
+      type: 10, appType: 5, date: "2026-10-14", price: 944, currency: "ILS", transactionId: "G-1",
+    });
+    expect(one({ ...base, method: "APPLE_PAY" })).toMatchObject({ type: 10, appType: 6 });
+    expect(one({ ...base, method: "BIT", reference: "77" })).toMatchObject({ type: 10, appType: 1, transactionId: "77" });
+    expect(one({ ...base, method: "PAYPAL", reference: "PP" })).toMatchObject({ type: 5, transactionId: "PP" });
+    expect(one({ ...base, method: "GIFT_VOUCHER", reference: "V-9" })).toEqual({
+      type: 11, subType: 4, date: "2026-10-14", price: 944, currency: "ILS", transactionId: "V-9",
+    });
+    // No type of its own in morning: a transfer from "Payoneer"
+    expect(one({ ...base, method: "PAYONEER" })).toEqual({
+      type: 4, bankName: "Payoneer", date: "2026-10-14", price: 944, currency: "ILS",
+    });
+    expect(one({ ...base, method: "CHECK", bankName: "לאומי", bankBranch: "1", bankAccount: "2", chequeNumber: "3" }))
+      .toMatchObject({ type: 2, chequeNum: "3" });
+  });
+
+  it("never sends an \"אחר\" payment: morning has no such type", () => {
+    const other = { ...draft, payments: [{ method: "OTHER" as const, date: "2026-10-14", amountAgorot: 94400, details: "x" }] };
+    expect(() => buildMorningDocumentPayload(other, { vatLiable: true })).toThrow();
+    expect(morningPaymentProblems(other)).toHaveLength(1);
+    expect(morningPaymentProblems(other)[0]).toContain("תקבול 1 (אחר)");
+    expect(morningPaymentProblems(draft)).toEqual([]);
+    // A tax invoice has no receipt lines, so nothing to refuse
+    expect(morningPaymentProblems({ ...other, kind: "TAX_INVOICE" })).toEqual([]);
   });
 
   it("adds VAT on top when prices exclude it (income vatType 0)", () => {

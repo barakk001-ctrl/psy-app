@@ -46,15 +46,27 @@ export const MORNING_DOC_TYPES = {
 } as const;
 
 // payment[].type — 1 cash, 2 cheque, 3 credit card, 4 bank transfer,
-// 5 PayPal, 10 payment app (with appType: 1 Bit, 3 PayBox)
-const PAYMENT_TYPE: Record<PaymentKind, { type: number; appType?: number }> = {
+// 5 PayPal, 10 payment app (appType: 1 Bit, 3 PayBox, 5 Google Pay,
+// 6 Apple Pay), 11 other (subType: 4 gift voucher). Payoneer has no type of
+// its own: it is a transfer from "Payoneer". "אחר" (OTHER) has no morning
+// type at all (morning's "other" needs one of its sub-types), so a document
+// with it is issued in morning by hand: see MANUAL_ONLY_PAYMENT_KINDS.
+const PAYMENT_TYPE: Record<
+  PaymentKind,
+  { type: number; appType?: number; subType?: number; bankName?: string } | null
+> = {
   CASH: { type: 1 },
   CHECK: { type: 2 },
   CREDIT_CARD: { type: 3 },
   BANK_TRANSFER: { type: 4 },
+  PAYONEER: { type: 4, bankName: "Payoneer" },
   PAYPAL: { type: 5 },
   BIT: { type: 10, appType: 1 },
   PAYBOX: { type: 10, appType: 3 },
+  GOOGLE_PAY: { type: 10, appType: 5 },
+  APPLE_PAY: { type: 10, appType: 6 },
+  GIFT_VOUCHER: { type: 11, subType: 4 },
+  OTHER: null,
 };
 
 const CARD_TYPE: Record<CardType, number> = {
@@ -276,6 +288,8 @@ function paymentRow(p: DraftPayment, currency: string) {
     currency,
   };
   if (code.appType) row.appType = code.appType;
+  if (code.subType) row.subType = code.subType;
+  if (code.bankName) row.bankName = code.bankName;
   if (p.method === "BANK_TRANSFER" || p.method === "CHECK") {
     row.bankName = nonEmpty(p.bankName);
     row.bankBranch = nonEmpty(p.bankBranch);
@@ -288,7 +302,8 @@ function paymentRow(p: DraftPayment, currency: string) {
     if (p.dealType) row.dealType = DEAL_TYPE[p.dealType];
     if (p.installments) row.numPayments = p.installments;
   }
-  if (p.method === "PAYPAL" || p.method === "BIT" || p.method === "PAYBOX") {
+  // transactionId is morning's field for PayPal, payment apps and "other"
+  if (code.type === 5 || code.type === 10 || code.type === 11) {
     row.transactionId = nonEmpty(p.reference);
   }
   // Drop the details that weren't filled in

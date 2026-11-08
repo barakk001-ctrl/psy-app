@@ -14,6 +14,7 @@ import {
   canCreditNote,
   docKindByCode,
   documentProblems,
+  morningPaymentProblems,
   documentTotals,
   draftSaveProblems,
   joinEmails,
@@ -96,6 +97,7 @@ function toDraft(input: DocumentDraftInput): DocumentDraft {
           dealType: p.dealType || null,
           installments: typeof p.installments === "number" ? p.installments : null,
           reference: blank(p.reference),
+          details: p.method === "OTHER" ? blank(p.details) : null,
         }))
       : [],
   };
@@ -284,6 +286,7 @@ export async function saveDocumentAction(
     cardLast4: pm.cardLast4,
     dealType: pm.dealType,
     installments: pm.installments,
+    notes: pm.details ?? null,
   }));
 
   if (draftId) {
@@ -385,6 +388,8 @@ export async function previewDraftInMorningAction(
           linkType: p.draft.kind === "CREDIT_NOTE" ? ("cancel" as const) : ("link" as const),
         }
       : {};
+  const unsupported = morningPaymentProblems(p.draft);
+  if (unsupported.length) return { error: unsupported.join(" ") };
   const payload = buildMorningDocumentPayload(p.draft, { vatLiable: p.vatLiable, ...link });
   const res = await previewMorningDocument(userId, creds, payload);
   return res.ok ? { pdfBase64: res.data } : { error: `התצוגה המקדימה של morning נכשלה: ${res.error}` };

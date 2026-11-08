@@ -42,7 +42,7 @@ export function BrandingCard({
   onSaved,
   hideSave = false,
 }: {
-  initial: { brandName: string | null; logoUrl: string | null };
+  initial: { brandName: string | null; logoUrl: string | null; logoOnDocuments?: boolean };
   /** the setup wizard submits this form from its own "הבא" button */
   formId?: string;
   onSaved?: () => void;
@@ -57,6 +57,7 @@ export function BrandingCard({
   // what to send: "" keeps the stored logo, a data: URL replaces it, REMOVE clears it
   const [logoField, setLogoField] = useState("");
   const [readError, setReadError] = useState<string | null>(null);
+  const [onDocuments, setOnDocuments] = useState(initial.logoOnDocuments ?? false);
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (state?.saved) onSaved?.();
@@ -78,7 +79,8 @@ export function BrandingCard({
         <CardContent className="space-y-5">
           <h2 className="font-display text-xl text-ink">מיתוג</h2>
           <p className="text-xs text-ink-muted">
-            שם העסק ותמונה או לוגו שיופיעו בראש האפליקציה, ליד ״מרפאה אישית״.
+            שם העסק ותמונה או לוגו שיופיעו בראש האפליקציה, ליד ״מרפאה אישית״, ואם רוצים גם
+            בראש מסמכי ההכנסות.
           </p>
 
           <div className="rounded-2xl border border-cream-200 bg-white/60 px-4 py-3">
@@ -145,6 +147,25 @@ export function BrandingCard({
               התמונה נחתכת לריבוע ומוקטנת אוטומטית.
             </p>
             {readError && <p className="text-xs text-terracotta-600 mt-1">{readError}</p>}
+          </div>
+
+          <div>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="logoOnDocuments"
+                checked={onDocuments}
+                onChange={(e) => setOnDocuments(e.target.checked)}
+                className="mt-0.5 w-5 h-5 shrink-0 accent-sage-600"
+                aria-describedby="logo-on-documents-hint"
+              />
+              <span className="text-sm text-ink">להציג את הלוגו גם בראש מסמכי ההכנסות</span>
+            </label>
+            <p id="logo-on-documents-hint" className="text-xs text-ink-muted mt-1 ms-8">
+              בתצוגה המקדימה ובטיוטות כאן. המסמך הרשמי מופק ב-<span dir="ltr">morning</span>, והלוגו
+              שמופיע בו הוא הלוגו שהוגדר בחשבון ה-<span dir="ltr">morning</span>.
+              {onDocuments && !logo && " עדיין לא נבחרה תמונה."}
+            </p>
           </div>
         </CardContent>
       </Card>

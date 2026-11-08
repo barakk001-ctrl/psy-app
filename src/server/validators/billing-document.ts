@@ -37,6 +37,7 @@ export const documentPaymentSchema = z.object({
   dealType: z.enum(DEAL_TYPES).optional().or(z.literal("")),
   installments: z.coerce.number().int().min(1).max(36).optional().or(z.literal("")),
   reference: optionalText(100),
+  details: optionalText(100),
 });
 
 /** What the "מסמך חדש" form sends (as JSON). */

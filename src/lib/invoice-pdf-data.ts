@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { clientIdNumber } from "@/lib/sensitive-fields";
 import type { InvoicePDFData } from "@/components/invoices/invoice-pdf";
 import { documentClientName, docTypeLabel } from "@/lib/billing-docs";
+import { documentLogo, pdfLogo } from "@/lib/branding";
 
 export type LoadedInvoice = NonNullable<Awaited<ReturnType<typeof loadInvoiceWithRelations>>>;
 
@@ -41,6 +42,7 @@ export async function loadInvoicePdfData(
       phone: invoice.user.phone,
       email: invoice.user.email,
       vatLiable: invoice.user.vatLiable,
+      logo: pdfLogo(documentLogo(invoice.user)),
     },
     currency: invoice.currency,
     // A one-off client is known only by the name printed on the document

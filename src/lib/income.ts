@@ -46,13 +46,17 @@ export type IncomeEntry = {
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH: "מזומן",
-  BIT: "ביט",
-  PAYBOX: "פייבוקס",
-  CHECK: "המחאה",
+  BIT: "Bit",
+  PAYBOX: "PayBox",
+  CHECK: "המחאה (צ׳ק)",
   BANK_TRANSFER: "העברה בנקאית",
   CREDIT_CARD: "כרטיס אשראי",
   PAYPAL: "PayPal",
   OTHER: "אחר",
+  PAYONEER: "Payoneer",
+  GOOGLE_PAY: "Google Pay",
+  APPLE_PAY: "Apple Pay",
+  GIFT_VOUCHER: "שובר מתנה",
   CREDIT_NOTE: "חשבונית זיכוי",
 };
 

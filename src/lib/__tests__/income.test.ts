@@ -80,7 +80,7 @@ describe("summarizeIncome — the reports page's numbers", () => {
     expect(s.sessionsHeld).toBe(3); // past & not cancelled, marked or not
     expect(s.sessionsCancelled).toBe(1);
     expect(s.byMethod.map((m) => [m.label, m.total])).toEqual([
-      ["ביט", 400],
+      ["Bit", 400],
       ["העברה בנקאית", 400],
     ]);
   });
