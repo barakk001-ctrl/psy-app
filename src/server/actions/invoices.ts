@@ -12,7 +12,7 @@ import { sendEmail } from "@/lib/email";
 import { buildInvoiceEmail, renderInvoicePdfBuffer } from "@/lib/invoice-email";
 import { loadInvoicePdfData } from "@/lib/invoice-pdf-data";
 import { computeInvoiceStatus } from "@/lib/invoice-status";
-import { agorotToDecimalString, hasDocumentNumber, parseAgorot } from "@/lib/billing-docs";
+import { agorotToDecimalString, hasDocumentNumber, olderInvoiceRefusal, parseAgorot } from "@/lib/billing-docs";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -27,6 +27,13 @@ export async function markInvoiceSentAction(formData: FormData) {
   await requireWritable(userId);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
+
+  // Older app invoices only: a document's status follows its number and payments
+  const inv = await db.invoice.findFirst({
+    where: { id, userId },
+    select: { docType: true, morningDocId: true, morningDocNumber: true },
+  });
+  if (!inv || olderInvoiceRefusal(inv)) return;
 
   await db.invoice.update({
     where: { id, userId },

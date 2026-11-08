@@ -250,7 +250,7 @@ export const CASES: Record<string, Case> = {
 
   // ── older invoices and payments ──────────────────────────────────────────
   "invoices.markInvoiceSentAction": {
-    run: ({ call, target }) => call("invoices.markInvoiceSentAction", form({ id: target.draftDocId })),
+    run: ({ call, target }) => call("invoices.markInvoiceSentAction", form({ id: target.oldInvoiceId })),
     control: "writes",
   },
   "invoices.cancelInvoiceAction": {

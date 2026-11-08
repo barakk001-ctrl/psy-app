@@ -36,6 +36,8 @@ import {
   hasDocumentNumber,
   isIssuedDocument,
   sessionHasDocumentNumber,
+  decimalToAgorot,
+  olderInvoiceRefusal,
 } from "@/lib/billing-docs";
 import { LISTED_DOCUMENT } from "@/lib/income-doc-list";
 
@@ -435,5 +437,41 @@ describe("a meeting's document numbers", () => {
     expect(matches(SESSION_HAS_DOCUMENT_NUMBER, s)).toBe(has);
     // "מסמך חדש" suggests a meeting only without a number (and without a document)
     expect(matches(UNLINKED_SESSION, { ...s, invoiceItem: null })).toBe(!has);
+  });
+});
+
+// ── PR 1.2: payments only on open older invoices, in agorot ────────────────
+
+describe("which rows the older-invoice actions may change", () => {
+  const none = { morningDocId: null, morningDocNumber: null };
+  it("an older invoice nothing was issued for", () => {
+    expect(olderInvoiceRefusal({ docType: null, ...none })).toBeNull();
+  });
+  it.each([
+    ["morning-issued", { docType: 305, morningDocId: "gi-1", morningDocNumber: "1001" }],
+    ["typed number", { docType: 320, morningDocId: null, morningDocNumber: "20500" }],
+    ["issued credit note", { docType: 330, morningDocId: null, morningDocNumber: "30001" }],
+    ["older invoice with a morning receipt", { docType: null, morningDocId: "gi-2", morningDocNumber: null }],
+  ] as const)("refuses an issued row: %s", (_n, doc) => {
+    expect(olderInvoiceRefusal(doc)).toContain("כבר הופק");
+  });
+  it.each([305, 320, 400, 330])("refuses a draft of type %s (its receipt lines live in the draft)", (docType) => {
+    expect(olderInvoiceRefusal({ docType, ...none })).toContain("בעריכת הטיוטה");
+  });
+});
+
+describe("decimalToAgorot", () => {
+  it("reads stored amounts exactly", () => {
+    expect(decimalToAgorot("0.1") + decimalToAgorot("0.2")).toBe(30);
+    expect(decimalToAgorot("0.30")).toBe(30);
+    expect(decimalToAgorot("1500")).toBe(150000);
+    expect(decimalToAgorot(12.5)).toBe(1250);
+    expect(decimalToAgorot("-40.05")).toBe(-4005);
+    expect(decimalToAgorot({ toString: () => "99.99" })).toBe(9999);
+    expect(decimalToAgorot(null)).toBe(0);
+  });
+  it("never rounds a value that isn't whole agorot", () => {
+    expect(() => decimalToAgorot("0.005")).toThrow();
+    expect(() => decimalToAgorot("abc")).toThrow();
   });
 });

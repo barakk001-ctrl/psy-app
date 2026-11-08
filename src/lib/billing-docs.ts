@@ -199,6 +199,19 @@ export const UNISSUED_DOCUMENT = {
   ...NOT_ISSUED,
 };
 
+/**
+ * Why the older-invoice page's actions (a payment added or deleted one by
+ * one, "סימון כנשלחה") refuse a row, or null when they may go ahead. Only an
+ * older app invoice that nothing was issued for is changed that way: a
+ * "מסמך חדש" document keeps its receipt lines in its draft, and an issued
+ * document's money is what the issued document says, so it never changes here.
+ */
+export function olderInvoiceRefusal(doc: IssuedFields & { docType: number | null }): string | null {
+  if (isIssuedDocument(doc)) return "למסמך הזה כבר הופק מסמך עם מספר, ולכן התשלומים והסטטוס שלו לא משתנים כאן.";
+  if (doc.docType != null) return "את התקבולים של מסמך מעדכנים בעריכת הטיוטה שלו.";
+  return null;
+}
+
 // ── Meetings and their document numbers ─────────────────────────────────────
 
 /** A meeting's number fields (one per type, names kept from the morning era). */
@@ -494,6 +507,20 @@ export function parseAgorot(raw: string | number | null | undefined): number | n
   if (!/^\d+(\.\d{0,2})?$/.test(s)) return null;
   const [whole, frac = ""] = s.split(".");
   return Number(whole) * 100 + Number((frac + "00").slice(0, 2));
+}
+
+/**
+ * A stored money value (a Prisma Decimal, its string, or a number) → agorot.
+ * Signed; throws on anything that isn't a whole number of agorot, so a sum is
+ * never silently rounded.
+ */
+export function decimalToAgorot(value: { toString(): string } | string | number | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  const s = value.toString().trim();
+  const negative = s.startsWith("-");
+  const agorot = parseAgorot(negative ? s.slice(1) : s);
+  if (agorot === null) throw new Error(`Not an amount in agorot: ${s}`);
+  return negative ? -agorot : agorot;
 }
 
 /** Agorot → "350.00" (for APIs and Decimal columns). */

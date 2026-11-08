@@ -10,6 +10,13 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { computeInvoiceStatus } from "@/lib/invoice-status";
 import { recordPaymentSchema } from "@/server/validators/invoice";
+import {
+  agorotToDecimalString,
+  decimalToAgorot,
+  formatDocMoney,
+  olderInvoiceRefusal,
+  parseAgorot,
+} from "@/lib/billing-docs";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -48,21 +55,41 @@ export async function recordPaymentAction(
     };
   }
   const data = parsed.data;
+  // Money in whole agorot from here on: no float sums
+  const amountAgorot = parseAgorot(String(formData.get("amount") ?? ""));
+  if (!amountAgorot) {
+    return {
+      error: "אנא תקנו את השגיאות בטופס",
+      fieldErrors: { amount: ["סכום לא תקין (עד שתי ספרות אחרי הנקודה)"] },
+    };
+  }
 
   // Verify invoice belongs to this user
   const invoice = await db.invoice.findFirst({
     where: { id: data.invoiceId, userId },
-    select: { id: true, total: true, amountPaid: true, status: true },
+    select: {
+      id: true,
+      total: true,
+      amountPaid: true,
+      status: true,
+      docType: true,
+      morningDocId: true,
+      morningDocNumber: true,
+    },
   });
   if (!invoice) return { error: "חשבונית לא נמצאה" };
+  // Only an older invoice nothing was issued for takes payments one by one
+  const refusal = olderInvoiceRefusal(invoice);
+  if (refusal) return { error: refusal };
   if (invoice.status === "CANCELLED") {
     return { error: "לא ניתן לרשום תשלום לחשבונית מבוטלת" };
   }
 
-  const remaining = Number(invoice.total) - Number(invoice.amountPaid);
-  if (data.amount > remaining + 0.005) {
+  const totalAgorot = decimalToAgorot(invoice.total);
+  const remaining = totalAgorot - decimalToAgorot(invoice.amountPaid);
+  if (amountAgorot > remaining) {
     return {
-      error: `הסכום גבוה מהיתרה לתשלום (₪${remaining.toLocaleString("he-IL")})`,
+      error: `הסכום גבוה מהיתרה לתשלום (${formatDocMoney(Math.max(remaining, 0))})`,
       fieldErrors: { amount: ["הסכום גבוה מהיתרה לתשלום"] },
     };
   }
@@ -72,7 +99,7 @@ export async function recordPaymentAction(
     await tx.payment.create({
       data: {
         invoiceId: data.invoiceId,
-        amount: data.amount,
+        amount: agorotToDecimalString(amountAgorot),
         method: data.method,
         paidAt: new Date(data.paidAt),
         reference: data.reference || null,
@@ -84,12 +111,14 @@ export async function recordPaymentAction(
       where: { invoiceId: data.invoiceId },
       _sum: { amount: true },
     });
-    const amountPaid = Number(agg._sum.amount ?? 0);
-    const total = Number(invoice.total);
+    const paidAgorot = decimalToAgorot(agg._sum.amount);
 
     await tx.invoice.update({
       where: { id: data.invoiceId },
-      data: { amountPaid, status: computeInvoiceStatus(invoice.status, amountPaid, total) },
+      data: {
+        amountPaid: agorotToDecimalString(paidAgorot),
+        status: computeInvoiceStatus(invoice.status, paidAgorot, totalAgorot),
+      },
     });
   });
 
@@ -111,9 +140,15 @@ export async function deletePaymentAction(formData: FormData) {
   // Verify ownership through the invoice relation
   const payment = await db.payment.findFirst({
     where: { id, invoice: { userId } },
-    select: { id: true, invoiceId: true },
+    select: {
+      id: true,
+      invoiceId: true,
+      invoice: { select: { docType: true, morningDocId: true, morningDocNumber: true } },
+    },
   });
   if (!payment) return;
+  // A document's payments are its own: never removed one by one here
+  if (olderInvoiceRefusal(payment.invoice)) return;
 
   await db.$transaction(async (tx) => {
     await tx.payment.delete({ where: { id: payment.id } });
@@ -128,12 +163,14 @@ export async function deletePaymentAction(formData: FormData) {
       where: { invoiceId: payment.invoiceId },
       _sum: { amount: true },
     });
-    const amountPaid = Number(agg._sum.amount ?? 0);
-    const total = Number(inv.total);
+    const paidAgorot = decimalToAgorot(agg._sum.amount);
 
     await tx.invoice.update({
       where: { id: payment.invoiceId },
-      data: { amountPaid, status: computeInvoiceStatus(inv.status, amountPaid, total) },
+      data: {
+        amountPaid: agorotToDecimalString(paidAgorot),
+        status: computeInvoiceStatus(inv.status, paidAgorot, decimalToAgorot(inv.total)),
+      },
     });
   });
 
