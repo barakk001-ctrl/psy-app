@@ -21,7 +21,7 @@ const fontSans = Assistant({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "מרפאה אישית — מערכת לניהול קליניקה",
-  description: "מערכת לניהול קליניקה: לקוחות, פגישות, חשבוניות ותשלומים",
+  description: "מערכת לניהול קליניקה: לקוחות, פגישות, סיכומים, ניהול הכנסות והוצאות",
   appleWebApp: {
     capable: true,
     title: "מרפאה אישית",

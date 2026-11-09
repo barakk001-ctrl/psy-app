@@ -123,8 +123,7 @@ export default async function NewDocumentPage({
           {forInvoice ? "קבלה על חשבונית" : storedRow ? "עריכת טיוטה" : "מסמך חדש"}
         </h1>
         <p className="text-ink-muted text-sm mt-1">
-          ממלאים, בודקים בתצוגה המקדימה ושומרים כטיוטה. מסמך שהופק במקום אחר נרשם בדף
-          הטיוטה עם המספר שלו.
+          ממלאים, בודקים בתצוגה המקדימה ומפיקים או שומרים כטיוטה.
         </p>
       </header>
       <DocumentForm

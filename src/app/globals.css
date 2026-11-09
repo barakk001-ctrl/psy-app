@@ -31,9 +31,17 @@
      these pages so the app's own layout is untouched. */
   @supports (overflow: clip) {
     html:has(.legal-page),
-    body:has(.legal-page) {
+    body:has(.legal-page),
+    html:has(.landing-page),
+    body:has(.landing-page) {
       overflow-x: clip;
     }
+  }
+
+  /* The landing page's "מסלולים" link scrolls to #plans on the same page
+     (the reduced-motion rule below turns it back to a jump) */
+  html:has(.landing-page) {
+    scroll-behavior: smooth;
   }
 
   /* Date and time fields line up with the other inputs. iOS Safari draws them

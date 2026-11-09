@@ -1,5 +1,5 @@
 // Subscription state and pricing. Payments happen outside the app (Bit/bank
-// transfer + a morning receipt); the operator extends accounts from the
+// transfer + a receipt); the operator extends accounts from the
 // admin card in Settings. Expired accounts are read-only, never locked out.
 
 export const PRICING = {

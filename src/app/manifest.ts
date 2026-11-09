@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "מרפאה אישית — מערכת לניהול קליניקה",
     short_name: "מרפאה אישית",
-    description: "מערכת לניהול קליניקה: לקוחות, פגישות, חשבוניות ותשלומים",
+    description: "מערכת לניהול קליניקה: לקוחות, פגישות, סיכומים, ניהול הכנסות והוצאות",
     lang: "he",
     dir: "rtl",
     start_url: "/dashboard",

@@ -9,7 +9,7 @@ import { inviteOnly } from "@/lib/signup-policy";
 // Public, like /terms (auth-gate lets everyone through). Linked from the login
 // and register pages; signed-in users are pointed to their own /subscription.
 export const metadata = {
-  title: "מסלולים ומחירים — מרפאה אישית",
+  title: "מסלולים — מרפאה אישית",
   description: "מנוי היכרות חינם ל-30 יום, ואז מנוי חודשי או שנתי. בלי חיוב אוטומטי.",
 };
 export const dynamic = "force-dynamic";
@@ -44,7 +44,7 @@ export default async function PricingPage() {
 
         <main>
         <div className="text-center mb-8">
-          <h1 className="font-display text-3xl sm:text-4xl text-ink">מסלולים ומחירים</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-ink">מסלולים</h1>
           <p className="text-ink-muted mt-3 leading-relaxed max-w-xl mx-auto text-balance">
             מתחילים במנוי היכרות חינם, וממשיכים במסלול שמתאים לך. הרכישה נעשית מתוך המערכת,
             בעמוד ״מנוי ומסלולים״.

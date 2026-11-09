@@ -142,7 +142,7 @@ export default async function SubscriptionPage({
         </Link>{" "}
         (סעיפים 4–7). הקישור לעמוד המחירים הציבורי:{" "}
         <Link href="/pricing" className="underline underline-offset-2">
-          מסלולים ומחירים
+          מסלולים
         </Link>
         .
       </p>

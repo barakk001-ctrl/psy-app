@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Eye, FileCheck, Plus, Save, X } from "lucide-react";
+import { Check, Copy, Eye, FileCheck, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,18 @@ import {
   type PaymentDetailField,
   type PaymentKind,
 } from "@/lib/billing-docs";
+import {
+  confirmLine,
+  deleteLine,
+  editLine,
+  existingLine,
+  lineReady,
+  lineTotalAgorot,
+  linesForDocument,
+  newLine,
+  updateLine,
+  type LineRow,
+} from "@/lib/doc-line-items";
 import { saveDocumentAction } from "@/server/actions/documents";
 import { DocKindSquares } from "./doc-kind-squares";
 import { DocumentPreview, producedAtNow, type PreviewBusiness } from "./document-preview";
@@ -67,7 +79,6 @@ export type DocSessionOption = {
   rate: string | null;
 };
 
-type ItemRow = { key: string; description: string; quantity: string; unitPrice: string };
 type PaymentRow = {
   key: string;
   method: PaymentKind;
@@ -171,20 +182,16 @@ export function DocumentForm({
   );
   const [remarks, setRemarks] = useState(storedDraft?.remarks ?? "");
 
-  const emptyItem = (rate?: string | null): ItemRow => ({
-    key: nextKey(),
-    description: "",
-    quantity: "1",
-    unitPrice: rate ?? "",
-  });
+  const emptyItem = (rate?: string | null): LineRow => newLine(nextKey(), rate);
   // Every field is open from the start, so there is always a line to fill in
-  const [items, setItems] = useState<ItemRow[]>(() => {
-    const rows = storedDraft?.items.map((it) => ({
-      key: nextKey(),
-      description: it.description,
-      quantity: String(it.quantity),
-      unitPrice: agorotToDecimalString(it.unitPriceAgorot),
-    }));
+  const [items, setItems] = useState<LineRow[]>(() => {
+    const rows = storedDraft?.items.map((it) =>
+      existingLine(nextKey(), {
+        description: it.description,
+        quantity: String(it.quantity),
+        unitPrice: agorotToDecimalString(it.unitPriceAgorot),
+      }),
+    );
     return rows?.length ? rows : [emptyItem(client?.rate)];
   });
   const [sessionIds, setSessionIds] = useState<string[]>(
@@ -249,13 +256,8 @@ export function DocumentForm({
       sessionIds: info.hasSessions && clientId ? sessionIds : [],
       description: description || null,
       remarks: remarks || null,
-      items: info.hasItems
-        ? items.map((it) => ({
-            description: it.description,
-            quantity: Number(it.quantity) || 0,
-            unitPriceAgorot: parseAgorot(it.unitPrice) ?? 0,
-          }))
-        : [],
+      // Unconfirmed lines count as typed; only an untouched blank line is left out
+      items: info.hasItems ? linesForDocument(items) : [],
       payments: info.hasPayments
         ? payments.map((p) => ({
             method: p.method,
@@ -300,7 +302,7 @@ export function DocumentForm({
     setSessionIds([]);
     // A rate typed for the previous client shouldn't follow the next one
     setItems((prev) =>
-      prev.length === 1 && !prev[0].description ? [emptyItem(c?.rate)] : prev,
+      prev.length === 1 && !prev[0].description && !prev[0].confirmed ? [emptyItem(c?.rate)] : prev,
     );
   }
 
@@ -315,15 +317,45 @@ export function DocumentForm({
     setClientTaxId(orig.clientTaxId ?? "");
     setCurrency(orig.currency as DocCurrency);
     setVatIncluded(orig.vatIncluded);
-    setItems(orig.items.map((it) => ({ key: nextKey(), ...it })));
+    setItems(orig.items.map((it) => existingLine(nextKey(), it)));
   }
 
   function toggleSession(id: string) {
     setSessionIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
-  const updateItem = (key: string, patch: Partial<ItemRow>) =>
-    setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
+  const updateItem = (key: string, patch: Partial<Pick<LineRow, "description" | "quantity" | "unitPrice">>) =>
+    setItems((prev) => updateLine(prev, key, patch));
+  /** Focus follows a line as it folds and opens, so the keyboard user stays on it */
+  const focusLine = (key: string, what: "edit" | "field") =>
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>(`[data-line="${key}"] [data-focus="${what}"]`)?.focus(),
+    );
+  const confirmItem = (key: string) => {
+    const row = items.find((r) => r.key === key);
+    if (!row || !lineReady(row)) return;
+    setItems((prev) => confirmLine(prev, key));
+    focusLine(key, "edit");
+  };
+  const editItem = (key: string) => {
+    setItems((prev) => editLine(prev, key));
+    focusLine(key, "field");
+  };
+  const deleteItem = (key: string) => {
+    const idx = items.findIndex((r) => r.key === key);
+    const next = deleteLine(items, key, () => emptyItem(client?.rate));
+    setItems(next);
+    // Onto the line that took its place, else the add button
+    const target = next[Math.min(idx, next.length - 1)];
+    requestAnimationFrame(() => {
+      const el = target
+        ? document.querySelector<HTMLElement>(
+            `[data-line="${target.key}"] [data-focus="${target.confirmed ? "edit" : "field"}"]`,
+          )
+        : null;
+      (el ?? document.getElementById("doc-add-line"))?.focus();
+    });
+  };
   const updatePayment = (key: string, patch: Partial<PaymentRow>) =>
     setPayments((prev) =>
       prev.map((p, i) => {
@@ -632,6 +664,10 @@ export function DocumentForm({
                 </option>
               ))}
             </Select>
+            {/* Until a client from the list is chosen; then "שיוך לפגישות" itself shows */}
+            {info.hasSessions && !clientId && !oneOff && (
+              <p className="text-xs text-ink-muted mt-1">לאחר בחירת לקוח/ה ניתן לשייך את המסמך לפגישה.</p>
+            )}
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
@@ -725,107 +761,188 @@ export function DocumentForm({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              {items.map((it) => (
-                <div key={it.key} className="grid grid-cols-12 gap-2 items-end rounded-xl bg-cream-100 p-2.5">
-                  <div className="col-span-12 sm:col-span-5">
-                    <Label className="text-xs">פירוט</Label>
-                    <Input
-                      value={it.description}
-                      onChange={(e) => updateItem(it.key, { description: e.target.value })}
-                      maxLength={200}
-                      className="h-10"
-                    />
-                  </div>
-                  <div className="col-span-3 sm:col-span-2">
-                    <Label className="text-xs">כמות</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      inputMode="decimal"
-                      value={it.quantity}
-                      onChange={(e) => updateItem(it.key, { quantity: e.target.value })}
-                      className="h-10"
-                    />
-                  </div>
-                  <div className="col-span-4 sm:col-span-2">
-                    <Label className="text-xs">מחיר ליחידה</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      inputMode="decimal"
-                      value={it.unitPrice}
-                      onChange={(e) => updateItem(it.key, { unitPrice: e.target.value })}
-                      className="h-10"
-                    />
-                  </div>
-                  <div className="col-span-4 sm:col-span-2">
-                    <Label className="text-xs">מטבע</Label>
-                    <Select
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value as DocCurrency)}
-                      className="h-10"
-                      aria-label="מטבע המסמך"
+              {items.map((it, idx) =>
+                it.confirmed ? (
+                  // A confirmed line: one compact read-only row
+                  <div
+                    key={it.key}
+                    data-line={it.key}
+                    className="flex items-center gap-2 rounded-xl border border-cream-300 bg-white px-3 py-2"
+                  >
+                    <div className="min-w-0 flex-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
+                      <span className="font-medium text-ink break-words">{it.description}</span>
+                      <span className="text-ink-muted">
+                        <bdi dir="ltr">
+                          {it.quantity} × {money(parseAgorot(it.unitPrice) ?? 0)}
+                        </bdi>
+                        {" · "}
+                        {DOC_CURRENCY_LABELS[currency]}
+                      </span>
+                    </div>
+                    <span className="font-semibold text-sm text-ink whitespace-nowrap">
+                      {money(lineTotalAgorot(it))}
+                    </span>
+                    <button
+                      type="button"
+                      data-focus="edit"
+                      onClick={() => editItem(it.key)}
+                      className="shrink-0 rounded-lg p-2 text-ink-muted hover:text-ink hover:bg-cream-100"
+                      aria-label={`עריכת שורה ${idx + 1}`}
+                      title="עריכת שורה"
                     >
-                      {DOC_CURRENCIES.map((c) => (
-                        <option key={c} value={c}>
-                          {DOC_CURRENCY_LABELS[c]}
-                        </option>
-                      ))}
-                    </Select>
+                      <Pencil className="w-4 h-4" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteItem(it.key)}
+                      className="shrink-0 rounded-lg p-2 text-ink-muted hover:text-terracotta-600 hover:bg-cream-100"
+                      aria-label={`מחיקת שורה ${idx + 1}`}
+                      title="מחיקת שורה"
+                    >
+                      <Trash2 className="w-4 h-4" aria-hidden />
+                    </button>
                   </div>
-                  <div className="col-span-1 flex justify-center pb-2">
-                    {items.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setItems((prev) => prev.filter((x) => x.key !== it.key))}
-                        className="text-ink-muted hover:text-terracotta-500 p-1"
-                        aria-label="הסרת השורה"
+                ) : (
+                  // A line being edited; "אישור" (or Enter) folds it
+                  <div
+                    key={it.key}
+                    data-line={it.key}
+                    className="grid grid-cols-12 gap-2 items-end rounded-xl bg-cream-100 p-2.5"
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+                      if ((e.target as HTMLElement).tagName === "BUTTON") return;
+                      // Enter in a line confirms it, instead of opening the preview
+                      e.preventDefault();
+                      confirmItem(it.key);
+                    }}
+                  >
+                    <div className="col-span-12 sm:col-span-4">
+                      <Label htmlFor={`${it.key}-desc`} className="text-xs">
+                        פירוט
+                      </Label>
+                      <Input
+                        id={`${it.key}-desc`}
+                        data-focus="field"
+                        value={it.description}
+                        onChange={(e) => updateItem(it.key, { description: e.target.value })}
+                        maxLength={200}
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="col-span-3 sm:col-span-2">
+                      <Label htmlFor={`${it.key}-qty`} className="text-xs">
+                        כמות
+                      </Label>
+                      <Input
+                        id={`${it.key}-qty`}
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        inputMode="decimal"
+                        value={it.quantity}
+                        onChange={(e) => updateItem(it.key, { quantity: e.target.value })}
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="col-span-4 sm:col-span-2">
+                      <Label htmlFor={`${it.key}-price`} className="text-xs">
+                        מחיר ליחידה
+                      </Label>
+                      <Input
+                        id={`${it.key}-price`}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        inputMode="decimal"
+                        value={it.unitPrice}
+                        onChange={(e) => updateItem(it.key, { unitPrice: e.target.value })}
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="col-span-5 sm:col-span-2">
+                      <Label htmlFor={`${it.key}-cur`} className="text-xs">
+                        מטבע
+                      </Label>
+                      <Select
+                        id={`${it.key}-cur`}
+                        value={currency}
+                        onChange={(e) => setCurrency(e.target.value as DocCurrency)}
+                        className="h-10"
+                        aria-describedby={currency !== "ILS" ? "doc-currency-note" : undefined}
                       >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
+                        {DOC_CURRENCIES.map((c) => (
+                          <option key={c} value={c}>
+                            {DOC_CURRENCY_LABELS[c]}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div className="col-span-12 sm:col-span-2 flex items-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-10 flex-1"
+                        disabled={!lineReady(it)}
+                        onClick={() => confirmItem(it.key)}
+                        aria-label={`אישור שורה ${idx + 1}`}
+                      >
+                        <Check className="w-4 h-4" aria-hidden /> אישור
+                      </Button>
+                      {(items.length > 1 || !it.fresh) && (
+                        <button
+                          type="button"
+                          onClick={() => deleteItem(it.key)}
+                          className="shrink-0 rounded-lg p-2 text-ink-muted hover:text-terracotta-600 hover:bg-cream-200/70"
+                          aria-label={`מחיקת שורה ${idx + 1}`}
+                          title="מחיקת שורה"
+                        >
+                          <Trash2 className="w-4 h-4" aria-hidden />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ),
+              )}
             </div>
             {currency !== "ILS" && (
-              <p className="text-xs text-ink-muted">
+              <p id="doc-currency-note" className="text-xs text-ink-muted">
                 המטבע משותף לכל שורות המסמך. דוחות ההכנסה בשקלים, ומסמך במטבע אחר לא נספר בהם.
               </p>
             )}
-            {/* RTL: the VAT switch first (right), "הוספת שורה" to its left */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
-              {business.vatLiable && vatType === 0 && (
-                <div className="inline-flex rounded-full border border-cream-300 bg-cream-100 p-1 text-sm">
-                  {[
-                    { v: true, label: "המחירים כוללים מע״מ", short: "כולל מע״מ" },
-                    { v: false, label: "לא כוללים מע״מ", short: "לא כולל מע״מ" },
-                  ].map((o) => (
-                    <button
-                      key={String(o.v)}
-                      type="button"
-                      onClick={() => setVatIncluded(o.v)}
-                      aria-pressed={vatIncluded === o.v}
-                      className={cn(
-                        "px-2.5 sm:px-3 py-1 rounded-full whitespace-nowrap",
-                        vatIncluded === o.v ? "bg-white text-ink shadow-soft" : "text-ink-muted",
-                      )}
-                    >
-                      {/* Short at phone width, so "הוספת שורה" fits on the same row */}
-                      <span className="sm:hidden">{o.short}</span>
-                      <span className="hidden sm:inline">{o.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+            {business.vatLiable && vatType === 0 && (
+              <div className="inline-flex rounded-full border border-cream-300 bg-cream-100 p-1 text-sm">
+                {[
+                  { v: true, label: "המחירים כוללים מע״מ" },
+                  { v: false, label: "לא כוללים מע״מ" },
+                ].map((o) => (
+                  <button
+                    key={String(o.v)}
+                    type="button"
+                    onClick={() => setVatIncluded(o.v)}
+                    aria-pressed={vatIncluded === o.v}
+                    className={cn(
+                      "px-3 py-1 rounded-full whitespace-nowrap",
+                      vatIncluded === o.v ? "bg-white text-ink shadow-soft" : "text-ink-muted",
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* Its own row, under the VAT switch and above the totals */}
+            <div>
               <Button
+                id="doc-add-line"
                 type="button"
                 variant="ghost"
                 size="sm"
                 className="whitespace-nowrap px-2 sm:px-3"
-                onClick={() => setItems((prev) => [...prev, emptyItem(client?.rate)])}
+                onClick={() => {
+                  const line = emptyItem(client?.rate);
+                  setItems((prev) => [...prev, line]);
+                  focusLine(line.key, "field");
+                }}
               >
                 <Plus className="w-4 h-4" /> הוספת שורה
               </Button>

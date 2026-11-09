@@ -21,8 +21,8 @@ export type PlanOption = {
   highlight: boolean;
 };
 
-/** What a monthly year would cost at today's monthly price. */
-function monthsFree(): number {
+/** Months a year of the yearly plan saves over paying monthly (today: 12 − 250/25 = 2). */
+export function monthsFree(): number {
   const yearOfMonthly = PRICING.monthlyIntro * 12;
   return Math.round((yearOfMonthly - PRICING.yearlyIntro) / PRICING.monthlyIntro);
 }
@@ -41,7 +41,7 @@ export const PLAN_OPTIONS: PlanOption[] = [
     price: PRICING.monthlyIntro,
     regularPrice: PRICING.monthlyRegular,
     per: "לחודש",
-    note: "משלמים חודש בכל פעם. אפשר להפסיק מתי שרוצים.",
+    note: "משלמים בכל חודש. ללא התחייבות.",
     highlight: false,
   },
   {
@@ -50,7 +50,7 @@ export const PLAN_OPTIONS: PlanOption[] = [
     price: PRICING.yearlyIntro,
     regularPrice: PRICING.yearlyRegular,
     per: "לשנה",
-    note: `תשלום אחד לשנה — ${monthsInHebrew(monthsFree())} מתנה לעומת החודשי.`,
+    note: `תשלום אחת לשנה. קבלת ${monthsInHebrew(monthsFree())} מתנה בהתחייבות מראש.`,
     highlight: true,
   },
 ];
@@ -88,11 +88,10 @@ export const PLAN_FEATURES: string[] = [
   "יומן פגישות עם פגישות קבועות (כל שבוע / כל שבועיים) ומועדי ישראל",
   "תיק לכל לקוח/ה: פרטים, היסטוריית פגישות ומסמכים",
   "סיכומי פגישות מוצפנים, עם יומן גישה לרשומות",
-  "מעקב תשלומים לכל פגישה ורישום מספרי המסמכים שהופקו",
+  "מעקב תשלומים לכל פגישה ורישום מספרי חשבוניות וקבלות ללקוחות",
   "רשימת המתנה, משימות ותזכורות בוואטסאפ בלחיצה",
   "דוחות הכנסות וייצוא ל-PDF",
   "התקנה כאפליקציה בטלפון, כניסה עם Face ID ואימות דו-שלבי",
-  "המידע נשמר בשרתים באירופה ומגובה מדי יום",
 ];
 
 /** The short rules shown under the plans (match /terms sections 4–7). */

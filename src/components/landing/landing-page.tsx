@@ -6,7 +6,7 @@ import { LogoMark, Wordmark } from "@/components/brand/logo-mark";
 import { ClinicHero } from "@/components/dashboard/clinic-hero";
 import { PublicFooter } from "@/components/legal/public-footer";
 import { SkipLink } from "@/components/ui/skip-link";
-import { PLAN_OPTIONS, TRIAL_PLAN } from "@/lib/plans";
+import { PlanCards } from "@/components/plans/plan-cards";
 import { TRIAL_DAYS } from "@/lib/subscription";
 import deskCalendar from "./desk-calendar.jpg";
 import deskClient from "./desk-client.jpg";
@@ -52,7 +52,7 @@ const FEATURES: Feature[] = [
     alt: "תיק של לקוחה לדוגמה, עם סיכומי פגישות ופרטי קשר",
   },
   {
-    title: "תשלומים והכנסות, בלי טבלה בצד",
+    title: "תשלומים והכנסות",
     points: [
       "רישום תשלום לכל פגישה, כולל אמצעי התשלום.",
       "רשימה של הפגישות שעוד לא עודכן בהן תשלום.",
@@ -76,10 +76,6 @@ const SECURITY: { title: string; text: string }[] = [
   {
     title: "כניסה מוגנת",
     text: "אימות דו-שלבי, נעילת Face ID באפליקציה, וניתוק אוטומטי אחרי זמן ללא פעילות.",
-  },
-  {
-    title: "שרתים באירופה",
-    text: "השרת ובסיס הנתונים פועלים באיחוד האירופי, והמידע מגובה מדי יום.",
   },
   {
     title: "המידע נשאר שלך",
@@ -123,9 +119,10 @@ export function LandingPage({ byInvite, documents }: { byInvite: boolean; docume
           <Wordmark className="text-xl" />
         </Link>
         <nav aria-label="ראשי" className="flex items-center gap-5 text-sm font-medium">
-          <Link href="/pricing" className="text-ink-soft hover:text-ink">
+          {/* The plans are further down this page (/pricing shows the same cards) */}
+          <a href="#plans" className="text-ink-soft hover:text-ink">
             מסלולים
-          </Link>
+          </a>
           <Link href="/login" className="text-sage-600 hover:text-sage-700">
             כניסה
           </Link>
@@ -242,37 +239,27 @@ export function LandingPage({ byInvite, documents }: { byInvite: boolean; docume
           </ExplainerVideo>
         </section>
 
-        <section aria-labelledby="plans-title" className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24">
+        <section
+          id="plans"
+          aria-labelledby="plans-title"
+          className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 scroll-mt-4"
+        >
           <h2 id="plans-title" className="font-display font-bold text-2xl sm:text-3xl">
-            מתחילים חינם, וממשיכים רק אם מתאים
+            מסלולים
           </h2>
-          <p className="mt-2 text-ink-soft max-w-2xl">
-            כל המסלולים כוללים את כל המערכת. המנוי לא מתחדש אוטומטית.
+          <p className="mt-2 mb-6 text-ink-soft max-w-2xl">
+            מתחילים חינם, וממשיכים רק אם מתאים. כל המסלולים כוללים את כל המערכת, והמנוי לא
+            מתחדש אוטומטית.
           </p>
-          <dl className="mt-6 grid sm:grid-cols-3 gap-px rounded-2xl overflow-hidden border border-cream-300 bg-cream-300">
-            <div className="bg-white p-5">
-              <dt className="font-display font-bold text-lg">{TRIAL_PLAN.title}</dt>
-              <dd className="mt-2 text-3xl font-display font-bold">₪{TRIAL_PLAN.price}</dd>
-              <dd className="text-sm text-ink-muted mt-1">{TRIAL_PLAN.per}, בלי כרטיס אשראי</dd>
-            </div>
-            {PLAN_OPTIONS.map((p) => (
-              <div key={p.id} className="bg-white p-5">
-                <dt className="font-display font-bold text-lg">{p.title}</dt>
-                <dd className="mt-2 text-3xl font-display font-bold">
-                  ₪{p.price}{" "}
-                  <span className="text-sm font-sans font-normal text-ink-muted line-through">
-                    <span className="sr-only">מחיר רגיל: </span>₪{p.regularPrice}
-                  </span>
-                </dd>
-                <dd className="text-sm text-ink-muted mt-1">{p.per}, מחיר היכרות</dd>
-              </div>
-            ))}
-          </dl>
-          <p className="mt-4">
-            <Link href="/pricing" className="font-medium text-sage-700 underline underline-offset-2">
-              כל הפרטים במסלולים ומחירים
-            </Link>
-          </p>
+          <PlanCards
+            trial={{
+              action: (
+                <Link href="/register" className={`${CTA_PRIMARY} w-full`}>
+                  {ctaLabel}
+                </Link>
+              ),
+            }}
+          />
         </section>
 
         {/* One deep band, like the sign-in brand panel: this is the part a

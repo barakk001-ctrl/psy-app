@@ -40,7 +40,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             מערכת אחת לכל מה שהקליניקה שלך צריכה.
           </p>
           <p className="mt-4 text-base text-cream-50/95 leading-relaxed max-w-md text-balance [text-shadow:0_1px_12px_rgba(20,30,22,0.4)]">
-            לקוחות, פגישות, סיכומים, חשבוניות ותשלומים — במקום אחד, בעברית, עם
+            לקוחות, פגישות, סיכומים, ניהול הכנסות והוצאות — במקום אחד, בעברית, עם
             פרטיות שמתאימה למידע רפואי.
           </p>
         </div>

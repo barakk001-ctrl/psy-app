@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { PRICING, TRIAL_DAYS } from "@/lib/subscription";
 import {
   PLAN_FACTS,
+  PLAN_FEATURES,
   PLAN_OPTIONS,
   TRIAL_PLAN,
+  monthsFree,
   monthsInHebrew,
   trialDaysLeftText,
   planById,
@@ -27,7 +29,19 @@ describe("plan options", () => {
 
   it("states the yearly saving in whole months", () => {
     // 12 × 25 = 300 vs 250 → two months, in the dual form
-    expect(planById("YEARLY")!.note).toBe("תשלום אחד לשנה — חודשיים מתנה לעומת החודשי.");
+    expect(monthsFree()).toBe(2);
+    expect(PRICING.yearlyIntro).toBe(PRICING.monthlyIntro * 10);
+    expect(PRICING.yearlyRegular).toBe(PRICING.monthlyRegular * 10);
+    expect(planById("YEARLY")!.note).toBe("תשלום אחת לשנה. קבלת חודשיים מתנה בהתחייבות מראש.");
+  });
+
+  it("describes the monthly plan", () => {
+    expect(planById("MONTHLY")!.note).toBe("משלמים בכל חודש. ללא התחייבות.");
+  });
+
+  it("names no third-party invoicing system and no server location", () => {
+    for (const f of PLAN_FEATURES) expect(f).not.toMatch(/morning|מורנינג|אירופה/i);
+    expect(PLAN_FEATURES).toContain("מעקב תשלומים לכל פגישה ורישום מספרי חשבוניות וקבלות ללקוחות");
   });
 
   it("words a number of months", () => {
