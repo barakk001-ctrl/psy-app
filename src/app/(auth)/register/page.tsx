@@ -1,5 +1,6 @@
 import { RegisterForm } from "@/components/auth/register-form";
 import { InviteOnly } from "@/components/auth/invite-only";
+import { AuthSwitch } from "@/components/auth/auth-switch";
 import { isGoogleConfigured } from "@/lib/google-auth";
 import { inviteOnly } from "@/lib/signup-policy";
 import { normalizeInviteCode } from "@/lib/invite-codes";
@@ -12,9 +13,13 @@ export const dynamic = "force-dynamic";
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ google?: string; error?: string; invite?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const sp = await searchParams;
+  const all = await searchParams;
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const sp = { google: one(all.google), error: one(all.error), invite: one(all.invite) };
+  // "כניסה / הצטרפות" under the logo, whatever this page shows
+  const authSwitch = <AuthSwitch current="register" searchParams={all} />;
   const googleEnabled = isGoogleConfigured();
 
   // By invitation (signup-policy.ts): how to ask to join, unless an invited
@@ -25,10 +30,13 @@ export default async function RegisterPage({
   const inviteGood = !!inviteCode && (await isInviteUsable(inviteCode));
   if (closed && (sp.google === "not-invited" || (sp.invite !== "1" && !inviteGood))) {
     return (
-      <InviteOnly
-        googleNotInvited={sp.google === "not-invited"}
-        inviteInvalid={!!sp.invite && sp.invite !== "1" && !inviteGood}
-      />
+      <div>
+        {authSwitch}
+        <InviteOnly
+          googleNotInvited={sp.google === "not-invited"}
+          inviteInvalid={!!sp.invite && sp.invite !== "1" && !inviteGood}
+        />
+      </div>
     );
   }
 
@@ -39,12 +47,15 @@ export default async function RegisterPage({
         ? "כדי לפתוח חשבון חדש עם Google, יש לסמן קודם את אישור התנאים וההסכם ואז ללחוץ שוב על \"המשך עם Google\"."
         : undefined;
   return (
-    <RegisterForm
-      googleEnabled={googleEnabled}
-      notice={notice}
-      turnstileKey={turnstileSiteKey()}
-      inviteCode={closed && inviteGood ? inviteCode : null}
-      askInviteCode={closed && !inviteGood}
-    />
+    <div>
+      {authSwitch}
+      <RegisterForm
+        googleEnabled={googleEnabled}
+        notice={notice}
+        turnstileKey={turnstileSiteKey()}
+        inviteCode={closed && inviteGood ? inviteCode : null}
+        askInviteCode={closed && !inviteGood}
+      />
+    </div>
   );
 }

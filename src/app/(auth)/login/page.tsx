@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
+import { AuthSwitch } from "@/components/auth/auth-switch";
 import { ExplainerVideo } from "@/components/auth/explainer-video";
 import { isGoogleConfigured } from "@/lib/google-auth";
 
@@ -33,11 +34,14 @@ function signedOutInfo(reason: string | undefined, verified: string | undefined)
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; reason?: string; verified?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { error, reason, verified } = await searchParams;
+  const sp = await searchParams;
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const [error, reason, verified] = [one(sp.error), one(sp.reason), one(sp.verified)];
   return (
     <div>
+      <AuthSwitch current="login" searchParams={sp} />
       <LoginForm
         googleEnabled={isGoogleConfigured()}
         notice={loginNotice(error)}
