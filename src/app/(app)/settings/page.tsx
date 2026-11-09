@@ -232,6 +232,7 @@ export default async function SettingsPage({
               businessDescription: user.businessDescription,
               phone: user.phone,
               docEmail: user.docEmail,
+              accountEmail: user.email,
               website: user.website,
               businessNameEn: user.businessNameEn,
               addressEn: user.addressEn,

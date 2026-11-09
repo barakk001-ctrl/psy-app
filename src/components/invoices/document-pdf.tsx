@@ -330,7 +330,7 @@ export function DocumentPDF({ data }: { data: DocumentPdfData }) {
         </View>
 
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>{rtl(`הופק ע״י מרפאה אישית · ${producedAt}`)}</Text>
+          <Text style={s.footerText}>{rtl(`הופק ע״י מרפאה אישית · mirpaa.app · ${producedAt}`)}</Text>
         </View>
       </Page>
     </Document>

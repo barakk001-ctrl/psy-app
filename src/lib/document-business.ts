@@ -35,6 +35,7 @@ export const DOC_BUSINESS_SELECT = {
   occupation: true,
   businessDescription: true,
   docEmail: true,
+  email: true,
   website: true,
   signatureUrl: true,
   docTemplate: true,
@@ -53,11 +54,23 @@ type BusinessRow = {
   occupation: string | null;
   businessDescription: string | null;
   docEmail: string | null;
+  /** the account's login email: the documents' email until one is saved */
+  email?: string | null;
   website: string | null;
   signatureUrl: string | null;
   docTemplate: string;
   docColor: string;
 };
+
+/**
+ * The email printed on documents: the saved one (Settings → הגדרות עסק →
+ * "פרטי קשר למסמכים"); never saved (null) → the account's email; saved empty
+ * ("") → none, so it can be taken off the documents.
+ */
+export function documentEmail(docEmail: string | null | undefined, accountEmail: string | null | undefined): string | null {
+  if (docEmail === null || docEmail === undefined) return accountEmail?.trim() || null;
+  return docEmail.trim() || null;
+}
 
 export function docBusiness(u: BusinessRow | null): DocBusiness {
   return {
@@ -67,7 +80,7 @@ export function docBusiness(u: BusinessRow | null): DocBusiness {
     businessId: u?.businessId ?? null,
     address: u?.address ?? null,
     phone: u?.phone ?? null,
-    email: u?.docEmail ?? null,
+    email: documentEmail(u?.docEmail, u?.email),
     website: u?.website ?? null,
     vatLiable: !!u?.vatLiable,
     logoUrl: u ? documentLogo(u) : null,

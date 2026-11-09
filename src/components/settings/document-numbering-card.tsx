@@ -82,9 +82,11 @@ export function DocumentNumberingCard({
               );
             })}
           </div>
-          <p className="text-xs text-ink-muted">
-            אחרי שהופק מסמך מתוך האפליקציה, אי אפשר להחזיר את המספר אחורה.
-          </p>
+          <ul className="text-xs text-ink-muted space-y-1 list-disc ps-4">
+            <li>את מספר ההתחלה של כל סוג מסמך אפשר לקבוע רק עד שמופק המסמך הראשון מסוג זה.</li>
+            <li>אחרי שמסמך הופק, אי אפשר לשנות את המספר שלו.</li>
+            <li>המספרים רצים ברצף, בלי דילוגים.</li>
+          </ul>
           {state?.error && (
             <p role="alert" className="text-sm text-terracotta-600">
               {state.error}

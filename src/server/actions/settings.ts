@@ -132,7 +132,9 @@ export async function updateBusinessInfoAction(
       vatLiable: data.vatLiable,
       address: data.address || null,
       defaultRate: data.defaultRate ?? null,
-      ...Object.fromEntries(sent.map((f) => [f, data[f] || null])),
+      // docEmail: "" = taken off the documents on purpose; null (never saved)
+      // means the account's email is used (documentEmail, document-business.ts)
+      ...Object.fromEntries(sent.map((f) => [f, f === "docEmail" ? (data[f] ?? "") : data[f] || null])),
     },
   });
 

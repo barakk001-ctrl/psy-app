@@ -2,6 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { seedPractice, type Practice } from "./db-fixtures";
 import { TEST_DATABASE_URL, assertThrowawayDatabase, form, resetTestSchema, truncateAll } from "./db-harness";
 import { DEFAULT_EMAIL_SUBJECT } from "@/lib/document-look";
+import { DOC_BUSINESS_SELECT, docBusiness } from "@/lib/document-business";
 
 // Settings → הגדרות עסק / הגדרות מסמכים on a real Postgres, made-up practices.
 // Skipped unless TEST_DATABASE_URL is set.
@@ -94,6 +95,25 @@ describe.skipIf(!TEST_DATABASE_URL)("document settings (real Postgres)", () => {
     expect(bad?.fieldErrors?.docEmail).toBeTruthy();
     // B is untouched
     expect((await user(b.userId)).occupation).toBeNull();
+  });
+
+  it("prints the account's email on documents until another one is saved, and none once emptied", async () => {
+    const base = { businessName: "קליניקה", businessId: "000000018", vatLiable: "true", address: "", defaultRate: "" };
+    const printed = async () => docBusiness(await db.user.findUniqueOrThrow({ where: { id: a.userId }, select: DOC_BUSINESS_SELECT })).email;
+    const account = (await user(a.userId)).email;
+    // Never saved: the login email
+    await db.user.update({ where: { id: a.userId }, data: { docEmail: null } });
+    expect(await printed()).toBe(account);
+    // Saved: that one
+    await act.updateBusinessInfoAction(null, form({ ...base, docEmail: "office@example.test" }));
+    expect(await printed()).toBe("office@example.test");
+    // Emptied on purpose: stored as "", nothing printed
+    await act.updateBusinessInfoAction(null, form({ ...base, docEmail: "" }));
+    expect((await user(a.userId)).docEmail).toBe("");
+    expect(await printed()).toBeNull();
+    // A form that doesn't send it (the setup wizard) leaves it alone
+    await act.updateBusinessInfoAction(null, form(base));
+    expect((await user(a.userId)).docEmail).toBe("");
   });
 
   it("the personal details form no longer clears the phone", async () => {

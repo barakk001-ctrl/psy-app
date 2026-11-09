@@ -24,6 +24,8 @@ type Props = {
     businessDescription?: string | null;
     phone?: string | null;
     docEmail?: string | null;
+    /** the login email, prefilled as the documents' email until one is saved */
+    accountEmail?: string | null;
     website?: string | null;
     businessNameEn?: string | null;
     addressEn?: string | null;
@@ -108,7 +110,7 @@ export function BusinessInfoForm({ initial, full = false, documents = true, form
               </div>
               {documents && (
               <div>
-                <Label htmlFor="businessDescription">שורת תיאור למסמכים</Label>
+                <Label htmlFor="businessDescription">משפט תיאור העסק</Label>
                 <Input
                   id="businessDescription"
                   name="businessDescription"
@@ -206,10 +208,15 @@ export function BusinessInfoForm({ initial, full = false, documents = true, form
                   type="email"
                   dir="ltr"
                   maxLength={120}
-                  defaultValue={initial.docEmail ?? ""}
+                  defaultValue={initial.docEmail ?? initial.accountEmail ?? ""}
                   invalid={!!fieldErr.docEmail}
-                  aria-describedby={fieldErr.docEmail ? "docEmail-error" : undefined}
+                  aria-describedby={fieldErr.docEmail ? "docEmail-error docEmail-hint" : "docEmail-hint"}
                 />
+                <p id="docEmail-hint" className="text-xs text-ink-muted mt-1">
+                  {initial.docEmail === null || initial.docEmail === undefined
+                    ? "מולא מאימייל החשבון. אפשר לשנות, או למחוק כדי שלא יופיע במסמכים."
+                    : "ריק = לא מופיע במסמכים."}
+                </p>
                 {err("docEmail")}
               </div>
               )}
@@ -251,7 +258,7 @@ export function BusinessInfoForm({ initial, full = false, documents = true, form
               <Input id="addressEn" name="addressEn" dir="ltr" maxLength={200} defaultValue={initial.addressEn ?? ""} />
             </div>
             <div>
-              <Label htmlFor="descriptionEn">שורת תיאור באנגלית</Label>
+              <Label htmlFor="descriptionEn">משפט תיאור העסק באנגלית</Label>
               <Input
                 id="descriptionEn"
                 name="descriptionEn"

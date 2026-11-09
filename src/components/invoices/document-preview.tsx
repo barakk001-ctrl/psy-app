@@ -366,7 +366,7 @@ export function DocumentPreview({
             </div>
           )}
           <footer className="text-xs text-ink-muted text-center border-t border-cream-200 pt-3">
-            הופק ע״י מרפאה אישית
+            הופק ע״י מרפאה אישית · <span dir="ltr">mirpaa.app</span>
             {producedAt && (
               <>
                 {" · "}
