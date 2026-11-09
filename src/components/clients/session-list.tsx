@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { SessionFlags } from "@/components/sessions/session-flags";
+import { ShowMoreList } from "@/components/ui/show-more-list";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +35,7 @@ export function SessionList({
   defaultOpen = false,
   showFlags = false,
   muted = false,
+  initialCount,
 }: {
   title: string;
   sessions: ClientSessionRow[];
@@ -41,7 +43,69 @@ export function SessionList({
   defaultOpen?: boolean;
   showFlags?: boolean;
   muted?: boolean;
+  /** show this many first, then "הצגת עוד" (ShowMoreList); all of them when omitted */
+  initialCount?: number;
 }) {
+  const rows = sessions.map((s) => (
+    <li key={s.id}>
+      <Link
+        href={`/sessions/${s.id}`}
+        className="px-5 py-3 flex items-center justify-between hover:bg-cream-100/60 transition-colors"
+      >
+        <div>
+          <div className={cn("text-sm flex items-center gap-2", muted ? "text-ink-muted" : "text-ink")}>
+            {formatDateTime(s.startsAt)}
+            {showFlags && (
+              <SessionFlags
+                documented={!!s.note}
+                paymentDone={!!s.paymentStatus || !!s.invoiceItem}
+              />
+            )}
+            {(s.status === "CANCELLED" || s.status === "NO_SHOW") && (
+              <span className="rounded-full bg-cream-200 text-ink-muted text-[10px] px-2 py-0.5">
+                {STATUS_LABEL[s.status]}
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-ink-muted mt-0.5">
+            {s.status === "COMPLETED" || s.status === "SCHEDULED"
+              ? showFlags
+                ? "התקיימה"
+                : "מתוכננת"
+              : null}
+            {s.invoiceItem?.invoice && (
+              <>
+                {" · "}חשבונית #{String(s.invoiceItem.invoice.number).padStart(4, "0")}
+                {s.invoiceItem.invoice.morningDocNumber && (
+                  <>
+                    {" · "}קבלה{" "}
+                    <span dir="ltr">{s.invoiceItem.invoice.morningDocNumber}</span>
+                  </>
+                )}
+              </>
+            )}
+            {!s.invoiceItem?.invoice && s.morningDocNumber && (
+              <>
+                {" · "}חשבונית מס <span dir="ltr">{s.morningDocNumber}</span>
+              </>
+            )}
+            {!s.invoiceItem?.invoice && s.morningInvoiceReceiptNumber && (
+              <>
+                {" · "}חשבונית מס-קבלה{" "}
+                <span dir="ltr">{s.morningInvoiceReceiptNumber}</span>
+              </>
+            )}
+          </div>
+        </div>
+        {s.rate && (
+          <span className="text-xs text-ink-muted">
+            {formatCurrency(s.rate.toString())}
+          </span>
+        )}
+      </Link>
+    </li>
+  ));
+
   return (
     <details className="group" open={defaultOpen}>
       <summary className="cursor-pointer list-none">
@@ -59,68 +123,12 @@ export function SessionList({
         <CardContent className="p-0">
           {sessions.length === 0 ? (
             <div className="p-8 text-center text-sm text-ink-muted">{emptyText}</div>
+          ) : initialCount === undefined ? (
+            <ul className="divide-y divide-cream-200">{rows}</ul>
           ) : (
-            <ul className="divide-y divide-cream-200">
-              {sessions.map((s) => (
-                <li key={s.id}>
-                  <Link
-                    href={`/sessions/${s.id}`}
-                    className="px-5 py-3 flex items-center justify-between hover:bg-cream-100/60 transition-colors"
-                  >
-                    <div>
-                      <div className={cn("text-sm flex items-center gap-2", muted ? "text-ink-muted" : "text-ink")}>
-                        {formatDateTime(s.startsAt)}
-                        {showFlags && (
-                          <SessionFlags
-                            documented={!!s.note}
-                            paymentDone={!!s.paymentStatus || !!s.invoiceItem}
-                          />
-                        )}
-                        {(s.status === "CANCELLED" || s.status === "NO_SHOW") && (
-                          <span className="rounded-full bg-cream-200 text-ink-muted text-[10px] px-2 py-0.5">
-                            {STATUS_LABEL[s.status]}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-ink-muted mt-0.5">
-                        {s.status === "COMPLETED" || s.status === "SCHEDULED"
-                          ? showFlags
-                            ? "התקיימה"
-                            : "מתוכננת"
-                          : null}
-                        {s.invoiceItem?.invoice && (
-                          <>
-                            {" · "}חשבונית #{String(s.invoiceItem.invoice.number).padStart(4, "0")}
-                            {s.invoiceItem.invoice.morningDocNumber && (
-                              <>
-                                {" · "}קבלה{" "}
-                                <span dir="ltr">{s.invoiceItem.invoice.morningDocNumber}</span>
-                              </>
-                            )}
-                          </>
-                        )}
-                        {!s.invoiceItem?.invoice && s.morningDocNumber && (
-                          <>
-                            {" · "}חשבונית מס <span dir="ltr">{s.morningDocNumber}</span>
-                          </>
-                        )}
-                        {!s.invoiceItem?.invoice && s.morningInvoiceReceiptNumber && (
-                          <>
-                            {" · "}חשבונית מס-קבלה{" "}
-                            <span dir="ltr">{s.morningInvoiceReceiptNumber}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    {s.rate && (
-                      <span className="text-xs text-ink-muted">
-                        {formatCurrency(s.rate.toString())}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <ShowMoreList initial={initialCount} className="divide-y divide-cream-200">
+              {rows}
+            </ShowMoreList>
           )}
         </CardContent>
       </Card>

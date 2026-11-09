@@ -122,7 +122,7 @@ export default async function DashboardPage() {
             </h1>
           </div>
           <p className="text-sm text-ink-muted mt-2">
-            המרפאה האישית שלך במבט אחד 🌿 הפגישות של היום, הכנסות החודש ומה עוד מחכה
+            המרפאה האישית שלך לפניך 🌿 הפגישות של היום, הכנסות החודש ומה עוד מחכה
             לתיעוד או לתשלום.
           </p>
           <div className="flex flex-wrap gap-2 mt-5">

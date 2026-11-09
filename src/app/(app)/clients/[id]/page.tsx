@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ClientStatusToggle } from "@/components/clients/client-status-toggle";
 import { DeleteClientButton } from "@/components/clients/client-trash";
 import { SessionList } from "@/components/clients/session-list";
+import { ShowMoreList } from "@/components/ui/show-more-list";
 import { PdfButton } from "@/components/ui/pdf-button";
 import {
   ClientDocumentsCard,
@@ -233,13 +234,13 @@ export default async function ClientDetailPage({
           <Link href={`/clients/${client.id}/edit`}>
             <Button variant="secondary" size="sm">
               <Pencil className="w-4 h-4" />
-              עריכה
+              עריכת פרטי לקוח/ה
             </Button>
           </Link>
           {documentsEnabled() && (
             <Link href={`/invoices/new?clientId=${client.id}`}>
               <Button variant="secondary" size="sm">
-                חשבונית / קבלה
+                הפקת חשבונית / קבלה
               </Button>
             </Link>
           )}
@@ -325,7 +326,8 @@ export default async function ClientDetailPage({
                 עדיין אין סיכומים מתועדים — כתיבת סיכום נעשית מתוך עמוד הפגישה.
               </div>
             ) : (
-              <ul className="divide-y divide-cream-200">
+              // The 2 latest first; the PDF button above still exports all of them
+              <ShowMoreList initial={2} className="divide-y divide-cream-200">
                 {noteFeed.map((n) => (
                   <li key={n.id} className="px-5 py-4">
                     <div className="flex items-center justify-between gap-3 mb-1.5">
@@ -353,7 +355,7 @@ export default async function ClientDetailPage({
                     )}
                   </li>
                 ))}
-              </ul>
+              </ShowMoreList>
             )}
             {noteFeed.length === 20 && (
               <p className="px-5 py-3 text-xs text-ink-subtle border-t border-cream-200">
@@ -369,6 +371,7 @@ export default async function ClientDetailPage({
             sessions={upcoming}
             emptyText="אין פגישות עתידיות ביומן."
             defaultOpen
+            initialCount={2}
           />
           <SessionList
             title="פגישות שהתקיימו"

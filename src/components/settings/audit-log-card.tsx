@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ShowMoreList } from "@/components/ui/show-more-list";
 import { ScrollText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
@@ -60,7 +61,8 @@ export function AuditLogCard({ entries }: { entries: AuditEntry[] }) {
         {entries.length === 0 ? (
           <p className="text-sm text-ink-subtle">אין עדיין רישומים.</p>
         ) : (
-          <ul className="divide-y divide-cream-200 text-sm">
+          // The 5 latest first, then "הצגת עוד"
+          <ShowMoreList initial={5} className="divide-y divide-cream-200 text-sm" toggleClassName="px-0 pb-0">
             {entries.map((e) => (
               <li key={e.id} className="py-2 flex items-center justify-between gap-3">
                 <span className="text-ink-soft">
@@ -86,7 +88,7 @@ export function AuditLogCard({ entries }: { entries: AuditEntry[] }) {
                 </span>
               </li>
             ))}
-          </ul>
+          </ShowMoreList>
         )}
       </CardContent>
     </Card>
