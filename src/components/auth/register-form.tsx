@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { GoogleButton, OrDivider } from "@/components/auth/google-button";
 import { VerifyEmailPending } from "@/components/auth/verify-email-pending";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { PlansLink } from "@/components/auth/plans-link";
 import { googleRegisterAction, registerAction, type FormState } from "@/server/actions/auth";
 
 export function RegisterForm({
@@ -213,11 +214,7 @@ export function RegisterForm({
           התחברות
         </Link>
       </p>
-      <p className="text-sm text-ink-muted mt-2 text-center">
-        <Link href="/#plans" className="text-sage-600 hover:text-sage-700 underline underline-offset-2">
-          מסלולים
-        </Link>
-      </p>
+      <PlansLink />
     </div>
   );
 }

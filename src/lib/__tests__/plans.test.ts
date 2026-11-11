@@ -4,6 +4,10 @@ import {
   PLAN_FACTS,
   PLAN_FEATURES,
   PLAN_OPTIONS,
+  PLAN_TIERS,
+  CLINIC_PLAN_NAME,
+  FUTURE_PLAN_BADGE,
+  FUTURE_PLAN_PRICE_NOTE,
   TRIAL_PLAN,
   monthsFree,
   monthsInHebrew,
@@ -41,7 +45,9 @@ describe("plan options", () => {
 
   it("names no third-party invoicing system and no server location", () => {
     for (const f of PLAN_FEATURES) expect(f).not.toMatch(/morning|מורנינג|אירופה/i);
-    expect(PLAN_FEATURES).toContain("מעקב תשלומים לכל פגישה ורישום מספרי חשבוניות וקבלות ללקוחות");
+    expect(PLAN_FEATURES).toContain(
+      "מעקב תשלומים לכל פגישה, ורישום מספרי חשבוניות וקבלות שהופקו מחוץ למערכת",
+    );
   });
 
   it("words a number of months", () => {
@@ -54,6 +60,50 @@ describe("plan options", () => {
     expect(planLabel("YEARLY")).toBe("מנוי שנתי");
     expect(planLabel(null)).toBe("מנוי");
     expect(planById("WEEKLY")).toBeUndefined();
+  });
+});
+
+describe("plan tiers", () => {
+  it("lists the plan sold today first, then the two future ones", () => {
+    expect(PLAN_TIERS.map((t) => t.title)).toEqual([
+      "ניהול קליניקה",
+      "ניהול קליניקה כולל מסמכי הכנסות",
+      "ניהול קליניקה כולל מסמכי הכנסות והוצאות",
+    ]);
+    expect(PLAN_TIERS.map((t) => t.future)).toEqual([false, true, true]);
+    expect(PLAN_TIERS[0].title).toBe(CLINIC_PLAN_NAME);
+    expect(PLAN_TIERS[0].features).toBe(PLAN_FEATURES);
+    expect(FUTURE_PLAN_BADGE).toBe("מסלול עתידי");
+  });
+
+  it("does not say the plan sold today issues or keeps tax documents", () => {
+    const text = PLAN_FEATURES.join(" ");
+    expect(text).not.toMatch(/הפקת|מפיק|מסמכי הכנס|מסמכי הוצא|חשבונית זיכוי/);
+    // The one mention of invoices and receipts is of numbers issued elsewhere
+    expect(PLAN_FEATURES.filter((f) => /חשבוני|קבל/.test(f))).toEqual([
+      "מעקב תשלומים לכל פגישה, ורישום מספרי חשבוניות וקבלות שהופקו מחוץ למערכת",
+    ]);
+  });
+
+  it("words the future plans as future, each building on the one before", () => {
+    const [clinic, income, both] = PLAN_TIERS;
+    for (const t of [income, both]) {
+      expect(t.features.length).toBeGreaterThan(0);
+      for (const f of t.features) expect(f.startsWith("יכלול")).toBe(true);
+    }
+    expect(income.features[0]).toContain(`״${clinic.title}״`);
+    expect(income.features.join(" ")).toContain(
+      "חשבונית מס, חשבונית מס/קבלה, קבלה וחשבונית זיכוי",
+    );
+    expect(both.features[0]).toContain(`״${income.title}״`);
+    expect(both.features.join(" ")).toContain("מסמכי הוצאות");
+  });
+
+  it("shows no price for a future plan", () => {
+    expect(FUTURE_PLAN_PRICE_NOTE).toBe("המחיר יפורסם עם השקת המסלול");
+    const text = [FUTURE_PLAN_PRICE_NOTE, ...PLAN_TIERS.filter((t) => t.future).flatMap((t) => [t.title, ...t.features])].join(" ");
+    expect(text).not.toMatch(/₪|[0-9]/);
+    expect(text).not.toMatch(/morning|מורנינג/i);
   });
 });
 
@@ -91,7 +141,7 @@ describe("subscriptionHeadline", () => {
     expect(subscriptionHeadline({ ...base, status: "trial", daysLeft: 1 })).toContain("מחר");
     expect(
       subscriptionHeadline({ ...base, status: "active", plan: "MONTHLY", daysLeft: 20 }),
-    ).toBe("מנוי חודשי פעיל.");
+    ).toBe("ניהול קליניקה — מנוי חודשי פעיל.");
     expect(
       subscriptionHeadline({ ...base, status: "expired", daysLeft: 0, writable: false }),
     ).toContain("קריאה בלבד");
@@ -107,6 +157,7 @@ describe("planRequestMessage", () => {
     );
     expect(r.subject).toBe("בקשה לרכישת מנוי שנתי");
     expect(r.message).toContain(`₪${PRICING.yearlyIntro} לשנה.`);
+    expect(r.message).toContain("מנוי שנתי במסלול ״ניהול קליניקה״");
     expect(r.message).not.toContain("מע״מ");
     expect(r.message).not.toContain("עוסק פטור");
     expect(r.message).not.toContain("כולל מע״מ");

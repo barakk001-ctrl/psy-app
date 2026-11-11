@@ -10,7 +10,8 @@ import { inviteOnly } from "@/lib/signup-policy";
 // and register pages; signed-in users are pointed to their own /subscription.
 export const metadata = {
   title: "מסלולים — מרפאה אישית",
-  description: "מנוי היכרות חינם ל-30 יום, ואז מנוי חודשי או שנתי. בלי חיוב אוטומטי.",
+  description:
+    "מסלול ניהול קליניקה: מנוי היכרות חינם ל-30 יום, ואז מנוי חודשי או שנתי. בלי חיוב אוטומטי.",
 };
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export default async function PricingPage() {
         <div className="text-center mb-8">
           <h1 className="font-display text-3xl sm:text-4xl text-ink">מסלולים</h1>
           <p className="text-ink-muted mt-3 leading-relaxed max-w-xl mx-auto text-balance">
-            מתחילים במנוי היכרות חינם, וממשיכים במסלול שמתאים לך. הרכישה נעשית מתוך המערכת,
+            מתחילים במנוי היכרות חינם, וממשיכים במנוי חודשי או שנתי. הרכישה נעשית מתוך המערכת,
             בעמוד ״מנוי ומסלולים״.
           </p>
         </div>
@@ -73,8 +74,8 @@ export default async function PricingPage() {
             <>
               <p className="text-ink-soft text-sm">
                 {byInvite
-                  ? "ההרשמה כרגע בהזמנה בלבד. אחרי ההצטרפות עובדים חודש בחינם, ואז בוחרים מסלול בעמוד ״מנוי ומסלולים״ שבתפריט."
-                  : "איך קונים? נרשמים, עובדים חודש בחינם, ואז בוחרים מסלול בעמוד ״מנוי ומסלולים״ שבתפריט."}
+                  ? "ההרשמה כרגע בהזמנה בלבד. אחרי ההצטרפות עובדים חודש בחינם, ואז בוחרים מנוי חודשי או שנתי בעמוד ״מנוי ומסלולים״ שבתפריט."
+                  : "איך קונים? נרשמים, עובדים חודש בחינם, ואז בוחרים מנוי חודשי או שנתי בעמוד ״מנוי ומסלולים״ שבתפריט."}
               </p>
               <div className="mt-3 flex flex-wrap justify-center gap-2">
                 <Link href="/register" className={CTA_PRIMARY}>

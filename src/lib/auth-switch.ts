@@ -1,5 +1,5 @@
 /**
- * The "כניסה / הצטרפות" switch under the logo on /login and /register.
+ * The "כניסה / הצטרפות ומסלולים" switch under the logo on /login and /register.
  *
  * Switching keeps the query string, so an invitation (?invite=1 or
  * ?invite=CODE) and a callbackUrl survive a trip to the other page and back.

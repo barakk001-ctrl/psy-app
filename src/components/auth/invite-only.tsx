@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { JOIN_REQUEST_EMAIL } from "@/lib/signup-policy";
 import { INVITE_INVALID_MESSAGE } from "@/lib/invite-codes";
+import { PlansLink } from "@/components/auth/plans-link";
 
 /**
  * /register while sign-up is by invitation (signup-policy.ts): how to ask to
@@ -58,11 +59,8 @@ export function InviteOnly({
         <Link href="/register?invite=1" className="text-sage-600 hover:text-sage-700 font-medium">
           להרשמה
         </Link>
-        {" · "}
-        <Link href="/#plans" className="text-sage-600 hover:text-sage-700 underline underline-offset-2">
-          מסלולים
-        </Link>
       </p>
+      <PlansLink />
     </div>
   );
 }

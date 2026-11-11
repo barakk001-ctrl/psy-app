@@ -1,6 +1,10 @@
-// The purchase plans as shown to therapists — the public /pricing page and
-// the in-app "מנוי ומסלולים" page (/subscription). Prices come only from
-// PRICING (src/lib/subscription.ts); keep /terms section 5 in step with them.
+// The plans as shown to therapists — the landing page (#plans), the public
+// /pricing page and the in-app "מנוי ומסלולים" page (/subscription).
+// "מסלול" is the tier (PLAN_TIERS: one sold today, two shown as future, display
+// only — nothing is stored or gated by tier); "מנוי" is how the tier sold today
+// is paid for (PLAN_OPTIONS, the stored MONTHLY/YEARLY, plus the free trial).
+// Prices come only from PRICING (src/lib/subscription.ts); keep /terms
+// section 5 in step with them.
 
 import { PRICING, TRIAL_DAYS, type SubscriptionState } from "@/lib/subscription";
 import { TRIAL_SCHEDULING_DAYS } from "@/lib/scheduling-window";
@@ -83,15 +87,67 @@ export function planLabel(id: string | null | undefined): string {
   return planById(id)?.title ?? "מנוי";
 }
 
-/** Everything is in every plan — the plans differ only in how you pay. */
+/**
+ * What the plan sold today ("ניהול קליניקה") includes: only what a user really
+ * sees now. Issuing income documents and keeping expense documents are not in
+ * it (they are hidden behind DOCUMENTS_ENABLED, src/lib/features.ts) — those
+ * are the two future plans below.
+ */
 export const PLAN_FEATURES: string[] = [
   "יומן פגישות עם פגישות קבועות (כל שבוע / כל שבועיים) ומועדי ישראל",
-  "תיק לכל לקוח/ה: פרטים, היסטוריית פגישות ומסמכים",
+  "תיק לכל לקוח/ה: פרטים, היסטוריית פגישות ומסמכים (PDF, Word ותמונות)",
   "סיכומי פגישות מוצפנים, עם יומן גישה לרשומות",
-  "מעקב תשלומים לכל פגישה ורישום מספרי חשבוניות וקבלות ללקוחות",
+  "מעקב תשלומים לכל פגישה, ורישום מספרי חשבוניות וקבלות שהופקו מחוץ למערכת",
   "רשימת המתנה, משימות ותזכורות בוואטסאפ בלחיצה",
   "דוחות הכנסות וייצוא ל-PDF",
   "התקנה כאפליקציה בטלפון, כניסה עם Face ID ואימות דו-שלבי",
+];
+
+/** The name of the plan every account is on today; monthly / yearly are how it is paid. */
+export const CLINIC_PLAN_NAME = "ניהול קליניקה";
+
+export type PlanTierId = "CLINIC" | "CLINIC_INCOME" | "CLINIC_INCOME_EXPENSES";
+
+/**
+ * The plans ("מסלולים") as shown on the home page, /pricing, /register and
+ * /subscription. Display only: nothing is stored per account and nothing is
+ * gated by it. Only the first can be bought (through PLAN_OPTIONS); the future
+ * ones have no price yet and no button — never type a price for them here.
+ */
+export type PlanTier = {
+  id: PlanTierId;
+  title: string;
+  /** announced, not sold: badge instead of prices, no button */
+  future: boolean;
+  /** the ✓ list */
+  features: string[];
+};
+
+export const AVAILABLE_PLAN_BADGE = "זמין היום";
+export const FUTURE_PLAN_BADGE = "מסלול עתידי";
+/** In the price slot of a future plan */
+export const FUTURE_PLAN_PRICE_NOTE = "המחיר יפורסם עם השקת המסלול";
+
+export const PLAN_TIERS: PlanTier[] = [
+  { id: "CLINIC", title: CLINIC_PLAN_NAME, future: false, features: PLAN_FEATURES },
+  {
+    id: "CLINIC_INCOME",
+    title: `${CLINIC_PLAN_NAME} כולל מסמכי הכנסות`,
+    future: true,
+    features: [
+      `יכלול את כל מה שבמסלול ״${CLINIC_PLAN_NAME}״`,
+      "יכלול הפקת מסמכי הכנסות: חשבונית מס, חשבונית מס/קבלה, קבלה וחשבונית זיכוי",
+    ],
+  },
+  {
+    id: "CLINIC_INCOME_EXPENSES",
+    title: `${CLINIC_PLAN_NAME} כולל מסמכי הכנסות והוצאות`,
+    future: true,
+    features: [
+      `יכלול את כל מה שבמסלול ״${CLINIC_PLAN_NAME} כולל מסמכי הכנסות״`,
+      "יכלול מסמכי הוצאות: שמירת החשבוניות והקבלות של הוצאות הקליניקה, עם הפרטים והסכומים",
+    ],
+  },
 ];
 
 /** The short rules shown under the plans (match /terms sections 4–7). */
@@ -113,7 +169,7 @@ export function subscriptionHeadline(state: SubscriptionState): string {
         ? "תקופת הניסיון מסתיימת מחר."
         : `נותרו ${state.daysLeft ?? 0} ימים לתקופת הניסיון.`;
     case "active":
-      return `${planLabel(state.plan)} פעיל.`;
+      return `${CLINIC_PLAN_NAME} — ${planLabel(state.plan)} פעיל.`;
     case "expired":
       return "המנוי הסתיים — המערכת במצב קריאה בלבד עד החידוש.";
   }
@@ -136,7 +192,7 @@ export function planRequestMessage(
   return {
     subject: `בקשה לרכישת ${plan.title}`,
     message: [
-      `אשמח לרכוש ${plan.title} — ₪${plan.price} ${plan.per}.`,
+      `אשמח לרכוש ${plan.title} במסלול ״${CLINIC_PLAN_NAME}״ — ₪${plan.price} ${plan.per}.`,
       `מצב החשבון כרגע: ${status}.`,
       "נשלח מעמוד ״מנוי ומסלולים״.",
     ].join("\n"),

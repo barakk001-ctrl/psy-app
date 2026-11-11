@@ -248,10 +248,11 @@ export function LandingPage({ byInvite, documents }: { byInvite: boolean; docume
             מסלולים
           </h2>
           <p className="mt-2 mb-6 text-ink-soft max-w-2xl">
-            מתחילים חינם, וממשיכים רק אם מתאים. כל המסלולים כוללים את כל המערכת, והמנוי לא
-            מתחדש אוטומטית.
+            מתחילים חינם, וממשיכים רק אם מתאים. המסלול הזמין היום הוא ״ניהול קליניקה״, והמנוי
+            לא מתחדש אוטומטית.
           </p>
           <PlanCards
+            headingLevel={3}
             trial={{
               action: (
                 <Link href="/register" className={`${CTA_PRIMARY} w-full`}>
