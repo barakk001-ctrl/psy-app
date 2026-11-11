@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 /**
  * The way from /register to the plans ("מסלולים", the home page's #plans
@@ -6,11 +7,14 @@ import Link from "next/link";
  * "הצטרפות ומסלולים" leads somewhere visible. The cards themselves are not
  * embedded here: the auth pages must fit one screen on a laptop.
  */
-export function PlansLink() {
+export function PlansLink({ className }: { className?: string }) {
   return (
     <Link
       href="/#plans"
-      className="auth-plans-link mt-4 flex h-11 w-full items-center justify-center rounded-xl border border-cream-300 bg-white/70 text-sm font-medium text-ink hover:border-sage-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-2 focus-visible:ring-offset-cream-100"
+      className={cn(
+        "auth-plans-link mt-4 flex h-11 lg:h-[min(2.75rem,var(--auth-btn,2.75rem))] w-full items-center justify-center rounded-xl border border-cream-300 bg-white/70 text-sm font-medium text-ink hover:border-sage-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-2 focus-visible:ring-offset-cream-100",
+        className,
+      )}
     >
       מסלולים
     </Link>

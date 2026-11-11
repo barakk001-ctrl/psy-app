@@ -47,9 +47,10 @@ export default async function LoginPage({
         notice={loginNotice(error)}
         info={signedOutInfo(reason, verified)}
       />
-      <div className="mt-6 pt-5 border-t border-cream-200 text-center">
-        <ExplainerVideo />
-        <p className="mt-4 text-xs text-ink-muted">
+      {/* Stacked on a phone, one row on a laptop (the page fits one screen there) */}
+      <div className="mt-6 pt-5 border-t border-cream-200 text-center lg:mt-auth-lg lg:pt-auth-md lg:flex lg:items-center lg:justify-center lg:gap-x-6">
+        <ExplainerVideo className="mx-auto lg:mx-0 flex items-center gap-2 text-sm text-sage-600 hover:text-sage-700 font-medium" />
+        <p className="mt-4 lg:mt-0 text-xs text-ink-muted">
           <Link href="/accessibility" className="underline underline-offset-2">
             הצהרת נגישות
           </Link>

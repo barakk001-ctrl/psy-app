@@ -39,9 +39,9 @@ export function LoginForm({
 
   return (
     <div>
-      <div className="mb-8">
+      <div className="mb-8 lg:mb-auth-xl">
         <h1 className="font-display text-3xl text-ink">שמחים לראות אותך שוב</h1>
-        <p className="text-ink-muted mt-2">נכנסים לחשבון כדי להמשיך</p>
+        <p className="text-ink-muted mt-2 lg:mt-auth-sm short:text-sm">נכנסים לחשבון כדי להמשיך</p>
       </div>
 
       {info && !state && (
@@ -53,7 +53,7 @@ export function LoginForm({
         </div>
       )}
 
-      <form action={formAction} className="space-y-4" noValidate>
+      <form action={formAction} className="space-y-4 lg:space-y-auth-md" noValidate>
         <div className={needTotp ? "hidden" : undefined}>
           <Label htmlFor="email">אימייל</Label>
           <Input
@@ -135,7 +135,7 @@ export function LoginForm({
       {!needTotp && (
         <Link
           href={email.trim() ? `/login/code?email=${encodeURIComponent(email.trim())}` : "/login/code"}
-          className="mt-3 flex h-12 w-full items-center justify-center rounded-xl border border-sage-500/40 bg-white/60 text-base font-medium text-sage-700 transition-colors hover:bg-white hover:border-sage-500"
+          className="mt-3 lg:mt-[min(0.75rem,var(--auth-md,0.75rem))] flex h-12 w-full items-center justify-center rounded-xl border border-sage-500/40 bg-white/60 text-base font-medium text-sage-700 transition-colors hover:bg-white hover:border-sage-500"
         >
           כניסה עם קוד חד פעמי
         </Link>
@@ -150,25 +150,28 @@ export function LoginForm({
         </>
       )}
 
-      <p className="text-sm text-ink-muted mt-6 text-center">
-        <Link href="/forgot-password" className="text-sage-600 hover:text-sage-700">
-          שכחת סיסמה?
-        </Link>
-      </p>
+      {/* Three lines on a phone; on a laptop one wrapping row, to save height */}
+      <div className="mt-6 lg:mt-auth-lg flex flex-col gap-y-4 text-center text-sm text-ink-muted lg:flex-row lg:flex-wrap lg:justify-center lg:gap-x-5 lg:gap-y-1">
+        <p>
+          <Link href="/forgot-password" className="text-sage-600 hover:text-sage-700">
+            שכחת סיסמה?
+          </Link>
+        </p>
 
-      <p className="text-sm text-ink-muted mt-4 text-center">
-        אין לך חשבון עדיין?{" "}
-        <Link href="/register" className="text-sage-600 hover:text-sage-700 font-medium">
-          הרשמה
-        </Link>
-      </p>
+        <p>
+          אין לך חשבון עדיין?{" "}
+          <Link href="/register" className="text-sage-600 hover:text-sage-700 font-medium">
+            הרשמה
+          </Link>
+        </p>
 
-      <p className="text-sm text-ink-muted mt-2 text-center">
-        <Link href="/#plans" className="text-sage-600 hover:text-sage-700 underline underline-offset-2">
-          מסלולים
-        </Link>{" "}
-        · {TRIAL_DAYS} יום ניסיון חינם
-      </p>
+        <p className="-mt-2 lg:mt-0">
+          <Link href="/#plans" className="text-sage-600 hover:text-sage-700 underline underline-offset-2">
+            מסלולים
+          </Link>{" "}
+          · {TRIAL_DAYS} יום ניסיון חינם
+        </p>
+      </div>
     </div>
   );
 }

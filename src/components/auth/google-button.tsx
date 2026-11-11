@@ -67,9 +67,17 @@ export function GoogleButton({
 }
 
 /** The "או" line between the Google button and the email form. */
-export function OrDivider() {
+export function OrDivider({
+  className = "my-6 lg:my-auth-lg",
+}: {
+  /** the space around it */
+  className?: string;
+}) {
   return (
-    <div className="flex items-center gap-3 my-6 text-xs text-ink-subtle" role="separator">
+    <div
+      className={cn("flex items-center gap-3 text-xs text-ink-subtle", className)}
+      role="separator"
+    >
       <span className="h-px flex-1 bg-cream-300" />
       או
       <span className="h-px flex-1 bg-cream-300" />

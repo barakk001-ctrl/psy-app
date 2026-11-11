@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 export default {
   content: ["./src/**/*.{ts,tsx}"],
@@ -42,6 +43,17 @@ export default {
         display: ["var(--font-display)", "ui-sans-serif", "system-ui", "sans-serif"],
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
+      // Auth pages on a laptop: sizes that follow the viewport height, so the
+      // page fits one screen (the variables are set in globals.css, .auth-shell;
+      // the fallbacks are the sizes used everywhere else). Use with lg: only.
+      spacing: {
+        "auth-pad": "var(--auth-pad, 2rem)",
+        "auth-xl": "var(--auth-xl, 2rem)",
+        "auth-lg": "var(--auth-lg, 1.5rem)",
+        "auth-md": "var(--auth-md, 1rem)",
+        "auth-sm": "var(--auth-sm, 0.5rem)",
+        "auth-logo": "var(--auth-logo, 2.75rem)",
+      },
       borderRadius: {
         DEFAULT: "0.625rem",
       },
@@ -53,5 +65,10 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // A laptop-width window that is short (auth pages only, see globals.css)
+    plugin(({ addVariant }) => {
+      addVariant("short", "@media (min-width: 1024px) and (max-height: 839px)");
+    }),
+  ],
 } satisfies Config;

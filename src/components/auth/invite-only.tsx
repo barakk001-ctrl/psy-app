@@ -18,9 +18,9 @@ export function InviteOnly({
 }) {
   return (
     <div>
-      <div className="mb-8">
+      <div className="mb-8 lg:mb-auth-xl">
         <h1 className="font-display text-3xl text-ink">הצטרפות</h1>
-        <p className="text-ink-muted mt-2">מרפאה אישית — ניהול קליניקה למטפלים</p>
+        <p className="text-ink-muted mt-2 lg:mt-auth-sm short:text-sm">מרפאה אישית — ניהול קליניקה למטפלים</p>
       </div>
 
       {googleNotInvited && (
@@ -35,7 +35,7 @@ export function InviteOnly({
         </p>
       )}
 
-      <div className="rounded-2xl border border-sage-100 bg-sage-50/70 px-5 py-5">
+      <div className="rounded-2xl border border-sage-100 bg-sage-50/70 px-5 py-5 lg:py-[min(1.25rem,var(--auth-lg,1.25rem))]">
         <p className="text-ink leading-relaxed">ההרשמה כרגע בהזמנה בלבד.</p>
         <p className="text-ink-soft mt-2 leading-relaxed">
           לבקשת הצטרפות:{" "}
@@ -48,7 +48,7 @@ export function InviteOnly({
         </p>
       </div>
 
-      <p className="text-sm text-ink-muted mt-8 text-center">
+      <p className="text-sm text-ink-muted mt-8 lg:mt-auth-xl text-center">
         כבר יש לך חשבון?{" "}
         <Link href="/login" className="text-sage-600 hover:text-sage-700 font-medium">
           התחברות

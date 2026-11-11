@@ -21,7 +21,7 @@ export function AuthSwitch({
   searchParams?: Record<string, string | string[] | undefined>;
 }) {
   return (
-    <nav aria-label="כניסה או הצטרפות ומסלולים" className="auth-switch mb-8">
+    <nav aria-label="כניסה או הצטרפות ומסלולים" className="auth-switch mb-8 lg:mb-auth-xl">
       <ul className="grid grid-cols-2 gap-2 sm:gap-3">
         {TABS.map((t) => {
           const on = t.page === current;

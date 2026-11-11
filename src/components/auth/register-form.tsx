@@ -41,20 +41,22 @@ export function RegisterForm({
 
   return (
     <div>
-      <div className="mb-8">
+      <div className="mb-8 lg:mb-auth-xl">
         <h1 className="font-display text-3xl text-ink">יצירת חשבון</h1>
-        <p className="text-ink-muted mt-2">הקליניקה שלך, מסודרת במקום אחד</p>
+        <p className="text-ink-muted mt-2 lg:mt-auth-sm short:hidden">הקליניקה שלך, מסודרת במקום אחד</p>
       </div>
 
       {inviteCode && (
-        <p role="status" className="mb-4 rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700">
+        <p role="status" className="mb-4 lg:mb-auth-md rounded-xl border border-sage-100 bg-sage-50 px-4 py-3 lg:py-[min(0.75rem,var(--auth-md,0.75rem))] text-sm text-sage-700">
           קיבלת הזמנה להצטרף. אפשר להירשם.
         </p>
       )}
 
       <form
         action={formAction}
-        className="space-y-4"
+        // One column on a phone; on a laptop the fields sit two in a row
+        // (everything else spans both), so the page fits one screen
+        className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-x-4 lg:gap-y-auth-md lg:[&>*]:col-span-2 lg:[&>.auth-field]:col-span-1"
         noValidate
         onSubmit={(e) => {
           // A refused sign-up keeps what was typed (see CLAUDE.md). Google's
@@ -68,7 +70,7 @@ export function RegisterForm({
       >
         {inviteCode && <input type="hidden" name="inviteCode" value={inviteCode} />}
 
-        <div>
+        <div className="auth-field">
           <Label htmlFor="name">שם מלא</Label>
           <Input
             id="name"
@@ -85,7 +87,7 @@ export function RegisterForm({
           )}
         </div>
 
-        <div>
+        <div className="auth-field">
           <Label htmlFor="email">אימייל</Label>
           <Input
             id="email"
@@ -102,7 +104,7 @@ export function RegisterForm({
           )}
         </div>
 
-        <div>
+        <div className="auth-field">
           <Label htmlFor="password">סיסמה</Label>
           <Input
             id="password"
@@ -123,14 +125,14 @@ export function RegisterForm({
         </div>
 
         {askInviteCode && (
-          <div>
+          <div className="auth-field">
             <Label htmlFor="inviteCode">קוד הזמנה</Label>
             <Input id="inviteCode" name="inviteCode" autoComplete="off" dir="ltr" />
             <p className="text-xs text-ink-subtle mt-1">אם קיבלת קוד. אם נוספת לרשימת המוזמנים, אפשר להשאיר ריק.</p>
           </div>
         )}
 
-        <label className="flex items-start gap-2.5 rounded-xl border border-cream-300 bg-white/60 px-3.5 py-3 cursor-pointer">
+        <label className="flex items-start gap-2.5 rounded-xl border border-cream-300 bg-white/60 px-3.5 py-3 lg:py-[min(0.75rem,var(--auth-md,0.75rem))] cursor-pointer">
           <input
             type="checkbox"
             name="agreement"
@@ -165,13 +167,13 @@ export function RegisterForm({
           </span>
         </label>
         {state?.fieldErrors?.agreement && (
-          <p role="alert" className="text-xs text-terracotta-600 -mt-2">
+          <p role="alert" className="text-xs text-terracotta-600 -mt-2 lg:mt-0">
             {state.fieldErrors.agreement[0]}
           </p>
         )}
 
         {googleHint && (
-          <p role="alert" className="text-xs text-terracotta-600 -mt-2">
+          <p role="alert" className="text-xs text-terracotta-600 -mt-2 lg:mt-0">
             כדי להמשיך עם Google יש לסמן קודם את האישור
           </p>
         )}
@@ -190,8 +192,8 @@ export function RegisterForm({
 
         {googleEnabled && (
           <>
-            <OrDivider />
-            <p className="text-xs text-ink-subtle -mt-3 mb-3 text-center">
+            <OrDivider className="my-6 lg:my-0" />
+            <p className="text-xs text-ink-subtle -mt-3 mb-3 lg:m-0 text-center">
               בלי סיסמה — נכנסים עם חשבון Google (עם האישור שלמעלה)
             </p>
             {/* Same form, so the agreement checkbox travels with it */}
@@ -208,13 +210,16 @@ export function RegisterForm({
         )}
       </form>
 
-      <p className="text-sm text-ink-muted mt-8 text-center">
-        כבר יש לך חשבון?{" "}
-        <Link href="/login" className="text-sage-600 hover:text-sage-700 font-medium">
-          התחברות
-        </Link>
-      </p>
-      <PlansLink />
+      {/* Stacked on a phone; side by side on a laptop, to save height */}
+      <div className="lg:mt-auth-lg lg:flex lg:items-center lg:gap-x-4">
+        <p className="text-sm text-ink-muted mt-8 lg:mt-0 lg:flex-1 text-center">
+          כבר יש לך חשבון?{" "}
+          <Link href="/login" className="text-sage-600 hover:text-sage-700 font-medium">
+            התחברות
+          </Link>
+        </p>
+        <PlansLink className="lg:mt-0 lg:w-auto lg:flex-1" />
+      </div>
     </div>
   );
 }

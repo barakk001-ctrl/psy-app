@@ -243,6 +243,55 @@
     linear-gradient(160deg, rgba(104, 136, 116, 0.5) 0%, rgba(86, 116, 100, 0.42) 55%, rgba(66, 92, 80, 0.5) 100%);
 }
 
+/* Auth pages on a laptop (lg+, src/app/(auth)/layout.tsx): the split is exactly
+   one viewport high, the photo fills its column, and nothing scrolls. The form
+   column gets there by following the viewport height: --auth-u runs from 0 at
+   a 560px-high window to 440px at 1000px and up, and every size below is
+   "smallest + u × slope" (smallest → today's size). Tailwind reads them as
+   lg:mb-auth-xl, lg:h-auth-btn… (tailwind.config.ts); headings and fields are
+   set here so every auth page follows. Below 560px the form column scrolls
+   inside itself; the page never does. Phones are not touched. */
+@supports (height: 100dvh) {
+  @media (min-width: 1024px) {
+    .auth-shell {
+      --auth-u: clamp(0px, 100dvh - 560px, 440px);
+      --auth-pad: calc(6px + var(--auth-u) * 0.059); /* 6 → 32 */
+      --auth-xl: calc(12px + var(--auth-u) * 0.0455); /* 12 → 32 */
+      --auth-lg: calc(6px + var(--auth-u) * 0.0409); /* 6 → 24 */
+      --auth-md: calc(6px + var(--auth-u) * 0.0227); /* 6 → 16 */
+      --auth-sm: calc(2px + var(--auth-u) * 0.0136); /* 2 → 8 */
+      --auth-field: calc(34px + var(--auth-u) * 0.0227); /* 34 → 44 */
+      --auth-btn: calc(36px + var(--auth-u) * 0.0273); /* 36 → 48 */
+      --auth-logo: calc(28px + var(--auth-u) * 0.0364); /* 28 → 44 */
+      --auth-h1: calc(20px + var(--auth-u) * 0.0227); /* 20 → 30 */
+      height: 100dvh;
+      min-height: 0;
+      overflow: hidden;
+      grid-template-rows: minmax(0, 1fr);
+    }
+    .auth-form {
+      min-height: 0;
+      height: 100%;
+      overflow-y: auto;
+    }
+    .auth-form h1 {
+      font-size: var(--auth-h1);
+      line-height: 1.25;
+    }
+    .auth-form input:not([type="checkbox"]) {
+      height: var(--auth-field);
+    }
+    /* The big buttons and button-like links (Button size="lg", Google, the
+       switch, the code link) */
+    .auth-form .h-12 {
+      height: var(--auth-btn);
+    }
+    .auth-form label[for] {
+      margin-bottom: min(0.375rem, var(--auth-sm));
+    }
+  }
+}
+
 /* Accessibility (IS 5568 / WCAG AA). A visible keyboard focus everywhere; the
    components that draw their own ring say so with outline-none (in the base
    layer, so that utility wins). */
