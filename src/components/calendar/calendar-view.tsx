@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, type CSSProperties } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -11,6 +11,14 @@ import type { EventInput } from "@fullcalendar/core";
 import { rescheduleSessionAction } from "@/server/actions/sessions";
 import { setShowHolidaysAction } from "@/server/actions/settings";
 import type { HolidayMap } from "@/lib/holidays";
+import {
+  HEBREW_DATE_ON,
+  hebrewCellLabel,
+  hebrewDateOn,
+  hebrewDateStorageKey,
+  hebrewRangeLabel,
+  type CivilDay,
+} from "@/lib/hebrew-date";
 import type { WindowUi } from "@/lib/scheduling-window";
 import { hourRange, minutesOfDay, slotTime } from "@/lib/calendar-hours";
 import { darkenForText } from "@/lib/color-contrast";
@@ -28,6 +36,8 @@ type Props = {
   /** yyyy-MM-dd → Israeli holidays that day (Hebcal) */
   holidays?: HolidayMap;
   showHolidays?: boolean;
+  /** The account, for the "תאריך עברי" choice this browser remembers */
+  userId?: string;
   defaultMinutes?: number;
   /** Free trial: how far ahead meetings may be booked (null = no limit). */
   scheduleWindow?: WindowUi | null;
@@ -35,6 +45,13 @@ type Props = {
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const dayKey = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+// The day as the calendar writes it (FullCalendar's dates are local), which is
+// what a Hebrew date is computed from: no instant, so no timezone and no sunset
+const civilDay = (d: Date): CivilDay => ({
+  year: d.getFullYear(),
+  month: d.getMonth() + 1,
+  day: d.getDate(),
+});
 
 // Color sessions by status — sage for scheduled, muted for past, terracotta for problems.
 const STATUS_BG: Record<string, string> = {
@@ -76,6 +93,7 @@ export function CalendarView({
   typeColors,
   holidays = {},
   showHolidays: showHolidaysInitial = false,
+  userId = "",
   defaultMinutes,
   scheduleWindow,
 }: Props) {
@@ -100,6 +118,36 @@ export function CalendarView({
       }
     });
   };
+
+  // "תאריך עברי": remembered in this browser (localStorage, a key per
+  // account) — there is no column for it. Read after mount, so it starts off.
+  const [showHebrew, setShowHebrew] = useState(false);
+  useEffect(() => {
+    try {
+      setShowHebrew(hebrewDateOn(window.localStorage.getItem(hebrewDateStorageKey(userId))));
+    } catch {
+      // storage blocked (private mode): the box simply isn't remembered
+    }
+  }, [userId]);
+  const toggleHebrew = () => {
+    const on = !showHebrew;
+    setShowHebrew(on);
+    try {
+      if (on) window.localStorage.setItem(hebrewDateStorageKey(userId), HEBREW_DATE_ON);
+      else window.localStorage.removeItem(hebrewDateStorageKey(userId));
+    } catch {
+      // still shown until the page is left
+    }
+  };
+  // The period the title names (the month, not the grid's leading and trailing
+  // days), for the Hebrew months beside it
+  const [titleRange, setTitleRange] = useState<{ start: number; end: number } | null>(null);
+  const hebrewTitle = useMemo(() => {
+    if (!showHebrew || !titleRange) return null;
+    const last = new Date(titleRange.end);
+    last.setDate(last.getDate() - 1);
+    return hebrewRangeLabel(civilDay(new Date(titleRange.start)), civilDay(last));
+  }, [showHebrew, titleRange]);
 
   const hours = useMemo(() => {
     if (!visible) return hourRange([]);
@@ -137,7 +185,14 @@ export function CalendarView({
   });
 
   return (
-    <div className="rounded-2xl bg-white/85 backdrop-blur-sm border border-cream-200/80 shadow-soft p-2 sm:p-4 calendar-shell">
+    <div
+      className={
+        "rounded-2xl bg-white/85 backdrop-blur-sm border border-cream-200/80 shadow-soft p-2 sm:p-4 calendar-shell" +
+        (hebrewTitle ? " hebrew-on" : "")
+      }
+      // Shown under FullCalendar's own title by CSS (it has no hook for the title)
+      style={hebrewTitle ? ({ "--hebrew-title": JSON.stringify(hebrewTitle) } as CSSProperties) : undefined}
+    >
       <div className="calendar-grid">
       <FullCalendar
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
@@ -160,15 +215,15 @@ export function CalendarView({
             ? {
                 start: "prev,next",
                 center: "title",
-                end: "holidays today",
+                end: "today",
               }
             : {
                 start: "prev,next today",
                 center: "title",
-                end: "holidays dayGridMonth,timeGridWeek,timeGridDay",
+                end: "holidays hebrewDate dayGridMonth,timeGridWeek,timeGridDay",
               }
         }
-        // The holidays switch lives in the toolbar rather than on a row of its
+        // The two switches live in a toolbar rather than on a row of their
         // own: every pixel of height is a meeting more per day in month view.
         customButtons={{
           holidays: {
@@ -176,12 +231,19 @@ export function CalendarView({
             hint: "הצגת מועדי ישראל ביומן",
             click: toggleHolidays,
           },
+          hebrewDate: {
+            text: (showHebrew ? "☑" : "☐") + " תאריך עברי",
+            hint: "הצגת התאריך העברי ביומן",
+            click: toggleHebrew,
+          },
         }}
-        // On mobile, let users switch views via separate buttons we render below
+        // On a phone the view buttons sit below the grid, and the two switches
+        // beside them: in the header they pushed it onto a second row
         footerToolbar={
           isMobile
             ? {
-                center: "dayGridMonth,timeGridWeek,timeGridDay",
+                start: "dayGridMonth,timeGridWeek,timeGridDay",
+                end: "holidays hebrewDate",
               }
             : undefined
         }
@@ -204,6 +266,13 @@ export function CalendarView({
           const next = { start: arg.start.getTime(), end: arg.end.getTime() };
           setVisible((prev) =>
             prev && prev.start === next.start && prev.end === next.end ? prev : next,
+          );
+          const named = {
+            start: arg.view.currentStart.getTime(),
+            end: arg.view.currentEnd.getTime(),
+          };
+          setTitleRange((prev) =>
+            prev && prev.start === named.start && prev.end === named.end ? prev : named,
           );
         }}
         views={{
@@ -238,9 +307,15 @@ export function CalendarView({
         // Holidays: a small line beside the day number (month) or under the
         // weekday (week/day), like any calendar app. Not events, so they can't
         // be dragged, clicked into the edit dialog, or counted as meetings.
+        // The Hebrew date sits with the day number (month) or under the
+        // weekday (week/day): the day alone, and with its month on the first of
+        // a Hebrew month and on the first day on screen — always in day view.
         dayCellContent={(arg) => {
           if (arg.view.type !== "dayGridMonth") return undefined;
           const hs = holidayOn(arg.date);
+          const hebrew = showHebrew
+            ? hebrewCellLabel(civilDay(arg.date), civilDay(arg.view.activeStart))
+            : null;
           return (
             <span className="fc-day-top-inner">
               {hs && (
@@ -248,15 +323,29 @@ export function CalendarView({
                   {hs.join(" · ")}
                 </span>
               )}
-              <span>{arg.dayNumberText}</span>
+              <span className="fc-day-num">
+                <span>{arg.dayNumberText}</span>
+                {hebrew && <span className="fc-hebdate">{hebrew}</span>}
+              </span>
             </span>
           );
         }}
         dayHeaderContent={(arg) => {
-          const hs = arg.view.type === "dayGridMonth" ? undefined : holidayOn(arg.date);
+          // The month view's header is a weekday, not a date
+          const dated = arg.view.type !== "dayGridMonth";
+          const hs = dated ? holidayOn(arg.date) : undefined;
+          const hebrew =
+            dated && showHebrew
+              ? hebrewCellLabel(
+                  civilDay(arg.date),
+                  civilDay(arg.view.activeStart),
+                  arg.view.type === "timeGridDay",
+                )
+              : null;
           return (
             <span className="fc-head-inner">
               <span>{arg.text}</span>
+              {hebrew && <span className="fc-hebdate">{hebrew}</span>}
               {hs && <span className="fc-holiday">{hs.join(" · ")}</span>}
             </span>
           );
@@ -412,6 +501,48 @@ export function CalendarView({
           text-overflow: ellipsis;
           min-width: 0;
         }
+        /* The Hebrew date: small and muted, beside the day number */
+        .calendar-shell .fc-day-num {
+          display: inline-flex;
+          align-items: baseline;
+          gap: 0.35rem;
+          min-width: 0;
+        }
+        .calendar-shell .fc-hebdate {
+          color: #74685a;
+          font-size: 0.68rem;
+          font-weight: 400;
+          white-space: nowrap;
+        }
+        /* A holiday that no longer fits beside the two dates takes its own
+           line under them, rather than pushing the Hebrew date out of the cell
+           (phones already stack them, below) */
+        @media (min-width: 768px) {
+          .calendar-shell.hebrew-on .fc-day-top-inner {
+            flex-wrap: wrap-reverse;
+            gap: 0 0.35rem;
+          }
+          .calendar-shell.hebrew-on .fc-day-top-inner .fc-day-num {
+            flex-shrink: 0;
+          }
+        }
+        /* …and the Hebrew months under the title. The two lines together are
+           as tall as the toolbar's buttons, so the grid loses nothing. (Beside
+           the title it pushed the toolbar onto two rows below ~1200px.) */
+        .calendar-shell.hebrew-on .fc .fc-toolbar-title {
+          line-height: 1.1;
+          text-align: center;
+        }
+        .calendar-shell.hebrew-on .fc .fc-toolbar-title::after {
+          content: var(--hebrew-title);
+          display: block;
+          font-family: var(--font-sans);
+          font-size: 0.7rem;
+          font-weight: 400;
+          line-height: 1.05;
+          color: #74685a;
+          white-space: nowrap;
+        }
         @media (max-width: 767px) {
           .calendar-shell {
             height: calc(100dvh - 16.5rem);
@@ -445,6 +576,18 @@ export function CalendarView({
           font-weight: 500;
           font-size: 0.8rem;
           padding: 0.35rem 0.7rem;
+        }
+        /* A tablet, and a small laptop beside the sidebar, leave the toolbar
+           ~670px: tighter buttons and a smaller title, so a week that spans
+           two months ("30 באוג׳ – 5 בספט׳ 2026") still shares one row with
+           both switches */
+        @media (min-width: 768px) and (max-width: 1099px) {
+          .calendar-shell .fc .fc-toolbar-title {
+            font-size: 1.1rem;
+          }
+          .calendar-shell .fc .fc-button {
+            padding-inline: 0.45rem;
+          }
         }
         .calendar-shell .fc .fc-button-primary:not(:disabled).fc-button-active,
         .calendar-shell .fc .fc-button-primary:not(:disabled):active {
@@ -538,10 +681,23 @@ export function CalendarView({
             font-size: 0.72rem;
             padding: 0.3rem 0.55rem;
           }
-          /* Footer toolbar (view switcher) on mobile */
+          /* Footer toolbar (view switcher and the two switches) on mobile */
           .calendar-shell .fc .fc-footer-toolbar {
             margin-top: 0.5rem;
             justify-content: center;
+          }
+          .calendar-shell .fc .fc-footer-toolbar .fc-holidays-button,
+          .calendar-shell .fc .fc-footer-toolbar .fc-hebrewDate-button {
+            padding-inline: 0.4rem;
+          }
+          .calendar-shell .fc .fc-toolbar-title,
+          .calendar-shell.hebrew-on .fc .fc-toolbar-title {
+            line-height: 1.2;
+            text-align: center;
+          }
+          .calendar-shell.hebrew-on .fc .fc-toolbar-title::after {
+            font-size: 0.62rem;
+            line-height: 1.1;
           }
           .calendar-shell .fc-event {
             font-size: 0.72rem;
@@ -555,6 +711,27 @@ export function CalendarView({
             flex-direction: column-reverse;
             align-items: flex-end;
             gap: 0;
+          }
+          /* The day number keeps its corner and the Hebrew date takes the
+             other one; a date that carries its month drops under the number */
+          .calendar-shell .fc-day-top-inner .fc-day-num {
+            align-self: stretch;
+            flex-direction: row-reverse;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 0 2px;
+          }
+          .calendar-shell .fc-day-top-inner .fc-hebdate {
+            font-size: 0.6rem;
+            line-height: 1.15;
+            white-space: normal;
+          }
+          /* Week columns are ~40px: a date with its month may take two lines */
+          .calendar-shell .fc-head-inner .fc-hebdate {
+            font-size: 0.6rem;
+            line-height: 1.15;
+            white-space: normal;
+            text-align: center;
           }
           .calendar-shell .fc-day-top-inner .fc-holiday {
             align-self: stretch;

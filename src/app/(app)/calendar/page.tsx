@@ -100,6 +100,7 @@ export default async function CalendarPage() {
         typeColors={typeColors}
         holidays={holidays}
         showHolidays={me?.showHolidays ?? false}
+        userId={userId}
         defaultMinutes={me?.defaultSessionMinutes}
         scheduleWindow={await schedulingWindowUiFor(userId)}
       />
