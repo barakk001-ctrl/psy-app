@@ -16,9 +16,11 @@ import { expectedIncome, sumAmounts } from "@/lib/income";
 import { loadIncome, loadOpenDocuments } from "@/lib/income-data";
 import { getPeriodRange, periodLabel } from "@/lib/report-periods";
 import { documentsEnabled } from "@/lib/features";
+import { MY_CLINIC_PATH, MY_CLINIC_TITLE } from "@/lib/my-clinic";
 import {
   Calendar,
   UserPlus,
+  Building2,
   FileText,
   ClipboardPaste,
   NotebookPen,
@@ -134,6 +136,12 @@ export default async function DashboardPage() {
             <Link href="/calendar">
               <Button size="sm">
                 <Calendar className="w-4 h-4" /> פגישה חדשה
+              </Button>
+            </Link>
+            {/* The clinic's own settings (name, logo, contact details…) on one page */}
+            <Link href={MY_CLINIC_PATH}>
+              <Button variant="secondary" size="sm">
+                <Building2 className="w-4 h-4" /> {MY_CLINIC_TITLE}
               </Button>
             </Link>
           </div>

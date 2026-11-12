@@ -177,7 +177,8 @@ export function BusinessInfoForm({ initial, full = false, documents = true, form
       </Card>
 
       {full && (
-        <Card>
+        // #contact: "המרפאה שלי" links here (src/lib/my-clinic.ts)
+        <Card id="contact" className="scroll-mt-24">
           <CardContent className="space-y-5">
             <h2 className="font-display text-xl text-ink">{documents ? "פרטי קשר למסמכים" : "פרטי קשר"}</h2>
             {documents && <p className="text-xs text-ink-muted">מופיעים בראש המסמכים, מתחת לשם העסק.</p>}

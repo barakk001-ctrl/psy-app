@@ -2,6 +2,7 @@
 
 import { requireWritable } from "@/lib/subscription-server";
 import { revalidatePath } from "next/cache";
+import { MY_CLINIC_PATH } from "@/lib/my-clinic";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -40,6 +41,7 @@ export async function addMeetingTypeAction(formData: FormData) {
     }
   }
   revalidatePath("/settings");
+  revalidatePath(MY_CLINIC_PATH);
 }
 
 export async function setMeetingTypeColorAction(formData: FormData) {
@@ -53,6 +55,7 @@ export async function setMeetingTypeColorAction(formData: FormData) {
 
   await db.meetingType.updateMany({ where: { id, userId }, data: { color } });
   revalidatePath("/settings");
+  revalidatePath(MY_CLINIC_PATH);
   revalidatePath("/calendar");
 }
 
@@ -65,4 +68,5 @@ export async function deleteMeetingTypeAction(formData: FormData) {
   // Existing clients/meetings keep their stored label; only the option is removed
   await db.meetingType.deleteMany({ where: { id, userId } });
   revalidatePath("/settings");
+  revalidatePath(MY_CLINIC_PATH);
 }

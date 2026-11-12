@@ -19,6 +19,7 @@ import {
 } from "@/lib/document-look";
 import { canCreateAccount } from "@/lib/signup-policy";
 import { revalidatePath } from "next/cache";
+import { MY_CLINIC_PATH } from "@/lib/my-clinic";
 import { redirect } from "next/navigation";
 import { auth, unstable_update } from "@/auth";
 import { db } from "@/lib/db";
@@ -139,6 +140,7 @@ export async function updateBusinessInfoAction(
   });
 
   revalidatePath("/settings");
+  revalidatePath(MY_CLINIC_PATH);
   revalidatePath("/invoices", "layout");
   return { saved: true };
 }
@@ -172,6 +174,7 @@ export async function updateSessionDefaultsAction(
   });
 
   revalidatePath("/settings");
+  revalidatePath(MY_CLINIC_PATH);
   revalidatePath("/sessions/new");
   return { saved: true };
 }
@@ -439,6 +442,7 @@ export async function updateDocumentLookAction(
     },
   });
   revalidatePath("/settings");
+  revalidatePath(MY_CLINIC_PATH);
   revalidatePath("/invoices", "layout");
   return { saved: true };
 }

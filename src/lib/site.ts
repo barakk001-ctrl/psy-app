@@ -30,6 +30,7 @@ export const NO_CRAWL_PATHS = [
   "/reports",
   "/import",
   "/settings",
+  "/my-clinic",
   "/subscription",
   "/setup",
 ];
