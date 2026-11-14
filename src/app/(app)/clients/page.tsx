@@ -1,15 +1,14 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
-import { ViewTabs, type ViewTab } from "@/components/ui/view-tabs";
+import type { ViewTab } from "@/components/ui/view-tabs";
 import { auth } from "@/auth";
 import { db, dbAll } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
-import { cn } from "@/lib/utils";
-import { Users, UserPlus, Phone, Mail } from "lucide-react";
-import { ClientStatusMoveButton } from "@/components/clients/client-status-toggle";
-import { DeleteClientButton, TrashRowActions } from "@/components/clients/client-trash";
+import { Users, UserPlus } from "lucide-react";
+import { ClientListRow, type ClientListItem } from "@/components/clients/client-list-row";
+import { ClientsBrowser } from "@/components/clients/clients-browser";
+import { TrashRowActions } from "@/components/clients/client-trash";
 import { TRASH_DAYS, daysLeftText, trashDaysLeft } from "@/lib/client-trash";
 import { purgeExpiredClients } from "@/lib/client-trash-data";
 import { formatDate } from "@/lib/format";
@@ -81,8 +80,19 @@ export default async function ClientsPage({
           };
         });
 
-  const active = allClients.filter((c) => c.status === "ACTIVE");
-  const inactive = allClients.filter((c) => c.status === "INACTIVE");
+  // Plain values: the same rows also go to the browser, for the search box
+  const clients: ClientListItem[] = allClients.map((c) => ({
+    id: c.id,
+    firstName: c.firstName,
+    lastName: c.lastName,
+    phone: c.phone,
+    email: c.email,
+    status: c.status,
+    sessions: c._count.sessions,
+    rate: c.defaultRate ? formatCurrency(c.defaultRate.toString()) : null,
+  }));
+  const active = clients.filter((c) => c.status === "ACTIVE");
+  const inactive = clients.filter((c) => c.status === "INACTIVE");
 
   const trashPanel = (
     <Card>
@@ -169,16 +179,15 @@ export default async function ClientsPage({
       </header>
 
       <div className="space-y-6">
-        {/* Always shown: the waiting list is reachable even before the first client */}
-        <ViewTabs active={view} tabs={tabs} />
+        {/* Always shown: the waiting list is reachable even before the first client.
+            The search box sits on the tabs' row and looks through all three lists. */}
+        <ClientsBrowser active={view} tabs={tabs} clients={clients} waitlist={waitlist} />
       </div>
     </div>
   );
 }
 
-type ClientRow = Prisma.ClientGetPayload<{ include: { _count: { select: { sessions: true } } } }>;
-
-function ClientRows({ clients, view }: { clients: ClientRow[]; view: "ACTIVE" | "INACTIVE" }) {
+function ClientRows({ clients, view }: { clients: ClientListItem[]; view: "ACTIVE" | "INACTIVE" }) {
   if (clients.length === 0) {
     return (
         <Card>
@@ -208,59 +217,7 @@ function ClientRows({ clients, view }: { clients: ClientRow[]; view: "ACTIVE" | 
         <Card>
           <ul className="divide-y divide-cream-200">
             {clients.map((c) => (
-              <li
-                key={c.id}
-                className="flex flex-wrap items-center hover:bg-cream-100/60 transition-colors"
-              >
-                <Link
-                  href={`/clients/${c.id}`}
-                  className="flex-1 min-w-0 flex items-center gap-4 ps-5 pe-2 py-4"
-                >
-                  <div
-                    className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center font-display text-base shrink-0",
-                      c.status === "INACTIVE"
-                        ? "bg-cream-200 text-ink-muted"
-                        : "bg-sage-100 text-sage-700",
-                    )}
-                  >
-                    {c.firstName[0]}
-                    {c.lastName[0]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "font-medium",
-                          c.status === "INACTIVE" ? "text-ink-muted" : "text-ink",
-                        )}
-                      >
-                        {c.firstName} {c.lastName}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-ink-muted mt-1">
-                      {c.phone && (
-                        <span className="flex items-center gap-1" dir="ltr">
-                          <Phone className="w-3 h-3" /> {c.phone}
-                        </span>
-                      )}
-                      {c.email && (
-                        <span className="flex items-center gap-1" dir="ltr">
-                          <Mail className="w-3 h-3" /> {c.email}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-left text-xs text-ink-muted shrink-0 hidden sm:block">
-                    <div>{c._count.sessions} פגישות</div>
-                    {c.defaultRate && (
-                      <div className="mt-0.5">{formatCurrency(c.defaultRate.toString())}</div>
-                    )}
-                  </div>
-                </Link>
-                <ClientStatusMoveButton clientId={c.id} status={c.status} />
-                {c.status === "INACTIVE" && <DeleteClientButton clientId={c.id} variant="row" />}
-              </li>
+              <ClientListRow key={c.id} client={c} />
             ))}
           </ul>
         </Card>

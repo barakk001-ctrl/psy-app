@@ -30,6 +30,10 @@ export function ViewTabs({
   param = "view",
   scroll = false,
   label,
+  aside,
+  replace,
+  onSwitch,
+  onPick,
 }: {
   tabs: ViewTab[];
   active: string;
@@ -41,6 +45,14 @@ export function ViewTabs({
   scroll?: boolean;
   /** Names the row for screen readers */
   label?: string;
+  /** Shares the tabs' row, on its far side (a search box); takes its own row when there's no room */
+  aside?: ReactNode;
+  /** Shown instead of the open panel while it's given (search results). The panels stay loaded. */
+  replace?: ReactNode;
+  /** Told which tab is open, on arrival and on every change */
+  onSwitch?: (key: string) => void;
+  /** Told when a tab is clicked, the open one included */
+  onPick?: (key: string) => void;
 }) {
   const [current, setCurrent] = useState(active);
   const panels = useRef<HTMLDivElement>(null);
@@ -72,6 +84,8 @@ export function ViewTabs({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => onSwitch?.(current), [current, onSwitch]);
+
   // The panel is visible now, so the browser can find the card
   useEffect(() => {
     if (!anchor) return;
@@ -98,6 +112,7 @@ export function ViewTabs({
     if (panels.current) panels.current.style.minHeight = `${panels.current.offsetHeight}px`;
     setCurrent(tab.key);
     window.history.replaceState(null, "", tab.href);
+    onPick?.(tab.key);
   }
 
   const row = (
@@ -127,24 +142,35 @@ export function ViewTabs({
     </div>
   );
 
+  const switcher = scroll ? (
+    // Full width so it can scroll at phone width; the row inside keeps its pill look
+    <nav
+      ref={strip}
+      aria-label={label}
+      className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {row}
+    </nav>
+  ) : label ? (
+    <nav aria-label={label}>{row}</nav>
+  ) : (
+    row
+  );
+  const replaced = replace !== undefined && replace !== null && replace !== false;
+
   return (
     <>
-      {scroll ? (
-        // Full width so it can scroll at phone width; the row inside keeps its pill look
-        <nav
-          ref={strip}
-          aria-label={label}
-          className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {row}
-        </nav>
-      ) : label ? (
-        <nav aria-label={label}>{row}</nav>
+      {aside ? (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          {switcher}
+          {aside}
+        </div>
       ) : (
-        row
+        switcher
       )}
       {children}
-      <div ref={panels}>
+      {replaced && replace}
+      <div ref={panels} hidden={replaced}>
         {tabs
           .filter((t) => t.panel)
           .map((t) => (

@@ -1,6 +1,14 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useRef, useState, useTransition } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Hourglass, MessageCircle, Pencil, Phone, Plus, Trash2, UserPlus } from "lucide-react";
@@ -131,7 +139,8 @@ function EntryForm({
   );
 }
 
-function EntryRow({ entry }: { entry: WaitlistRow }) {
+/** One person on the list. `tag` labels it when it shows among the clients search results. */
+export function EntryRow({ entry, tag }: { entry: WaitlistRow; tag?: ReactNode }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -167,7 +176,10 @@ function EntryRow({ entry }: { entry: WaitlistRow }) {
     <li className="px-5 py-4 space-y-2">
       <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
         <div className="flex-1 min-w-[12rem]">
-          <div className="font-medium text-ink">{entry.fullName}</div>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-medium text-ink">{entry.fullName}</span>
+            {tag}
+          </div>
           <div className="text-xs text-ink-muted mt-0.5">
             נוסף/ה ב-{entry.addedOn}
             {entry.waiting && ` · ${entry.waiting}`}
