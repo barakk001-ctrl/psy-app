@@ -150,7 +150,7 @@ export function LandingPage({ byInvite, documents }: { byInvite: boolean; docume
               />
             </div>
             <p className="mt-4 text-sm text-ink-muted">
-              {TRIAL_DAYS} יום חינם, בלי כרטיס אשראי.
+              {TRIAL_DAYS} יום חינם, בלי כרטיס אשראי וללא התחייבות.
               {byInvite ? " ההרשמה כרגע בהזמנה בלבד." : ""}
             </p>
           </div>
@@ -310,7 +310,7 @@ export function LandingPage({ byInvite, documents }: { byInvite: boolean; docume
           <p className="mt-3 text-ink-soft">
             {byInvite
               ? `ההרשמה כרגע בהזמנה בלבד. אחרי ההצטרפות עובדים ${TRIAL_DAYS} יום בחינם.`
-              : `נרשמים ועובדים ${TRIAL_DAYS} יום בחינם, בלי כרטיס אשראי.`}
+              : `נרשמים ועובדים ${TRIAL_DAYS} יום בחינם, בלי כרטיס אשראי וללא התחייבות.`}
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link href="/register" className={CTA_PRIMARY}>
