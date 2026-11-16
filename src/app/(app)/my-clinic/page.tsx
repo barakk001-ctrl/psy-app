@@ -149,7 +149,7 @@ export default async function MyClinicPage() {
                       <img
                         src={s.image}
                         alt="הלוגו של הקליניקה"
-                        className="h-16 w-16 rounded-2xl object-cover bg-white ring-1 ring-cream-200"
+                        className="h-16 w-16 rounded-2xl object-contain bg-white ring-1 ring-cream-200"
                       />
                     ) : (
                       <span

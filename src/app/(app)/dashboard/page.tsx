@@ -8,6 +8,8 @@ import { ExplainerVideo } from "@/components/auth/explainer-video";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { TodoCard } from "@/components/dashboard/todo-card";
 import { LogoAvatar } from "@/components/layout/logo-avatar";
+import { HeroLogo } from "@/components/layout/hero-logo";
+import { LogoMark } from "@/components/brand/logo-mark";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, formatCurrency } from "@/lib/format";
@@ -87,6 +89,8 @@ export default async function DashboardPage() {
   const outstandingAmount = sumAmounts(outstanding.map((inv) => ({ amount: inv.balance })));
 
   const nowMs = now.getTime();
+  // The practice's own logo, when one is uploaded, takes the hero's large spot
+  const logo = me?.logoUrl || null;
   const isInProgress = (s: { startsAt: Date; endsAt: Date }) =>
     s.startsAt.getTime() <= nowMs && s.endsAt.getTime() >= nowMs;
   const isOver = (s: { endsAt: Date }) => s.endsAt.getTime() < nowMs;
@@ -106,19 +110,40 @@ export default async function DashboardPage() {
         </Link>
       )}
       <header className="relative overflow-hidden rounded-3xl border border-cream-200/80 bg-gradient-to-l from-sage-50 via-cream-100 to-cream-50 shadow-soft">
-        {/* Clinic-room illustration sits at the far (physical-left) edge in RTL */}
-        <ClinicHero className="pointer-events-none select-none absolute inset-y-2 left-4 h-[calc(100%-1rem)] w-auto opacity-30 sm:opacity-100" />
-        <div className="relative px-6 py-7 sm:px-8 sm:max-w-[60%]">
-          <p className="text-sm text-ink-muted">
-            {new Intl.DateTimeFormat("he-IL", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              timeZone: "Asia/Jerusalem",
-            }).format(now)}
-          </p>
-          <div className="flex items-center gap-3 mt-1">
-            <LogoAvatar logoUrl={me?.logoUrl} name={me?.name ?? session!.user.name} />
+        {/* The large spot at the far (physical-left) edge in RTL: the practice's
+            own logo once one is uploaded (below, beside the date), the
+            clinic-room illustration until then. */}
+        {!logo && (
+          <ClinicHero className="pointer-events-none select-none absolute inset-y-2 left-4 h-[calc(100%-1rem)] w-auto opacity-30 sm:opacity-100" />
+        )}
+        {/* `relative` lifts the text over the illustration; with a logo there is
+            none, and the logo must be placed against the whole hero instead */}
+        <div className={`${logo ? "" : "relative "}px-6 py-7 sm:px-8 sm:max-w-[60%]`}>
+          <div className="flex items-end justify-between gap-3">
+            <p className="shrink-0 text-sm text-ink-muted">
+              {new Intl.DateTimeFormat("he-IL", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                timeZone: "Asia/Jerusalem",
+              }).format(now)}
+            </p>
+            {/* One picture, two places: on a phone it shares the date's row, at
+                the far end, so the greeting keeps its full width; from `sm` it
+                fills the hero's large spot. */}
+            {logo && (
+              <div className="pointer-events-none flex min-w-0 flex-1 items-center justify-end sm:absolute sm:inset-y-5 sm:left-6 sm:w-[34%] sm:justify-center">
+                <HeroLogo logoUrl={logo} className="max-h-[4.5rem] sm:max-h-full" />
+              </div>
+            )}
+          </div>
+          <div className={`flex items-center gap-3 ${logo ? "mt-2 sm:mt-1" : "mt-1"}`}>
+            {/* With a logo in the large spot, the app's own mark takes the small one */}
+            {logo ? (
+              <LogoMark size={44} />
+            ) : (
+              <LogoAvatar name={me?.name ?? session!.user.name} />
+            )}
             <h1 className="font-display text-4xl text-ink">
               שלום, {(me?.name ?? session!.user.name)?.split(" ")[0]}
             </h1>

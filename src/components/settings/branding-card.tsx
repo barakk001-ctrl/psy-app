@@ -7,33 +7,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { BrandMark } from "@/components/layout/brand-mark";
-import { LOGO_SIZE_PX } from "@/lib/branding";
+import { LOGO_MAX_CHARS, logoThumbnailSize } from "@/lib/branding";
 import { updateBrandingAction, type SettingsFormState } from "@/server/actions/settings";
 
-/** Shrinks any picked image to a centred square thumbnail, as a data: URL.
- *  A phone photo is several MB; the header needs a few KB. */
+/** Shrinks any picked image to a small thumbnail, as a data: URL: the whole
+ *  picture in its own proportions, nothing cut off (the dashboard shows it
+ *  whole; the small square spots show its centre). A phone photo is several
+ *  MB; the header needs a few KB. */
 async function toThumbnail(file: File): Promise<string> {
   const bitmap = await createImageBitmap(file);
-  const side = Math.min(bitmap.width, bitmap.height);
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = LOGO_SIZE_PX;
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(
-    bitmap,
-    (bitmap.width - side) / 2,
-    (bitmap.height - side) / 2,
-    side,
-    side,
-    0,
-    0,
-    LOGO_SIZE_PX,
-    LOGO_SIZE_PX,
-  );
-  bitmap.close();
+  const { width, height } = logoThumbnailSize(bitmap.width, bitmap.height);
+  const draw = (background?: string) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d")!;
+    if (background) {
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, width, height);
+    }
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    return canvas;
+  };
   // PNG keeps a transparent logo transparent; photos are smaller as JPEG
-  const png = canvas.toDataURL("image/png");
-  const jpeg = canvas.toDataURL("image/jpeg", 0.85);
-  return file.type === "image/png" && png.length < 150_000 ? png : jpeg;
+  const png = file.type === "image/png" ? draw().toDataURL("image/png") : null;
+  if (png && png.length < 150_000) {
+    bitmap.close();
+    return png;
+  }
+  // JPEG has no transparency: see-through parts go white, not black
+  const flat = draw("#FFFFFF");
+  bitmap.close();
+  const jpeg = flat.toDataURL("image/jpeg", 0.85);
+  return jpeg.length <= LOGO_MAX_CHARS ? jpeg : flat.toDataURL("image/jpeg", 0.6);
 }
 
 export function BrandingCard({
@@ -147,7 +154,8 @@ export function BrandingCard({
               )}
             </div>
             <p className="text-xs text-ink-muted mt-1">
-              התמונה נחתכת לריבוע ומוקטנת אוטומטית.
+              התמונה מוקטנת אוטומטית ונשמרת בשלמותה. בדף הבית היא מוצגת כולה,
+              ובמקומות הקטנים (כמו בתצוגה המקדימה כאן) מוצג הריבוע שבמרכזה.
             </p>
             {readError && <p className="text-xs text-terracotta-600 mt-1">{readError}</p>}
           </div>
