@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PdfButton } from "@/components/ui/pdf-button";
@@ -16,11 +16,16 @@ function lastDayOfMonth(month: string): string {
 export function IncomeExportForm({
   defaultFrom,
   defaultTo,
+  defaultMode = "month",
 }: {
   defaultFrom: string; // yyyy-mm-dd
   defaultTo: string;
+  /** A period that isn't one whole month opens on its own dates */
+  defaultMode?: "month" | "range";
 }) {
-  const [mode, setMode] = useState<"month" | "range">("month");
+  // The page keeps one form per period, so the field ids must differ
+  const id = useId();
+  const [mode, setMode] = useState<"month" | "range">(defaultMode);
   const [month, setMonth] = useState(defaultTo.slice(0, 7));
   const [from, setFrom] = useState(defaultFrom);
   const [to, setTo] = useState(defaultTo);
@@ -60,9 +65,9 @@ export function IncomeExportForm({
       <div className="flex flex-wrap items-end gap-3">
         {mode === "month" ? (
           <div>
-            <Label htmlFor="export-month">חודש</Label>
+            <Label htmlFor={`${id}-month`}>חודש</Label>
             <Input
-              id="export-month"
+              id={`${id}-month`}
               type="month"
               value={month}
               onChange={(e) => setMonth(e.target.value)}
@@ -72,9 +77,9 @@ export function IncomeExportForm({
         ) : (
           <>
             <div>
-              <Label htmlFor="export-from">מתאריך</Label>
+              <Label htmlFor={`${id}-from`}>מתאריך</Label>
               <Input
-                id="export-from"
+                id={`${id}-from`}
                 type="date"
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
@@ -82,9 +87,9 @@ export function IncomeExportForm({
               />
             </div>
             <div>
-              <Label htmlFor="export-to">עד תאריך</Label>
+              <Label htmlFor={`${id}-to`}>עד תאריך</Label>
               <Input
-                id="export-to"
+                id={`${id}-to`}
                 type="date"
                 value={to}
                 min={from}

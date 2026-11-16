@@ -203,20 +203,52 @@ describe.skipIf(!TEST_DATABASE_URL)("what the in-place filters show (real Postgr
 
     it("each period is exactly what loading it alone gives", async () => {
       await seedMoney();
-      const { loadAllPeriodsReport, PERIODS, getPeriodRange } = await import("@/lib/reports");
+      const { loadAllPeriodsReport, PERIOD_KEYS, getPeriodRange } = await import("@/lib/reports");
       const { loadInvoicePayments, loadSessions } = await import("@/lib/income-data");
       const { summarizeIncome } = await import("@/lib/report-periods");
       const now = new Date();
       const all = await loadAllPeriodsReport(userId, now);
-      for (const p of PERIODS) {
-        const [from, to] = getPeriodRange(p.key, now);
+      for (const key of PERIOD_KEYS) {
+        const [from, to] = getPeriodRange(key, now);
         const alone = summarizeIncome(
           await loadInvoicePayments(userId, from, to),
           await loadSessions(userId, from, to),
           now,
         );
-        expect(all.periods[p.key], p.key).toEqual(alone);
+        expect(all.periods[key], key).toEqual(alone);
       }
+    });
+
+    it("a range of her own dates is loaded on its own, however far back", async () => {
+      await seedMoney();
+      // Older than anything the fixed periods reach (last year starts < 731 days ago)
+      const old = await doc({ ago: 900, docType: 320, status: "PAID", total: 1234, paid: 1234 });
+      await db.payment.create({
+        data: { invoiceId: old.id, amount: 1234, method: "BIT", paidAt: daysAgo(900) },
+      });
+      const { loadAllPeriodsReport, PERIOD_KEYS } = await import("@/lib/reports");
+      const { loadInvoicePayments, loadSessions } = await import("@/lib/income-data");
+      const { parseDateRange, summarizeIncome } = await import("@/lib/report-periods");
+      const now = new Date();
+      const day = (n: number) => daysAgo(n).toISOString().slice(0, 10);
+      const custom = parseDateRange(day(950), day(450))!;
+
+      const all = await loadAllPeriodsReport(userId, now, { from: custom.from, to: custom.to });
+      const [from, to] = custom.range;
+      expect(all.custom).toEqual(
+        summarizeIncome(await loadInvoicePayments(userId, from, to), await loadSessions(userId, from, to), now),
+      );
+      // The payments of 500, 650 and 900 days ago, and the two meetings of the first two
+      expect(all.custom?.receivedFromInvoices).toBe(600 + 750 + 1234);
+      expect(all.custom?.sessionsHeld).toBe(2);
+      expect(all.periodList.at(-1)).toMatchObject({ key: "custom", from: custom.from, to: custom.to });
+
+      // Asking for it changes nothing in the fixed periods
+      const plain = await loadAllPeriodsReport(userId, now);
+      expect(plain.custom).toBeNull();
+      expect(plain.periodList.map((p) => p.key)).toEqual([...PERIOD_KEYS]);
+      expect(all.periods).toEqual(plain.periods);
+      expect(all.twelveMonths).toEqual(plain.twelveMonths);
     });
 
     it("the 12-month chart matches a load of just those months", async () => {

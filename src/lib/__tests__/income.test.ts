@@ -126,10 +126,10 @@ describe("clinic-calendar periods", () => {
     const now = new Date("2026-01-15T10:00:00Z");
     expect(getPeriodRange("this-month", now)[0].toISOString()).toBe("2025-12-31T22:00:00.000Z");
     expect(getPeriodRange("last-month", now)[0].toISOString()).toBe("2025-11-30T22:00:00.000Z");
-    expect(getPeriodRange("this-quarter", now)[1].toISOString()).toBe("2026-03-31T21:00:00.000Z");
+    expect(getPeriodRange("q1", now)[1].toISOString()).toBe("2026-03-31T21:00:00.000Z");
     expect(getPeriodRange("last-year", now)[0].toISOString()).toBe("2024-12-31T22:00:00.000Z");
     expect(periodDates("last-month", now)).toEqual({ from: "2025-12-01", to: "2025-12-31" });
-    expect(periodDates("this-quarter", now)).toEqual({ from: "2026-01-01", to: "2026-03-31" });
+    expect(periodDates("q1", now)).toEqual({ from: "2026-01-01", to: "2026-03-31" });
   });
 
   it("lists the last 12 months oldest first and buckets income into them", () => {

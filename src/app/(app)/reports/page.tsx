@@ -1,14 +1,19 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { loadAllPeriodsReport } from "@/lib/reports";
 import {
-  loadAllPeriodsReport,
-  periodLabel,
+  CUSTOM_PERIOD,
+  DEFAULT_PERIOD,
+  isWholeMonth,
+  parseDateRange,
+  parsePeriodParam,
+  periodHref,
+  type PeriodChoice,
   type PeriodKey,
-  PERIODS,
-} from "@/lib/reports";
-import { periodDates } from "@/lib/report-periods";
+} from "@/lib/report-periods";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { PeriodPanel, PeriodProvider, PeriodTabs } from "@/components/reports/period-switch";
+import { PeriodPanel, PeriodPicker, PeriodProvider } from "@/components/reports/period-switch";
 import { IncomeChart } from "@/components/reports/income-chart";
 import { BreakdownList } from "@/components/reports/breakdown-list";
 import { ExpectedVsReceivedChart } from "@/components/reports/expected-vs-received-chart";
@@ -19,74 +24,103 @@ import { MaybeLink } from "@/components/ui/maybe-link";
 
 export const dynamic = "force-dynamic";
 
-const VALID_KEYS = new Set(PERIODS.map((p) => p.key));
+const one = (value: string | string[] | undefined) => (typeof value === "string" ? value : undefined);
 
 export const metadata = { title: "פילוח ודוחות — מרפאה אישית" };
+
+// The two charts keep their own window whatever the picker says
+const ALWAYS_12_MONTHS = "תמיד 12 החודשים האחרונים, בלי קשר לתקופה שנבחרה.";
 
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string }>;
+  searchParams: Promise<{ period?: string | string[]; from?: string | string[]; to?: string | string[] }>;
 }) {
   const session = await auth();
   const userId = session!.user.id;
 
+  // One clock for the whole page: the picker's labels ("שנה נוכחית (2026)")
+  // and the numbers under them are cut by the same moment, in Israel time
+  const now = new Date();
   const params = await searchParams;
-  const period: PeriodKey = VALID_KEYS.has(params.period as PeriodKey)
-    ? (params.period as PeriodKey)
-    : "this-month";
+  const custom = parseDateRange(one(params.from), one(params.to));
+  const asked = parsePeriodParam(one(params.period), now);
+  // The old "רבעון" tab: on to the quarter it meant
+  if (!custom && asked && asked !== one(params.period)) redirect(periodHref(asked));
+  const active: PeriodChoice = custom ? CUSTOM_PERIOD : (asked ?? DEFAULT_PERIOD);
 
-  const data = await loadAllPeriodsReport(userId);
+  const data = await loadAllPeriodsReport(
+    userId,
+    now,
+    custom ? { from: custom.from, to: custom.to } : null,
+  );
+  // Each period with its numbers; the labels and ranges come with the data
+  const periods = data.periodList.flatMap((p) => {
+    const summary = p.key === CUSTOM_PERIOD ? data.custom : data.periods[p.key];
+    return summary ? [{ ...p, summary }] : [];
+  });
+  const fixed = periods.flatMap((p) =>
+    p.key === CUSTOM_PERIOD ? [] : [{ key: p.key as PeriodKey, label: p.label, from: p.from, to: p.to }],
+  );
   // Document pages are hidden until they can be issued: the rows stay, without links
   const documents = documentsEnabled();
 
-  const today = new Date();
   const overdue = (dueDate: Date | null) =>
-    dueDate ? dueDate.getTime() < today.getTime() : false;
+    dueDate ? dueDate.getTime() < now.getTime() : false;
 
   return (
-    <PeriodProvider active={period} keys={PERIODS.map((p) => p.key)}>
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <PeriodProvider
+      active={active}
+      keys={periods.map((p) => p.key)}
+      stamp={custom ? `${active}:${custom.from}:${custom.to}` : active}
+    >
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl text-ink">פילוח ודוחות</h1>
           <p className="text-ink-muted mt-1 text-sm">
             סקירה של ההכנסות, החובות הפתוחים ופעילות הפגישות — וייצוא דוח הכנסות ל-PDF.
           </p>
         </div>
-        <PeriodTabs periods={PERIODS} />
+        <PeriodPicker
+          periods={fixed}
+          custom={custom ? { from: custom.from, to: custom.to } : null}
+        />
       </header>
 
       {/* Period summary */}
-      {PERIODS.map((p) => (
+      {periods.map((p) => (
         <PeriodPanel key={p.key} period={p.key}>
           <section>
-            <h2 className="font-display text-lg text-ink-soft mb-3">
-              {periodLabel(p.key)}
-            </h2>
+            <h2 className="font-display text-lg text-ink-soft mb-3">{p.heading}</h2>
+            {p.notStarted && (
+              <p className="text-xs text-ink-muted -mt-2 mb-3">
+                התקופה עוד לא התחילה: מוצג מה שכבר נקבע ביומן.
+              </p>
+            )}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
                 label="התקבל"
-                value={formatCurrency(data.periods[p.key].received)}
+                value={formatCurrency(p.summary.received)}
                 hint="תשלומים שסומנו בפגישות ובחשבוניות"
               />
               <StatCard
                 label="הכנסה צפויה"
-                value={formatCurrency(data.periods[p.key].expected)}
+                value={formatCurrency(p.summary.expected)}
                 hint="לפי הפגישות ביומן בתקופה"
               />
               <StatCard
                 label="פגישות שהתקיימו"
-                value={data.periods[p.key].sessionsHeld}
+                value={p.summary.sessionsHeld}
                 hint={
-                  data.periods[p.key].sessionsCancelled > 0
-                    ? `ועוד ${data.periods[p.key].sessionsCancelled} שבוטלו / לא התקיימו`
+                  p.summary.sessionsCancelled > 0
+                    ? `ועוד ${p.summary.sessionsCancelled} שבוטלו / לא התקיימו`
                     : "בתקופה הנבחרת"
                 }
               />
               <StatCard
                 label="חוב פתוח"
                 value={formatCurrency(data.outstanding)}
-                hint="חשבוניות שטרם שולמו במלואן"
+                hint="נכון להיום · לא תלוי בתקופה"
               />
             </div>
           </section>
@@ -97,6 +131,7 @@ export default async function ReportsPage({
       <Card>
         <CardHeader>
           <CardTitle>הכנסות ב-12 החודשים האחרונים</CardTitle>
+          <p className="text-xs text-ink-muted mt-1">{ALWAYS_12_MONTHS}</p>
         </CardHeader>
         <CardContent>
           <IncomeChart data={data.twelveMonths} />
@@ -108,7 +143,7 @@ export default async function ReportsPage({
         <CardHeader>
           <CardTitle>צפוי מול התקבל</CardTitle>
           <p className="text-xs text-ink-muted mt-1">
-            כמה היה צפוי להיכנס כל חודש לפי הפגישות ביומן, וכמה התקבל בפועל.
+            כמה היה צפוי להיכנס כל חודש לפי הפגישות ביומן, וכמה התקבל בפועל. {ALWAYS_12_MONTHS}
           </p>
         </CardHeader>
         <CardContent>
@@ -117,17 +152,17 @@ export default async function ReportsPage({
       </Card>
 
       {/* Breakdowns */}
-      {PERIODS.map((p) => (
+      {periods.map((p) => (
         <PeriodPanel key={p.key} period={p.key}>
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>פילוח לפי אמצעי תשלום</CardTitle>
-                <p className="text-xs text-ink-muted mt-1">{periodLabel(p.key)}</p>
+                <p className="text-xs text-ink-muted mt-1">{p.heading}</p>
               </CardHeader>
               <CardContent className="p-0">
                 <BreakdownList
-                  rows={data.periods[p.key].byMethod.map((m) => ({
+                  rows={p.summary.byMethod.map((m) => ({
                     key: m.key,
                     label: m.label,
                     value: m.total,
@@ -141,11 +176,11 @@ export default async function ReportsPage({
             <Card>
               <CardHeader>
                 <CardTitle>לקוחות מובילים</CardTitle>
-                <p className="text-xs text-ink-muted mt-1">{periodLabel(p.key)}</p>
+                <p className="text-xs text-ink-muted mt-1">{p.heading}</p>
               </CardHeader>
               <CardContent className="p-0">
                 <BreakdownList
-                  rows={data.periods[p.key].byClient.slice(0, 10).map((c) => ({
+                  rows={p.summary.byClient.slice(0, 10).map((c) => ({
                     key: c.key,
                     label: c.label,
                     value: c.total,
@@ -162,7 +197,7 @@ export default async function ReportsPage({
       ))}
 
       {/* Export */}
-      {PERIODS.map((p) => (
+      {periods.map((p) => (
         <PeriodPanel key={p.key} period={p.key}>
           <Card>
             <CardHeader>
@@ -173,7 +208,12 @@ export default async function ReportsPage({
               </p>
             </CardHeader>
             <CardContent>
-              <IncomeExportForm defaultFrom={periodDates(p.key).from} defaultTo={periodDates(p.key).to} />
+              <IncomeExportForm
+                key={`${p.from}:${p.to}`}
+                defaultFrom={p.from}
+                defaultTo={p.to}
+                defaultMode={isWholeMonth(p.from, p.to) ? "month" : "range"}
+              />
             </CardContent>
           </Card>
         </PeriodPanel>
@@ -184,7 +224,7 @@ export default async function ReportsPage({
         <CardHeader>
           <CardTitle>חשבוניות פתוחות</CardTitle>
           <p className="text-xs text-ink-muted mt-1">
-            סך החוב הפתוח: {formatCurrency(data.outstanding)}
+            סך החוב הפתוח: {formatCurrency(data.outstanding)} · נכון להיום, לא תלוי בתקופה
           </p>
         </CardHeader>
         <CardContent className="p-0">
