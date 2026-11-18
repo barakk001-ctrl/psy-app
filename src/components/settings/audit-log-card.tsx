@@ -27,6 +27,8 @@ const ACTION_LABELS: Record<string, string> = {
   FILE_UPLOAD: "צירוף קובץ לפגישה",
   FILE_VIEW: "צפייה בקובץ מצורף לפגישה",
   FILE_DELETE: "מחיקת קובץ מצורף לפגישה",
+  TASK_SAVE: "שמירת משימה בתיק",
+  TASK_DELETE: "מחיקת משימה מהתיק",
   LOGIN_PASSWORD: "כניסה למערכת — סיסמה",
   LOGIN_GOOGLE: "כניסה למערכת — Google",
   LOGIN_EMAIL_CODE: "כניסה למערכת — קוד חד-פעמי באימייל",

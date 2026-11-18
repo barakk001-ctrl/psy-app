@@ -316,6 +316,22 @@ async function packedColumns(run: Run) {
   );
   await packedField(
     run,
+    "Todo.textCiphertext",
+    (after) => dbAll.todo.findMany({ select: { id: true, textCiphertext: true }, ...pageArgs(after) }),
+    (r) => r.textCiphertext,
+    (r, old, next) =>
+      update(dbAll.todo.updateMany({ where: { id: r.id, textCiphertext: old }, data: { textCiphertext: next } })),
+  );
+  await packedField(
+    run,
+    "Todo.noteCiphertext",
+    (after) => dbAll.todo.findMany({ select: { id: true, noteCiphertext: true }, ...pageArgs(after) }),
+    (r) => r.noteCiphertext,
+    (r, old, next) =>
+      update(dbAll.todo.updateMany({ where: { id: r.id, noteCiphertext: old }, data: { noteCiphertext: next } })),
+  );
+  await packedField(
+    run,
     "InboxMessage.textCiphertext",
     (after) => dbAll.inboxMessage.findMany({ select: { id: true, textCiphertext: true }, ...pageArgs(after) }),
     (r) => r.textCiphertext,

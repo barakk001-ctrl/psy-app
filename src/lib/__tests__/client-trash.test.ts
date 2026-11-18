@@ -156,4 +156,16 @@ describe("hidden everywhere: withLiveFilter", () => {
     expect(liveFilterFor("ClientDocument")).toEqual({ client: { deletedAt: null } });
     expect(liveFilterFor("ClientDocumentBlob")).toEqual({ document: { client: { deletedAt: null } } });
   });
+
+  it("hides a task with its client and keeps the ones that have no client", () => {
+    expect(withLiveFilter("Todo", "findMany", { where: { userId: "u", done: false } })).toEqual({
+      where: {
+        userId: "u",
+        done: false,
+        AND: [{ OR: [{ clientId: null }, { client: { deletedAt: null } }] }],
+      },
+    });
+    const w = { where: { id: "t", userId: "u" }, data: { done: true } };
+    expect(withLiveFilter("Todo", "updateMany", w)).toBe(w);
+  });
 });

@@ -257,6 +257,8 @@ describe.skipIf(!TEST_DATABASE_URL)("encrypted fields and key rotation (real Pos
         "ClientDocument.nameCiphertext",
         "WaitlistEntry.notesCiphertext",
         "InboxMessage.textCiphertext",
+        "Todo.textCiphertext",
+        "Todo.noteCiphertext",
       ]) {
         expect(report.found[field], field).toBeGreaterThan(0);
       }

@@ -35,6 +35,9 @@ export function liveFilterFor(model: string | undefined): Record<string, unknown
       return { document: { client: LIVE_CLIENT } };
     case "ReminderJob":
       return { session: { client: LIVE_CLIENT } };
+    case "Todo":
+      // A task may have no client; one that has is hidden with its client
+      return { OR: [{ clientId: null }, { client: LIVE_CLIENT }] };
     default:
       // Invoices, payments and Morning documents: a client holding any of
       // them can't be deleted (client-trash.ts), so there is nothing to hide.

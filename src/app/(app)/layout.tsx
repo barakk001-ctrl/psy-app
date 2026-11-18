@@ -14,6 +14,8 @@ import { SubscriptionBanner } from "@/components/layout/subscription-banner";
 import { subscriptionStateFor } from "@/lib/subscription-server";
 import { db } from "@/lib/db";
 import { documentsEnabled } from "@/lib/features";
+import { countTasksDueNow } from "@/lib/tasks-data";
+import { toZonedDateTimeLocal } from "@/lib/timezone";
 
 export default async function AppLayout({
   children,
@@ -23,8 +25,10 @@ export default async function AppLayout({
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [sub, branding] = await Promise.all([
+  const [sub, taskCount, branding] = await Promise.all([
     subscriptionStateFor(session.user.id),
+    // The number beside "משימות" in the menus: open tasks due today or earlier
+    countTasksDueNow(session.user.id, toZonedDateTimeLocal(new Date()).slice(0, 10)),
     db.user.findUnique({
       where: { id: session.user.id },
       select: {
@@ -59,9 +63,19 @@ export default async function AppLayout({
         idleMinutes={normalizeIdleTimeout(branding?.idleTimeoutMinutes)}
         authTime={session.authTime ?? null}
       />
-      <DesktopSidebar userName={session.user.name} branding={brand} documents={documents} />
+      <DesktopSidebar
+        userName={session.user.name}
+        branding={brand}
+        documents={documents}
+        taskCount={taskCount}
+      />
       <div className="flex-1 min-w-0 flex flex-col">
-        <MobileTopBar userName={session.user.name} branding={brand} documents={documents} />
+        <MobileTopBar
+          userName={session.user.name}
+          branding={brand}
+          documents={documents}
+          taskCount={taskCount}
+        />
         <main id="main-content" tabIndex={-1} className="flex-1">
           {/* pb-28 on mobile so content isn't hidden behind the floating tab bar */}
           <div className="container-page py-6 lg:py-8 pb-28 lg:pb-8 animate-page">
@@ -75,7 +89,7 @@ export default async function AppLayout({
             {children}
           </div>
         </main>
-        <MobileTabBar documents={documents} />
+        <MobileTabBar documents={documents} taskCount={taskCount} />
       </div>
       <HelpWidget
         documents={documents}

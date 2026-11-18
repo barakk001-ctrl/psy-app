@@ -224,7 +224,17 @@ export async function seedPractice(
   await db.user.update({ where: { id: userId }, data: { nextInvoiceNumber: 4 } });
 
   const inbox = await db.inboxMessage.create({ data: { userId, text: `הודעה ${canary}` } });
-  const todo = await db.todo.create({ data: { userId, text: `משימה ${canary}` } });
+  // A task about the client, stored the way the app writes it (encrypted title and note)
+  const todo = await db.todo.create({
+    data: {
+      userId,
+      clientId: client.id,
+      text: "",
+      textCiphertext: encryptSecret(`משימה ${canary}`),
+      noteCiphertext: encryptSecret(`הערה למשימה ${canary}`),
+      dueDay: "2026-11-20",
+    },
+  });
   const meetingType = await db.meetingType.create({ data: { userId, name: `סוג ${canary}` } });
   const waitlist = await db.waitlistEntry.create({
     data: { userId, fullName: `ממתין ${canary}`, notesCiphertext: encryptSecret(`רקע ${canary}`) },
@@ -414,6 +424,7 @@ export async function crossLinks(db: PrismaClient): Promise<string[]> {
     "item→session": `SELECT t.id FROM "InvoiceItem" t JOIN "Invoice" i ON i.id = t."invoiceId" JOIN "Session" s ON s.id = t."sessionId" WHERE s."userId" <> i."userId"`,
     "morning→client": `SELECT m.id FROM "MorningDocument" m JOIN "Client" c ON c.id = m."clientId" WHERE c."userId" <> m."userId"`,
     "reminder→session": `SELECT r.id FROM "ReminderJob" r JOIN "Session" s ON s.id = r."sessionId" WHERE s."userId" <> r."userId"`,
+    "task→client": `SELECT t.id FROM "Todo" t JOIN "Client" c ON c.id = t."clientId" WHERE c."userId" <> t."userId"`,
   };
   const found: string[] = [];
   for (const [name, sql] of Object.entries(checks)) {

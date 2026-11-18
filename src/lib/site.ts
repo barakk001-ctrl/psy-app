@@ -22,6 +22,7 @@ export const NO_CRAWL_PATHS = [
   "/dashboard",
   "/calendar",
   "/clients",
+  "/tasks",
   "/sessions",
   "/invoices",
   "/expenses",

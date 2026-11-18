@@ -69,3 +69,12 @@ export const inboxText = (m: { text: string; textCiphertext: string | null }) =>
   openText(m.textCiphertext, m.text) ?? "";
 
 export const sealInboxText = (text: string) => ({ text: "", textCiphertext: sealText(text) });
+
+// Tasks (Todo): the title and the note. Rows written before 2026-11-18 hold
+// their title in the plain column and read through the same helper.
+export const taskTitle = (t: { text: string; textCiphertext: string | null }) =>
+  openText(t.textCiphertext, t.text) ?? "";
+
+export const taskNote = (t: { noteCiphertext: string | null }) => openText(t.noteCiphertext, null);
+
+export const sealTaskTitle = (title: string) => ({ text: "", textCiphertext: sealText(title) });

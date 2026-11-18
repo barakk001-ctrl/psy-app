@@ -393,12 +393,32 @@ export const CASES: Record<string, Case> = {
     },
     control: "writes",
   },
-  "todos.toggleTodoAction": {
-    run: ({ call, target }) => call("todos.toggleTodoAction", target.todoId),
+  // Tasks: a task may name a client, so adding and editing are attacked with
+  // the other practice's client id as well as with its task id
+  "tasks.addTaskAction": {
+    run: ({ call, target }) =>
+      call("tasks.addTaskAction", null, form({ title: "משימה חדשה", clientId: target.clientId })),
     control: "writes",
   },
-  "todos.deleteTodoAction": {
-    run: ({ call, target }) => call("todos.deleteTodoAction", target.todoId),
+  "tasks.updateTaskAction": {
+    run: async ({ call, target, me, mode }) => {
+      const update = "tasks.updateTaskAction";
+      const theirs = () => call(update, null, form({ id: target.todoId, title: "שם אחר" }));
+      if (mode === "control") return theirs();
+      return [
+        await theirs(),
+        // my own task, pointed at their client
+        await call(update, null, form({ id: me.todoId, title: "שם אחר", clientId: target.clientId })),
+      ];
+    },
+    control: "writes",
+  },
+  "tasks.toggleTaskAction": {
+    run: ({ call, target }) => call("tasks.toggleTaskAction", target.todoId),
+    control: "writes",
+  },
+  "tasks.deleteTaskAction": {
+    run: ({ call, target }) => call("tasks.deleteTaskAction", target.todoId),
     control: "writes",
   },
   "meeting-types.setMeetingTypeColorAction": {
@@ -566,7 +586,6 @@ export const NO_ID_INPUT: Record<string, string> = {
   "subscription.startCardPaymentAction": "own account; the plan is the only input",
   "subscription.requestPlanAction": "own account; the plan is the only input",
   "support.submitSupportRequestAction": "creates under the signed-in user",
-  "todos.addTodoAction": "creates under the signed-in user",
   "two-factor.startTotpEnrollmentAction": "own account",
   "two-factor.confirmTotpEnrollmentAction": "own account",
   "two-factor.regenerateBackupCodesAction": "own account",

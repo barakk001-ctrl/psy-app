@@ -29,6 +29,9 @@ export type AuditAction =
   | "FILE_UPLOAD"
   | "FILE_VIEW"
   | "FILE_DELETE"
+  // Tasks about a client (Todo with a clientId; src/lib/tasks.ts):
+  | "TASK_SAVE" // added, or its title / note / day / client changed
+  | "TASK_DELETE"
   // Sign-ins (a full session, never a 2FA-pending one), by method:
   | "LOGIN_PASSWORD"
   | "LOGIN_GOOGLE"

@@ -242,6 +242,7 @@ model Client {
   documents     ClientDocument[]
   invoices      Invoice[]
   morningDocuments MorningDocument[]
+  todos         Todo[]
 
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
@@ -687,16 +688,36 @@ enum PaymentMethod {
 // Reminders (queued jobs to send email/SMS before a session)
 // ─────────────────────────────────────────────────────────────
 
-// Personal task list shown on the dashboard
+// Tasks ("משימות", src/lib/tasks.ts): the practitioner's own to-do list, each
+// one optionally tied to a client and to a day. Shown on the dashboard, on the
+// client's page and on /tasks. The table keeps its first name.
 model Todo {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  text      String
+  // The title and the note can carry clinical detail, so they are encrypted
+  // like the other sensitive text (sensitive-fields.ts, expand-only): new
+  // writes go to textCiphertext and leave `text` "", reads take either.
+  text           String
+  textCiphertext String?  @db.Text
+  noteCiphertext String?  @db.Text
+  // The client it is about, if any: hidden with a client in the recycle bin
+  // (trash-filter.ts) and deleted with the client
+  clientId  String?
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  // "yyyy-MM-dd" on the clinic calendar; null = no date
+  dueDay    String?
+  // Who wrote it: MANUAL (typed by the practitioner) | GUIDE (proposed by the
+  // personal guide, a later stage). A proposal waits with awaitingApproval
+  // true until she accepts it; every list reads only rows where it is false.
+  source           String  @default("MANUAL")
+  awaitingApproval Boolean @default(false)
   done      Boolean  @default(false)
+  doneAt    DateTime?
   createdAt DateTime @default(now())
 
   @@index([userId, done])
+  @@index([clientId])
 }
 
 // Messages sent to the inbound API (iOS Shortcut / automations) awaiting

@@ -6,7 +6,8 @@ import { ClinicHero } from "@/components/dashboard/clinic-hero";
 import { AgreementBanner } from "@/components/dashboard/agreement-banner";
 import { ExplainerVideo } from "@/components/auth/explainer-video";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
-import { TodoCard } from "@/components/dashboard/todo-card";
+import { DashboardTasksCard } from "@/components/tasks/dashboard-tasks-card";
+import { loadDoneTasks, loadOpenTasks, loadTaskClients } from "@/lib/tasks-data";
 import { LogoAvatar } from "@/components/layout/logo-avatar";
 import { HeroLogo } from "@/components/layout/hero-logo";
 import { LogoMark } from "@/components/brand/logo-mark";
@@ -50,7 +51,7 @@ export default async function DashboardPage() {
   const dayStart = fromZonedDateTimeLocal(`${todayLocal}T00:00`);
   const dayEnd = fromZonedDateTimeLocal(`${tomorrowLocal}T00:00`);
 
-  const [activeClients, todaySessions, monthData, outstanding, todos, me] = await Promise.all([
+  const [activeClients, todaySessions, monthData, outstanding, openTasks, doneToday, taskClients, me] = await Promise.all([
     db.client.count({ where: { userId, status: "ACTIVE" } }),
     db.session.findMany({
       // All of today's meetings — the ones that already happened included,
@@ -70,12 +71,10 @@ export default async function DashboardPage() {
     }),
     loadIncome(userId, monthStart, monthEnd),
     loadOpenDocuments(userId, { currency: "ILS" }),
-    db.todo.findMany({
-      where: { userId },
-      orderBy: [{ done: "asc" }, { createdAt: "desc" }],
-      take: 20,
-      select: { id: true, text: true, done: true },
-    }),
+    // Tasks (src/lib/tasks.ts): the open ones, and the ones ticked today
+    loadOpenTasks(userId),
+    loadDoneTasks(userId, { since: dayStart, take: 20 }),
+    loadTaskClients(userId),
     db.user.findUnique({
       where: { id: userId },
       select: { agreementVersion: true, name: true, logoUrl: true, brandName: true, onboardingCompletedAt: true },
@@ -335,7 +334,7 @@ export default async function DashboardPage() {
         </Card>
 
         <div className="space-y-6">
-        <TodoCard todos={todos} />
+        <DashboardTasksCard open={openTasks} doneToday={doneToday} clients={taskClients} today={todayLocal} />
         <Card>
           <CardHeader>
             <CardTitle>פעולות מהירות</CardTitle>

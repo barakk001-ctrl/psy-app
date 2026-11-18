@@ -51,7 +51,7 @@ const ACTION_MODULES: Record<string, () => Promise<Record<string, unknown>>> = {
   notes: () => import("@/server/actions/notes"),
   sessions: () => import("@/server/actions/sessions"),
   inbox: () => import("@/server/actions/inbox"),
-  todos: () => import("@/server/actions/todos"),
+  tasks: () => import("@/server/actions/tasks"),
   "meeting-types": () => import("@/server/actions/meeting-types"),
   waitlist: () => import("@/server/actions/waitlist"),
   invites: () => import("@/server/actions/invites"),

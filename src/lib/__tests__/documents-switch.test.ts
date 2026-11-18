@@ -83,10 +83,21 @@ describe("what a user can reach while documents are off", () => {
     expect(off).not.toContain("/invoices");
     expect(off).not.toContain("/expenses");
     expect(off).toEqual(NAV_ITEMS.map((i) => i.href).filter((h) => !isDocumentsPath(h)));
-    expect(primaryMobileItems(false).map((i) => i.href)).toEqual(["/dashboard", "/calendar", "/clients"]);
-    // on: as before
+    // the place the document tab leaves on the bottom bar goes to tasks
+    expect(primaryMobileItems(false).map((i) => i.href)).toEqual([
+      "/dashboard",
+      "/calendar",
+      "/clients",
+      "/tasks",
+    ]);
+    // on: as before (four tabs; tasks stay in the menu)
     expect(navItems(true)).toEqual(NAV_ITEMS);
-    expect(primaryMobileItems(true).map((i) => i.href)).toContain("/invoices");
+    expect(primaryMobileItems(true).map((i) => i.href)).toEqual([
+      "/dashboard",
+      "/calendar",
+      "/clients",
+      "/invoices",
+    ]);
   });
 
   it("settings have no documents tab, and its address opens the first tab", () => {

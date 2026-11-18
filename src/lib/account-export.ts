@@ -528,9 +528,51 @@ ${noteText(path, s.note!)}
     csvEntry(
       tally,
       "משימות.csv",
-      ["מזהה", "משימה", "בוצעה", "נוספה"],
-      () => paged((c) => dbAll.todo.findMany({ where: mine, ...orderPage, ...c })),
-      (r) => [r.id, r.text, r.done ? "כן" : "לא", clock(r.createdAt)],
+      [
+        "מזהה",
+        "משימה",
+        "הערה",
+        "מזהה לקוח",
+        "לקוח/ה",
+        "לתאריך",
+        "בוצעה",
+        "בוצעה בתאריך",
+        "מקור",
+        "נוספה",
+      ],
+      () =>
+        paged((c) =>
+          dbAll.todo.findMany({
+            where: mine,
+            include: { client: { select: { firstName: true, lastName: true } } },
+            ...orderPage,
+            ...c,
+          }),
+        ),
+      (r) => {
+        // The title and the note are encrypted (sensitive-fields.ts); older rows hold a plain title
+        let title = r.text;
+        let note = "";
+        try {
+          if (r.textCiphertext) title = decryptSecret(r.textCiphertext);
+          if (r.noteCiphertext) note = decryptSecret(r.noteCiphertext);
+        } catch {
+          tally.problems.push(`משימה שלא ניתן היה לפענח: ${r.id}`);
+        }
+        const source = r.source === "GUIDE" ? "הצעת המדריך" : "ידנית";
+        return [
+          r.id,
+          title,
+          note,
+          r.clientId,
+          r.client ? `${r.client.firstName} ${r.client.lastName}`.trim() : "",
+          r.dueDay,
+          r.done ? "כן" : "לא",
+          clock(r.doneAt),
+          r.awaitingApproval ? `${source} (ממתינה לאישור)` : source,
+          clock(r.createdAt),
+        ];
+      },
     ),
     csvEntry(
       tally,

@@ -5,6 +5,22 @@ import { Search, X } from "lucide-react";
 import { matchClients, type ClientChoice } from "@/lib/follow-up-filters";
 import { cn } from "@/lib/utils";
 
+/** The wording around the list; the default is the filter's ("כל הלקוחות"). */
+export type ClientComboboxTexts = {
+  /** the choice that clears the picker, and what an empty picker means */
+  none: string;
+  placeholder: string;
+  label: string;
+  clear: string;
+};
+
+const FILTER_TEXTS: ClientComboboxTexts = {
+  none: "כל הלקוחות",
+  placeholder: "כל הלקוחות — הקלידו שם לסינון",
+  label: "סינון לפי לקוח/ה",
+  clear: "הצגת כל הלקוחות",
+};
+
 /**
  * Searchable client picker (type-ahead on the name). Empty = "כל הלקוחות".
  * The list is the user's own clients (a solo practice: at most a few
@@ -17,12 +33,15 @@ export function ClientCombobox({
   value,
   onChange,
   className,
+  texts = FILTER_TEXTS,
 }: {
   id?: string;
   clients: ClientChoice[];
   value: string | null;
   onChange: (id: string | null) => void;
   className?: string;
+  /** for a picker that is not a filter (a task's client) */
+  texts?: ClientComboboxTexts;
 }) {
   const selected = value ? clients.find((c) => c.id === value) ?? null : null;
   const [query, setQuery] = useState("");
@@ -66,9 +85,9 @@ export function ClientCombobox({
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
-          aria-label="סינון לפי לקוח/ה"
+          aria-label={texts.label}
           autoComplete="off"
-          placeholder={selected ? selected.name : "כל הלקוחות — הקלידו שם לסינון"}
+          placeholder={selected ? selected.name : texts.placeholder}
           value={selected && !open ? selected.name : query}
           onFocus={() => {
             setOpen(true);
@@ -111,8 +130,8 @@ export function ClientCombobox({
           <button
             type="button"
             onClick={() => choose(null)}
-            aria-label="הצגת כל הלקוחות"
-            title="הצגת כל הלקוחות"
+            aria-label={texts.clear}
+            title={texts.clear}
             className="absolute end-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full grid place-items-center text-ink-muted hover:bg-cream-200 hover:text-ink"
           >
             <X className="w-4 h-4" />
@@ -137,7 +156,7 @@ export function ClientCombobox({
                   !selected ? "text-sage-700 font-medium" : "text-ink",
                 )}
               >
-                כל הלקוחות
+                {texts.none}
               </button>
             </li>
           )}

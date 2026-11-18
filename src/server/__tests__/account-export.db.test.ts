@@ -109,6 +109,11 @@ describe.skipIf(!TEST_DATABASE_URL)("full account export (real Postgres)", () =>
     expect(csv("הוצאות.csv")).toContain(`ספק ${a.canary}`);
     expect(csv("רשימת המתנה.csv")).toContain(`רקע ${a.canary}`);
     expect(csv("הודעות נכנסות.csv")).toContain(`הודעה ${a.canary}`);
+    // tasks: the decrypted title and note, the client and the day
+    expect(csv("משימות.csv")).toContain(`משימה ${a.canary}`);
+    expect(csv("משימות.csv")).toContain(`הערה למשימה ${a.canary}`);
+    expect(csv("משימות.csv")).toContain(a.clientId);
+    expect(csv("משימות.csv")).toContain("2026-11-20");
 
     const text = names.find((n) => n.startsWith("סיכומים/"))!;
     expect(zip.get(text)!.toString("utf8")).toContain(`סיכום ${a.canary}`);

@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOutAction } from "@/server/actions/auth";
 import { navItems } from "./nav-items";
+import { TaskBadge } from "./task-badge";
 import { BrandMark, type Branding } from "@/components/layout/brand-mark";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 
@@ -14,11 +15,14 @@ export function MobileTopBar({
   userName,
   branding,
   documents,
+  taskCount = 0,
 }: {
   userName?: string | null;
   branding?: Branding;
   /** income/expense documents shown (src/lib/features.ts) */
   documents: boolean;
+  /** open tasks due today or earlier */
+  taskCount?: number;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -132,6 +136,7 @@ export function MobileTopBar({
                   >
                     <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
                     <span>{item.label}</span>
+                    {item.taskBadge && <TaskBadge count={taskCount} active={active} className="ms-auto" />}
                   </Link>
                 </li>
               );

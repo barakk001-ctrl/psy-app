@@ -22,6 +22,9 @@ import { tookPlace } from "@/lib/income";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { KEEP_REASON_LABELS, type KeepReason } from "@/lib/bulk-delete";
 import { documentsEnabled } from "@/lib/features";
+import { ClientTasksCard } from "@/components/tasks/client-tasks-card";
+import { loadDoneTasks, loadOpenTasks } from "@/lib/tasks-data";
+import { toZonedDateTimeLocal } from "@/lib/timezone";
 
 export const metadata = { title: "תיק לקוח/ה — מרפאה אישית" };
 
@@ -91,7 +94,7 @@ export default async function ClientDetailPage({
   const idNumber = clientIdNumber(client);
   const generalNotes = clientGeneralNotes(client);
 
-  const [allSessions, notedSessions] = await Promise.all([
+  const [allSessions, notedSessions, openTasks, doneTasks] = await Promise.all([
     db.session.findMany({
       where: { clientId: id, userId },
       orderBy: { startsAt: "desc" },
@@ -117,6 +120,9 @@ export default async function ClientDetailPage({
       take: 20,
       include: { note: true },
     }),
+    // The tasks about this client (src/lib/tasks.ts)
+    loadOpenTasks(userId, id),
+    loadDoneTasks(userId, { clientId: id, take: 5 }),
   ]);
 
   // The clinical record: decrypted summaries + cancellations, newest first
@@ -261,7 +267,8 @@ export default async function ClientDetailPage({
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-6">
+        <Card>
           <CardHeader>
             <CardTitle>פרטי קשר</CardTitle>
           </CardHeader>
@@ -308,6 +315,13 @@ export default async function ClientDetailPage({
             )}
           </CardContent>
         </Card>
+          <ClientTasksCard
+            clientId={client.id}
+            open={openTasks}
+            done={doneTasks}
+            today={toZonedDateTimeLocal(new Date()).slice(0, 10)}
+          />
+        </div>
 
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-wrap items-center justify-between gap-3">

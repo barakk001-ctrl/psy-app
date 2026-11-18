@@ -5,8 +5,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { primaryMobileItems } from "./nav-items";
+import { TaskBadge } from "./task-badge";
 
-export function MobileTabBar({ documents }: { documents: boolean }) {
+export function MobileTabBar({
+  documents,
+  taskCount = 0,
+}: {
+  documents: boolean;
+  /** open tasks due today or earlier */
+  taskCount?: number;
+}) {
   const pathname = usePathname();
   const [hidden, setHidden] = useState(false);
 
@@ -45,7 +53,7 @@ export function MobileTabBar({ documents }: { documents: boolean }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-2xl",
+                  "relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-2xl",
                   "transition-all duration-300",
                   active
                     ? "bg-sage-600 text-cream-50 shadow-glow"
@@ -53,6 +61,13 @@ export function MobileTabBar({ documents }: { documents: boolean }) {
                 )}
               >
                 <Icon className="w-5 h-5" strokeWidth={active ? 2 : 1.75} />
+                {item.taskBadge && (
+                  <TaskBadge
+                    count={taskCount}
+                    active={active}
+                    className="absolute top-0.5 start-1/2 ms-1.5"
+                  />
+                )}
                 <span
                   className={cn(
                     "text-[10px] whitespace-nowrap",
