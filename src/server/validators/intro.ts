@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CLINIC_TYPE_MAX, workingHoursError } from "@/lib/intro";
+import { CLIENT_GROUPS_OTHER_MAX, CLINIC_TYPE_MAX, workingHoursError } from "@/lib/intro";
 import { sessionDefaultsSchema } from "@/server/validators/settings";
 
 /** Decimal(10,2) holds up to 99,999,999.99; a session price is far below it. */
@@ -14,6 +14,8 @@ export const introAnswersSchema = z
   .object({
     clinicType: z.string().trim().max(CLINIC_TYPE_MAX, `עד ${CLINIC_TYPE_MAX} תווים`),
     clientGroups: z.array(z.string().max(20)).max(10),
+    // the "אחר" choice's own words; "" = none
+    clientGroupsOther: z.string().trim().max(CLIENT_GROUPS_OTHER_MAX, `עד ${CLIENT_GROUPS_OTHER_MAX} תווים`),
     workingHours: z.unknown().superRefine((v, ctx) => {
       const error = workingHoursError(v);
       if (error) ctx.addIssue({ code: z.ZodIssueCode.custom, message: error });

@@ -29,7 +29,7 @@ export const TASK_SUGGESTIONS = [
 /** Titles that belong to some practices more than others (the groups of src/lib/intro.ts). */
 const SUGGESTION_GROUPS: Partial<Record<(typeof TASK_SUGGESTIONS)[number], string[]>> = {
   "שיחה עם הצוות החינוכי": ["CHILDREN", "TEENS"],
-  "קביעת פגישת הורים": ["CHILDREN", "TEENS", "FAMILIES"],
+  "קביעת פגישת הורים": ["CHILDREN", "TEENS", "FAMILIES", "PARENTS"],
 };
 
 /**

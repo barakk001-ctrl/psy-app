@@ -81,6 +81,7 @@ export type MyClinicUser = {
   /** the שאלון היכרות's answers, as stored */
   clinicType?: string | null;
   clientGroups?: unknown;
+  clientGroupsOther?: string | null;
   workingHours?: unknown;
   dashboardFocus?: string | null;
   colorTheme?: string | null;
@@ -105,6 +106,7 @@ export function myClinicSections(
   const answers = introAnswers({
     clinicType: user.clinicType ?? null,
     clientGroups: user.clientGroups,
+    clientGroupsOther: user.clientGroupsOther ?? null,
     workingHours: user.workingHours,
     dashboardFocus: user.dashboardFocus ?? null,
     colorTheme: user.colorTheme ?? null,

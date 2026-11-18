@@ -12,6 +12,8 @@ import { CLIENT_WORDS, type ClientWordId } from "@/lib/client-word";
 import { COLOR_THEMES, themeVars, type ColorThemeId } from "@/lib/color-themes";
 import {
   CLIENT_GROUPS,
+  CLIENT_GROUPS_OTHER_LABEL,
+  CLIENT_GROUPS_OTHER_MAX,
   CLINIC_TYPE_MAX,
   CLINIC_TYPE_OPTIONS,
   FOCUS_OPTIONS,
@@ -58,6 +60,9 @@ export function IntroForm({
   const say = useSay();
   const [clinicType, setClinicType] = useState(initial.clinicType ?? "");
   const [groups, setGroups] = useState<ClientGroup[]>(initial.clientGroups);
+  // "אחר": the chip opens a line for the practice's own words
+  const [otherOn, setOtherOn] = useState(!!initial.clientGroupsOther);
+  const [other, setOther] = useState(initial.clientGroupsOther ?? "");
   const [hours, setHours] = useState<WorkingDay[]>(initial.workingHours);
   const [minutes, setMinutes] = useState(String(initial.defaultSessionMinutes));
   const [rate, setRate] = useState(initial.defaultRate ?? "");
@@ -109,7 +114,7 @@ export function IntroForm({
     startTransition(async () => {
       const res = await saveIntroAnswersAction({
         ...(asks("type") ? { clinicType } : {}),
-        ...(asks("groups") ? { clientGroups: groups } : {}),
+        ...(asks("groups") ? { clientGroups: groups, clientGroupsOther: otherOn ? other : "" } : {}),
         ...(asks("hours") ? { workingHours: hours } : {}),
         ...(asks("session") ? { defaultSessionMinutes: minutes, defaultRate: rate } : {}),
         ...(asks("focus") ? { dashboardFocus: focus ?? "" } : {}),
@@ -172,7 +177,29 @@ export function IntroForm({
                 </button>
               );
             })}
+            <button
+              type="button"
+              aria-pressed={otherOn}
+              aria-controls="clientGroupsOther"
+              onClick={() => setOtherOn(!otherOn)}
+              className={cn(CHIP, otherOn ? CHIP_ON : CHIP_OFF)}
+            >
+              {CLIENT_GROUPS_OTHER_LABEL}
+            </button>
           </div>
+          {otherOn && (
+            <div>
+              <Label htmlFor="clientGroupsOther">במי עוד מטפלים</Label>
+              <Input
+                id="clientGroupsOther"
+                value={other}
+                maxLength={CLIENT_GROUPS_OTHER_MAX}
+                onChange={(e) => setOther(e.target.value)}
+                placeholder="כתבו במילים שלכם"
+                autoComplete="off"
+              />
+            </div>
+          )}
         </div>
       )}
 

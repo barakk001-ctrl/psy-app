@@ -98,6 +98,7 @@ export default async function MyClinicPage() {
         logoOnDocuments: true,
         clinicType: true,
         clientGroups: true,
+        clientGroupsOther: true,
         workingHours: true,
         dashboardFocus: true,
         colorTheme: true,

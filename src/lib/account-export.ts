@@ -231,6 +231,7 @@ export async function buildExportEntries(userId: string): Promise<ExportEntry[]>
       // the שאלון היכרות's answers
       clinicType: true,
       clientGroups: true,
+      clientGroupsOther: true,
       workingHours: true,
       dashboardFocus: true,
       colorTheme: true,

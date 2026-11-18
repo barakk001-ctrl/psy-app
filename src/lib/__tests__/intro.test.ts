@@ -11,6 +11,7 @@ import {
   addWorkingDay,
   businessHoursFor,
   cleanClientGroups,
+  cleanClientGroupsOther,
   cleanClinicType,
   cleanFocus,
   clientGroupsText,
@@ -87,7 +88,25 @@ describe("who is mostly treated", () => {
   it("reads as a list of words", () => {
     expect(clientGroupsText(["CHILDREN", "TEENS"])).toBe("ילדים, נוער");
     expect(clientGroupsText([])).toBeNull();
-    expect(CLIENT_GROUPS).toHaveLength(5);
+    expect(CLIENT_GROUPS).toHaveLength(6);
+  });
+  it("offers parents, and keeps them in the list's order", () => {
+    expect(CLIENT_GROUPS.find((g) => g.id === "PARENTS")?.label).toBe("הורים");
+    expect(cleanClientGroups(["PARENTS", "CHILDREN"])).toEqual(["CHILDREN", "PARENTS"]);
+    expect(clientGroupsText(["PARENTS", "CHILDREN"])).toBe("ילדים, הורים");
+  });
+  it("\"אחר\" keeps the practice's own words, tidied, after the groups", () => {
+    expect(cleanClientGroupsOther("  אנשים   עם מוגבלות ")).toBe("אנשים עם מוגבלות");
+    expect(cleanClientGroupsOther("   ")).toBeNull();
+    expect(cleanClientGroupsOther(7)).toBeNull();
+    expect(cleanClientGroupsOther("א".repeat(100))).toHaveLength(40);
+    expect(clientGroupsText(["CHILDREN"], " סטודנטים ")).toBe("ילדים, סטודנטים");
+    expect(clientGroupsText([], "סטודנטים")).toBe("סטודנטים");
+    expect(clientGroupsText([], " ")).toBeNull();
+  });
+  it("the form's words are checked like the clinic type", () => {
+    expect(introAnswersSchema.safeParse({ clientGroupsOther: "סטודנטים" }).success).toBe(true);
+    expect(introAnswersSchema.safeParse({ clientGroupsOther: "א".repeat(41) }).success).toBe(false);
   });
 });
 
@@ -203,6 +222,7 @@ describe("the answers together", () => {
     expect(introAnswers(stored)).toEqual({
       clinicType: "פסיכולוגיה חינוכית",
       clientGroups: ["CHILDREN", "TEENS"],
+      clientGroupsOther: null,
       workingHours: week,
       dashboardFocus: "CALENDAR",
       colorTheme: "sage",

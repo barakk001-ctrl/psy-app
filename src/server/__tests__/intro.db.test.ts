@@ -50,6 +50,7 @@ describe.skipIf(!TEST_DATABASE_URL)("שאלון היכרות (real Postgres)", (
       select: {
         clinicType: true,
         clientGroups: true,
+        clientGroupsOther: true,
         workingHours: true,
         dashboardFocus: true,
         colorTheme: true,
@@ -93,10 +94,28 @@ describe.skipIf(!TEST_DATABASE_URL)("שאלון היכרות (real Postgres)", (
     expect(await answersOf(a.userId)).toMatchObject({
       clinicType: null,
       clientGroups: [],
+      clientGroupsOther: null,
       workingHours: null,
       dashboardFocus: null,
       introDoneAt: null,
     });
+  });
+
+  it("\"הורים\" is a group, and \"אחר\" keeps the practice's own words until cleared", async () => {
+    expect(
+      await actions.saveIntroAnswersAction({ clientGroups: ["PARENTS", "CHILDREN"], clientGroupsOther: "  סטודנטים " }),
+    ).toEqual({ ok: true });
+    expect(await answersOf(a.userId)).toMatchObject({
+      clientGroups: ["CHILDREN", "PARENTS"],
+      clientGroupsOther: "סטודנטים",
+    });
+    // the other practice is untouched
+    expect(await answersOf(b.userId)).toMatchObject({ clientGroups: [], clientGroupsOther: null });
+    await actions.saveIntroAnswersAction({ clientGroups: ["CHILDREN"], clientGroupsOther: "" });
+    expect(await answersOf(a.userId)).toMatchObject({ clientGroups: ["CHILDREN"], clientGroupsOther: null });
+    // too long is refused, nothing saved
+    expect((await actions.saveIntroAnswersAction({ clientGroupsOther: "א".repeat(41) })).error).toBeTruthy();
+    expect((await answersOf(a.userId)).clientGroupsOther).toBeNull();
   });
 
   it("saves every answer on the practice's own row", async () => {

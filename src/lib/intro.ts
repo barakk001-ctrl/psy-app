@@ -5,7 +5,8 @@
 // Pure rules, tested in intro.test.ts; saved by src/server/actions/intro.ts.
 //
 //   type    → a line under the clinic's name in the menus       (User.clinicType)
-//   groups  → which starting task titles are offered first      (User.clientGroups)
+//   groups  → which starting task titles are offered first      (User.clientGroups,
+//             plus "אחר" in the practice's own words: User.clientGroupsOther)
 //   hours   → the calendar greys the rest, and blocks nothing   (User.workingHours)
 //   session → what a new meeting opens with                     (User.defaultSessionMinutes, defaultRate)
 //   focus   → the order of the dashboard's boxes                (User.dashboardFocus)
@@ -102,7 +103,12 @@ export const CLIENT_GROUPS = [
   { id: "ADULTS", label: "מבוגרים" },
   { id: "COUPLES", label: "זוגות" },
   { id: "FAMILIES", label: "משפחות" },
+  { id: "PARENTS", label: "הורים" },
 ] as const;
+
+/** The "אחר" choice: the practice's own words, e.g. "אנשים עם מוגבלות". */
+export const CLIENT_GROUPS_OTHER_MAX = 40;
+export const CLIENT_GROUPS_OTHER_LABEL = "אחר";
 
 export type ClientGroup = (typeof CLIENT_GROUPS)[number]["id"];
 
@@ -112,8 +118,18 @@ export function cleanClientGroups(v: unknown): ClientGroup[] {
   return CLIENT_GROUPS.map((g) => g.id).filter((id) => given.includes(id));
 }
 
-export function clientGroupsText(groups: ClientGroup[]): string | null {
-  const labels = CLIENT_GROUPS.filter((g) => groups.includes(g.id)).map((g) => g.label);
+/** The stored "אחר" words: trimmed, single spaces, null when empty. */
+export function cleanClientGroupsOther(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.replace(/\s+/g, " ").trim();
+  return s ? s.slice(0, CLIENT_GROUPS_OTHER_MAX) : null;
+}
+
+/** "ילדים, הורים, אנשים עם מוגבלות" — the groups, then the "אחר" words. */
+export function clientGroupsText(groups: ClientGroup[], other?: string | null): string | null {
+  const labels: string[] = CLIENT_GROUPS.filter((g) => groups.includes(g.id)).map((g) => g.label);
+  const own = cleanClientGroupsOther(other);
+  if (own) labels.push(own);
   return labels.length ? labels.join(", ") : null;
 }
 
@@ -294,6 +310,7 @@ export function dashboardLayout(focus: unknown): DashboardLayout {
 export type IntroFields = {
   clinicType: string | null;
   clientGroups: unknown;
+  clientGroupsOther?: string | null;
   workingHours: unknown;
   dashboardFocus: string | null;
   colorTheme?: string | null;
@@ -305,6 +322,8 @@ export type IntroFields = {
 export type IntroAnswers = {
   clinicType: string | null;
   clientGroups: ClientGroup[];
+  /** the "אחר" words, or null */
+  clientGroupsOther: string | null;
   workingHours: WorkingDay[];
   dashboardFocus: DashboardFocus | null;
   /** always a set: the default one when none was chosen */
@@ -320,6 +339,7 @@ export function introAnswers(user: IntroFields): IntroAnswers {
   return {
     clinicType: cleanClinicType(user.clinicType),
     clientGroups: cleanClientGroups(user.clientGroups),
+    clientGroupsOther: cleanClientGroupsOther(user.clientGroupsOther),
     workingHours: parseWorkingHours(user.workingHours),
     dashboardFocus: cleanFocus(user.dashboardFocus),
     colorTheme: cleanColorTheme(user.colorTheme) ?? DEFAULT_THEME_ID,
@@ -336,7 +356,7 @@ export function introRows(a: IntroAnswers, formatRate: (rate: string) => string)
   const session = [`${a.defaultSessionMinutes} דקות`, ...(a.defaultRate ? [formatRate(a.defaultRate)] : [])];
   return [
     { id: "type", label: "סוג המרפאה", value: a.clinicType },
-    { id: "groups", label: "במי מטפלים בעיקר", value: clientGroupsText(a.clientGroups) },
+    { id: "groups", label: "במי מטפלים בעיקר", value: clientGroupsText(a.clientGroups, a.clientGroupsOther) },
     { id: "hours", label: "ימי ושעות העבודה", value: workingHoursText(a.workingHours) },
     { id: "session", label: "פגישה רגילה", value: session.join(" · ") },
     { id: "focus", label: "הכי חשוב לראות ראשון", value: FOCUS_OPTIONS.find((f) => f.id === a.dashboardFocus)?.label ?? null },

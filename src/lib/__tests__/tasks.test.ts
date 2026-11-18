@@ -202,6 +202,11 @@ describe("starting titles", () => {
     expect(families[0]).toBe("קביעת פגישת הורים");
     expect(families[families.length - 1]).toBe("שיחה עם הצוות החינוכי");
   });
+  it("a practice that guides parents gets the parents' meeting first, and the school last", () => {
+    const parents = taskSuggestionsFor(["PARENTS"]);
+    expect(parents[0]).toBe("קביעת פגישת הורים");
+    expect(parents[parents.length - 1]).toBe("שיחה עם הצוות החינוכי");
+  });
   it("does not change the list it is built from", () => {
     taskSuggestionsFor(["ADULTS"]);
     expect(TASK_SUGGESTIONS[0]).toBe("שיחה עם הצוות החינוכי");

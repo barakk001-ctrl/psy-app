@@ -86,7 +86,8 @@ model User {
   // The "שאלון היכרות" (src/lib/intro.ts): a few questions about the practice,
   // never about clients. All optional; null / empty = not answered.
   clinicType     String?                   // the line shown under the clinic's name
-  clientGroups   String[]  @default([])    // CHILDREN | TEENS | ADULTS | COUPLES | FAMILIES
+  clientGroups   String[]  @default([])    // CHILDREN | TEENS | ADULTS | COUPLES | FAMILIES | PARENTS
+  clientGroupsOther String?                // the "אחר" choice of the same question, in its own words
   workingHours   Json?                     // [{ day: 0-6, from: "HH:mm", to: "HH:mm" }]
   dashboardFocus String?                   // CALENDAR | PAYMENTS | NOTES
   colorTheme     String?                   // a set from src/lib/color-themes.ts; null = the default

@@ -47,6 +47,7 @@ export default async function SetupPage({
         onboardingStep: true,
         clinicType: true,
         clientGroups: true,
+        clientGroupsOther: true,
         workingHours: true,
         dashboardFocus: true,
         colorTheme: true,

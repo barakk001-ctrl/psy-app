@@ -7,7 +7,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { cleanClientWord } from "@/lib/client-word";
 import { cleanColorTheme } from "@/lib/color-themes";
-import { cleanClientGroups, cleanClinicType, cleanFocus, parseWorkingHours } from "@/lib/intro";
+import { cleanClientGroups, cleanClientGroupsOther, cleanClinicType, cleanFocus, parseWorkingHours } from "@/lib/intro";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { isReadOnly } from "@/lib/subscription-server";
 import { introAnswersSchema } from "@/server/validators/intro";
@@ -42,6 +42,7 @@ export async function saveIntroAnswersAction(input: unknown): Promise<IntroResul
   const data: Prisma.UserUpdateInput = {};
   if (a.clinicType !== undefined) data.clinicType = cleanClinicType(a.clinicType);
   if (a.clientGroups !== undefined) data.clientGroups = cleanClientGroups(a.clientGroups);
+  if (a.clientGroupsOther !== undefined) data.clientGroupsOther = cleanClientGroupsOther(a.clientGroupsOther);
   if (a.workingHours !== undefined) {
     const hours = parseWorkingHours(a.workingHours);
     data.workingHours = hours.length ? hours : Prisma.DbNull;
