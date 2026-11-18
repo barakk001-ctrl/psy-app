@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AccountExportCard } from "@/components/settings/account-export-card";
 import { LogoMark } from "@/components/brand/logo-mark";
+import { ThemeStyle } from "@/components/layout/theme-style";
 import { IdleGuard } from "@/components/security/idle-guard";
 import { CLOSURE_WARNING, canRestore, closureDaysLeft } from "@/lib/account-closure";
 import { daysLeftText } from "@/lib/client-trash";
@@ -36,6 +37,7 @@ export default async function AccountClosedPage() {
       totpEnabled: true,
       totpSecret: true,
       idleTimeoutMinutes: true,
+      colorTheme: true,
     },
   });
   if (!me?.closedAt) redirect("/dashboard");
@@ -49,6 +51,7 @@ export default async function AccountClosedPage() {
         idleMinutes={normalizeIdleTimeout(me.idleTimeoutMinutes)}
         authTime={session.authTime ?? null}
       />
+      <ThemeStyle theme={me.colorTheme} />
       <main className="mx-auto w-full max-w-xl space-y-6">
         <div className="flex justify-center">
           <LogoMark size={48} />

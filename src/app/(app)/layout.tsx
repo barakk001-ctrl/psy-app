@@ -10,6 +10,7 @@ import { SkipLink } from "@/components/ui/skip-link";
 import { normalizeIdleTimeout } from "@/lib/idle-timeout";
 import { shouldEnterSetup } from "@/lib/onboarding";
 import { ClinicBanner } from "@/components/layout/clinic-banner";
+import { ThemeStyle } from "@/components/layout/theme-style";
 import { SubscriptionBanner } from "@/components/layout/subscription-banner";
 import { subscriptionStateFor } from "@/lib/subscription-server";
 import { db } from "@/lib/db";
@@ -35,6 +36,7 @@ export default async function AppLayout({
         brandName: true,
         logoUrl: true,
         clinicType: true,
+        colorTheme: true,
         idleTimeoutMinutes: true,
         name: true,
         email: true,
@@ -60,6 +62,7 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen flex">
+      <ThemeStyle theme={branding?.colorTheme} />
       <SkipLink />
       <BiometricLockOverlay />
       <IdleGuard

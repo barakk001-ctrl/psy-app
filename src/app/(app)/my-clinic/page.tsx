@@ -98,6 +98,7 @@ export default async function MyClinicPage() {
         clientGroups: true,
         workingHours: true,
         dashboardFocus: true,
+        colorTheme: true,
         introDoneAt: true,
       },
     }),

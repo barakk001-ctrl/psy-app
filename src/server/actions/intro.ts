@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { cleanColorTheme } from "@/lib/color-themes";
 import { cleanClientGroups, cleanClinicType, cleanFocus, parseWorkingHours } from "@/lib/intro";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { isReadOnly } from "@/lib/subscription-server";
@@ -45,13 +46,14 @@ export async function saveIntroAnswersAction(input: unknown): Promise<IntroResul
     data.workingHours = hours.length ? hours : Prisma.DbNull;
   }
   if (a.dashboardFocus !== undefined) data.dashboardFocus = cleanFocus(a.dashboardFocus);
+  if (a.colorTheme !== undefined) data.colorTheme = cleanColorTheme(a.colorTheme);
   if (a.defaultSessionMinutes !== undefined) data.defaultSessionMinutes = a.defaultSessionMinutes;
   if (a.defaultRate !== undefined) data.defaultRate = a.defaultRate;
 
   if (Object.keys(data).length > 0) {
     await db.user.update({ where: { id: userId }, data });
-    // The line under the clinic's name is in the layout; the calendar, the
-    // dashboard and the task lists read the rest
+    // The line under the clinic's name and the colour set are in the layout;
+    // the calendar, the dashboard and the task lists read the rest
     revalidatePath("/", "layout");
   }
   return { ok: true };

@@ -20,7 +20,7 @@ const question = (id: IntroQuestionId) => {
 export const INTRO_STEPS: Partial<Record<SetupStepId, IntroQuestionId[]>> = {
   about: ["type", "groups"],
   hours: ["hours"],
-  focus: ["focus"],
+  focus: ["focus", "color"],
 };
 
 export const SETUP_STEPS: SetupStep[] = [
@@ -33,7 +33,11 @@ export const SETUP_STEPS: SetupStep[] = [
     subtitle: "שאלון היכרות קצר, על המרפאה עצמה ולא על לקוחות. האפליקציה מתאימה את עצמה לתשובות, ואפשר לדלג על כל שאלה.",
   },
   { id: "hours", ...question("hours") },
-  { id: "focus", ...question("focus") },
+  {
+    id: "focus",
+    title: "התאמה אישית",
+    subtitle: "מה יופיע ראשון במסך הבית, ובאיזה צבע תהיה האפליקציה.",
+  },
   { id: "done", title: "הכול מוכן", subtitle: "אפשר להתחיל לעבוד. כל מה שמילאתם נשמר, ואפשר לשנות אותו בהגדרות." },
 ];
 

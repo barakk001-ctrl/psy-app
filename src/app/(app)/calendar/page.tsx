@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarView } from "@/components/calendar/calendar-view";
 import { schedulingWindowUiFor } from "@/lib/subscription-server";
 import { businessHoursFor, parseWorkingHours, workingSpan } from "@/lib/intro";
+import { themeAccent } from "@/lib/color-themes";
 import type { EventInput } from "@fullcalendar/core";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +47,7 @@ export default async function CalendarPage() {
     getMeetingTypeColorMap(userId),
     db.user.findUnique({
       where: { id: userId },
-      select: { showHolidays: true, defaultSessionMinutes: true, workingHours: true },
+      select: { showHolidays: true, defaultSessionMinutes: true, workingHours: true, colorTheme: true },
     }),
     // Fetched whether or not they are shown, so ticking the box needs no reload.
     // Cached in memory for a day; an empty map if Hebcal is unreachable.
@@ -102,6 +103,7 @@ export default async function CalendarPage() {
         }))}
         meetingTypes={meetingTypes}
         typeColors={typeColors}
+        accent={themeAccent(me?.colorTheme)}
         holidays={holidays}
         showHolidays={me?.showHolidays ?? false}
         userId={userId}

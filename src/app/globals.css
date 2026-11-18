@@ -5,6 +5,15 @@
 @layer base {
   :root {
     color-scheme: light;
+    /* The accent scale (tailwind's sage-*), as RGB channels. This is the
+       default colour set; a signed-in account's own set overrides these from
+       <ThemeStyle> (src/lib/color-themes.ts, where a test keeps the two equal). */
+    --sage-50: 241 244 237;
+    --sage-100: 220 227 210;
+    --sage-300: 168 183 156;
+    --sage-500: 92 117 89;
+    --sage-600: 74 96 72;
+    --sage-700: 58 75 57;
   }
 
   html,
@@ -12,9 +21,9 @@
     background-color: #faf7f1;
     /* Soft ambient glow — subtle depth behind the glass surfaces */
     background-image:
-      radial-gradient(48rem 32rem at 85% -5%, rgba(92, 117, 89, 0.08), transparent 60%),
+      radial-gradient(48rem 32rem at 85% -5%, rgb(var(--sage-500) / 0.08), transparent 60%),
       radial-gradient(40rem 28rem at -10% 40%, rgba(181, 101, 74, 0.05), transparent 60%),
-      radial-gradient(36rem 24rem at 50% 110%, rgba(92, 117, 89, 0.06), transparent 60%);
+      radial-gradient(36rem 24rem at 50% 110%, rgb(var(--sage-500) / 0.06), transparent 60%);
     background-attachment: fixed;
     color: #1a1714;
     /* Belt-and-suspenders: prevent any single element from creating horizontal scroll
@@ -120,7 +129,7 @@
   }
 
   ::selection {
-    background-color: #dce3d2;
+    background-color: rgb(var(--sage-100));
     color: #1a1714;
   }
 
@@ -297,7 +306,7 @@
    layer, so that utility wins). */
 @layer base {
   :focus-visible {
-    outline: 2px solid #4a6048;
+    outline: 2px solid rgb(var(--sage-600));
     outline-offset: 2px;
   }
 }
@@ -312,7 +321,7 @@ main:focus-visible {
   z-index: 200;
   padding: 0.625rem 1rem;
   border-radius: 0.75rem;
-  background: #3a4b39;
+  background: rgb(var(--sage-700));
   color: #fdfbf7;
   font-weight: 500;
   transform: translateY(-200%);

@@ -37,8 +37,8 @@ const week = [
 ];
 
 describe("the questions", () => {
-  it("are five, each with a title and a line of explanation", () => {
-    expect(INTRO_QUESTIONS.map((q) => q.id)).toEqual(["type", "groups", "hours", "session", "focus"]);
+  it("are six, each with a title and a line of explanation", () => {
+    expect(INTRO_QUESTIONS.map((q) => q.id)).toEqual(["type", "groups", "hours", "session", "focus", "color"]);
     for (const q of INTRO_QUESTIONS) {
       expect(q.title.length).toBeGreaterThan(3);
       expect(q.subtitle.length).toBeGreaterThan(3);
@@ -205,9 +205,12 @@ describe("the answers together", () => {
       clientGroups: ["CHILDREN", "TEENS"],
       workingHours: week,
       dashboardFocus: "CALENDAR",
+      colorTheme: "sage",
       defaultSessionMinutes: 50,
       defaultRate: "380",
     });
+    expect(introAnswers({ ...stored, colorTheme: "teal" }).colorTheme).toBe("teal");
+    expect(introAnswers({ ...stored, colorTheme: "no such set" }).colorTheme).toBe("sage");
   });
   it("an account that answered nothing reads as empty, not as an error", () => {
     const a = introAnswers({
@@ -223,6 +226,8 @@ describe("the answers together", () => {
     expect(rows.map((r) => r.id)).toEqual(INTRO_QUESTIONS.map((q) => q.id));
     expect(rows.filter((r) => r.value === null).map((r) => r.id)).toEqual(["type", "groups", "hours", "focus"]);
     expect(rows.find((r) => r.id === "session")?.value).toBe("45 דקות");
+    // the colour is never "not answered": it names the set the account is in
+    expect(rows.find((r) => r.id === "color")?.value).toBe("מרווה");
   });
   it("shows each answer on the card of the clinic's page", () => {
     const rows = introRows(introAnswers(stored), (r) => `${r} ₪`);
@@ -232,7 +237,10 @@ describe("the answers together", () => {
       hours: "א׳–ה׳ 09:00–19:00 · ו׳ 08:00–13:00",
       session: "50 דקות · 380 ₪",
       focus: "היומן והפגישות",
+      color: "מרווה",
     });
+    const ocean = introRows(introAnswers({ ...stored, colorTheme: "ocean" }), (r) => r);
+    expect(ocean.find((r) => r.id === "color")?.value).toBe("כחול ים");
   });
 });
 
@@ -240,6 +248,7 @@ describe("what the form may send", () => {
   it("takes any one answer by itself", () => {
     expect(introAnswersSchema.parse({ clinicType: " קליניקה " })).toEqual({ clinicType: "קליניקה" });
     expect(introAnswersSchema.parse({})).toEqual({});
+    expect(introAnswersSchema.parse({ colorTheme: "ocean" })).toEqual({ colorTheme: "ocean" });
     expect(introAnswersSchema.parse({ defaultRate: "" })).toEqual({ defaultRate: null });
     expect(introAnswersSchema.parse({ defaultRate: "0" })).toEqual({ defaultRate: 0 });
     expect(introAnswersSchema.parse({ defaultRate: "350.5", defaultSessionMinutes: "50" })).toEqual({

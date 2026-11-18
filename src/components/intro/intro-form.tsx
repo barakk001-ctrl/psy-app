@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { DURATION_CHOICES, withDuration } from "@/lib/session-duration";
+import { COLOR_THEMES, themeVars, type ColorThemeId } from "@/lib/color-themes";
 import {
   CLIENT_GROUPS,
   CLINIC_TYPE_MAX,
@@ -57,6 +59,7 @@ export function IntroForm({
   const [minutes, setMinutes] = useState(String(initial.defaultSessionMinutes));
   const [rate, setRate] = useState(initial.defaultRate ?? "");
   const [focus, setFocus] = useState<DashboardFocus | null>(initial.dashboardFocus);
+  const [theme, setTheme] = useState<ColorThemeId>(initial.colorTheme);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -73,6 +76,20 @@ export function IntroForm({
       </div>
     );
   };
+
+  // The page takes on a picked colour set at once, before it is saved. Leaving
+  // the question puts the saved set back: the variables set here come off, and
+  // the layout's own <ThemeStyle> (which a save has refreshed) rules again.
+  const asksColor = questions.includes("color");
+  useEffect(() => {
+    if (!asksColor) return;
+    const root = document.documentElement;
+    const vars = themeVars(theme);
+    for (const [name, value] of vars) root.style.setProperty(name, value);
+    return () => {
+      for (const [name] of vars) root.style.removeProperty(name);
+    };
+  }, [asksColor, theme]);
 
   const setDay = (day: number, patch: Partial<WorkingDay>) =>
     setHours((all) => all.map((d) => (d.day === day ? { ...d, ...patch } : d)));
@@ -92,6 +109,7 @@ export function IntroForm({
         ...(asks("hours") ? { workingHours: hours } : {}),
         ...(asks("session") ? { defaultSessionMinutes: minutes, defaultRate: rate } : {}),
         ...(asks("focus") ? { dashboardFocus: focus ?? "" } : {}),
+        ...(asks("color") ? { colorTheme: theme } : {}),
       });
       if (res.error) setError(res.error);
       else onSaved?.();
@@ -283,6 +301,44 @@ export function IntroForm({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {asks("color") && (
+        <div className="space-y-3">
+          {heading("color")}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="צבע הממשק">
+            {COLOR_THEMES.map((t) => {
+              const on = theme === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setTheme(t.id)}
+                  className={cn(
+                    "flex min-h-[4.5rem] flex-col gap-2 rounded-xl border px-3 py-2.5 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500",
+                    on ? "border-sage-600 bg-sage-50" : "border-cream-300 bg-white/70 hover:border-cream-400",
+                  )}
+                >
+                  {/* each set in its own colours, whatever set the page is in */}
+                  <span aria-hidden className="flex h-6 w-full overflow-hidden rounded-md border border-black/5">
+                    <span className="flex-[3]" style={{ backgroundColor: t.scale[500] }} />
+                    <span className="flex-[2]" style={{ backgroundColor: t.scale[300] }} />
+                    <span className="flex-1" style={{ backgroundColor: t.scale[100] }} />
+                  </span>
+                  <span className="flex items-center justify-between gap-1 text-sm font-medium text-ink">
+                    {t.label}
+                    {on && <Check className="h-4 w-4 text-sage-600" aria-hidden />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-ink-muted">
+            הבחירה נראית מיד, ונשמרת בלחיצה על הכפתור שלמטה. צבעי האזהרות, המסמכים והצבע של כל סוג מפגש ביומן לא משתנים.
+          </p>
         </div>
       )}
 

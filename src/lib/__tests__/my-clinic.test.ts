@@ -72,6 +72,7 @@ describe("the questionnaire's card", () => {
       ["ימי ושעות העבודה", "א׳, ב׳ 09:00–18:00", "/my-clinic/intro?q=hours"],
       ["פגישה רגילה", expect.stringMatching(/^50 דקות · .*350/), "/my-clinic/intro?q=session"],
       ["הכי חשוב לראות ראשון", "תיעוד הפגישות", "/my-clinic/intro?q=focus"],
+      ["צבע הממשק", "מרווה", "/my-clinic/intro?q=color"],
     ]);
   });
   it("is there, empty, for an account that answered nothing", () => {

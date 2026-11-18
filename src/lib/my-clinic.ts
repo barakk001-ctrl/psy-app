@@ -83,6 +83,7 @@ export type MyClinicUser = {
   clientGroups?: unknown;
   workingHours?: unknown;
   dashboardFocus?: string | null;
+  colorTheme?: string | null;
 };
 
 const text = (v: string | null | undefined): string | null => v?.trim() || null;
@@ -105,6 +106,7 @@ export function myClinicSections(
     clientGroups: user.clientGroups,
     workingHours: user.workingHours,
     dashboardFocus: user.dashboardFocus ?? null,
+    colorTheme: user.colorTheme ?? null,
     defaultSessionMinutes: user.defaultSessionMinutes ?? DEFAULT_SESSION_MINUTES,
     defaultRate: user.defaultRate === null || user.defaultRate === "" ? null : String(user.defaultRate),
   });

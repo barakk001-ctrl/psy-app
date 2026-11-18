@@ -20,13 +20,17 @@ export default {
           muted: "#6B5F52",
           subtle: "#74685A",
         },
+        // The accent scale. Drawn from CSS variables so an account can pick
+        // another colour set (src/lib/color-themes.ts): globals.css holds the
+        // default (#F1F4ED #DCE3D2 #A8B79C #5C7559 #4A6048 #3A4B39), and
+        // <ThemeStyle> overrides it for a signed-in account.
         sage: {
-          50: "#F1F4ED",
-          100: "#DCE3D2",
-          300: "#A8B79C",
-          500: "#5C7559",
-          600: "#4A6048",
-          700: "#3A4B39",
+          50: "rgb(var(--sage-50) / <alpha-value>)",
+          100: "rgb(var(--sage-100) / <alpha-value>)",
+          300: "rgb(var(--sage-300) / <alpha-value>)",
+          500: "rgb(var(--sage-500) / <alpha-value>)",
+          600: "rgb(var(--sage-600) / <alpha-value>)",
+          700: "rgb(var(--sage-700) / <alpha-value>)",
         },
         // Soft gold accent (auth brand panel divider)
         gold: {
@@ -60,7 +64,7 @@ export default {
       boxShadow: {
         soft: "0 1px 2px rgba(26, 23, 20, 0.03), 0 4px 16px rgba(26, 23, 20, 0.05)",
         lift: "0 2px 6px rgba(26, 23, 20, 0.05), 0 12px 32px rgba(26, 23, 20, 0.08)",
-        glow: "0 2px 8px rgba(92, 117, 89, 0.25), 0 6px 20px rgba(92, 117, 89, 0.2)",
+        glow: "0 2px 8px rgb(var(--sage-500) / 0.25), 0 6px 20px rgb(var(--sage-500) / 0.2)",
         bar: "0 -1px 2px rgba(26, 23, 20, 0.03), 0 8px 32px rgba(26, 23, 20, 0.12)",
       },
     },

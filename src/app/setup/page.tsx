@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { ThemeStyle } from "@/components/layout/theme-style";
 import { db } from "@/lib/db";
 import { normalizeIdleTimeout } from "@/lib/idle-timeout";
 import { introAnswers } from "@/lib/intro";
@@ -47,6 +48,7 @@ export default async function SetupPage({
         clientGroups: true,
         workingHours: true,
         dashboardFocus: true,
+        colorTheme: true,
       },
     }),
     db.meetingType.findMany({
@@ -61,6 +63,7 @@ export default async function SetupPage({
   const step = stepToOpen(stepParam, user.onboardingStep);
   return (
     <>
+      <ThemeStyle theme={user.colorTheme} />
       <BiometricLockOverlay />
       <IdleGuard
         idleMinutes={normalizeIdleTimeout(user.idleTimeoutMinutes)}

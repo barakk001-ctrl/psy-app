@@ -34,6 +34,9 @@ type Props = {
   meetingTypes: string[];
   // Meeting-type label → color chosen in settings; scheduled events use it
   typeColors?: Record<string, string>;
+  /** The account's colour set's main shade (#rrggbb): a scheduled meeting
+   *  whose type has no colour of its own is drawn in it. */
+  accent?: string;
   /** yyyy-MM-dd → Israeli holidays that day (Hebcal) */
   holidays?: HolidayMap;
   showHolidays?: boolean;
@@ -98,6 +101,7 @@ export function CalendarView({
   clients,
   meetingTypes,
   typeColors,
+  accent,
   holidays = {},
   showHolidays: showHolidaysInitial = false,
   userId = "",
@@ -186,7 +190,8 @@ export function CalendarView({
     // Cancelled is a pale tile with dark text; everything else carries light
     // text, on a colour darkened just enough to stay readable at this size.
     const cancelled = status === "CANCELLED";
-    const base = typeColor ?? STATUS_BG[status] ?? STATUS_BG.SCHEDULED!;
+    const scheduled = accent ?? STATUS_BG.SCHEDULED!;
+    const base = typeColor ?? (status === "SCHEDULED" ? scheduled : STATUS_BG[status]) ?? scheduled;
     const bg = cancelled ? base : darkenForText(base, EVENT_TEXT);
     return {
       ...e,
@@ -570,15 +575,15 @@ export function CalendarView({
           --fc-border-color: #e8e2d5;
           --fc-page-bg-color: #ffffff;
           --fc-neutral-bg-color: #faf7f1;
-          --fc-today-bg-color: #f1f4ed;
+          --fc-today-bg-color: rgb(var(--sage-50));
           --fc-non-business-color: rgba(116, 104, 90, 0.12);
           --fc-button-bg-color: #faf7f1;
           --fc-button-border-color: #e8e2d5;
           --fc-button-text-color: #3a332c;
           --fc-button-hover-bg-color: #f2ede2;
           --fc-button-hover-border-color: #d4ccb9;
-          --fc-button-active-bg-color: #5c7559;
-          --fc-button-active-border-color: #4a6048;
+          --fc-button-active-bg-color: rgb(var(--sage-500));
+          --fc-button-active-border-color: rgb(var(--sage-600));
           --fc-now-indicator-color: #b5654a;
         }
         .calendar-shell .fc .fc-toolbar-title {

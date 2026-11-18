@@ -227,6 +227,7 @@ export async function buildExportEntries(userId: string): Promise<ExportEntry[]>
       clientGroups: true,
       workingHours: true,
       dashboardFocus: true,
+      colorTheme: true,
       agreementVersion: true,
       agreementAcceptedAt: true,
       trialEndsAt: true,

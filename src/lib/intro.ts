@@ -9,14 +9,17 @@
 //   hours   → the calendar greys the rest, and blocks nothing   (User.workingHours)
 //   session → what a new meeting opens with                     (User.defaultSessionMinutes, defaultRate)
 //   focus   → the order of the dashboard's boxes                (User.dashboardFocus)
+//   color   → the interface's colour set, src/lib/color-themes  (User.colorTheme)
 //
 // "session" adds no column: the usual length and price were already settings
 // (Settings → calendar / business); the questionnaire edits the same two.
 
+import { cleanColorTheme, colorTheme, DEFAULT_THEME_ID, type ColorThemeId } from "@/lib/color-themes";
+
 export const INTRO_PATH = "/my-clinic/intro";
 export const INTRO_TITLE = "שאלון היכרות";
 
-export type IntroQuestionId = "type" | "groups" | "hours" | "session" | "focus";
+export type IntroQuestionId = "type" | "groups" | "hours" | "session" | "focus" | "color";
 
 export type IntroQuestion = { id: IntroQuestionId; title: string; subtitle: string };
 
@@ -45,6 +48,11 @@ export const INTRO_QUESTIONS: IntroQuestion[] = [
     id: "focus",
     title: "מה הכי חשוב לראות ראשון?",
     subtitle: "מסך הבית יסודר לפי הבחירה.",
+  },
+  {
+    id: "color",
+    title: "צבע הממשק",
+    subtitle: "הצבע של הכפתורים, הקישורים וההדגשות בכל האפליקציה. אפשר להחליף בכל רגע.",
   },
 ];
 
@@ -281,6 +289,7 @@ export type IntroFields = {
   clientGroups: unknown;
   workingHours: unknown;
   dashboardFocus: string | null;
+  colorTheme?: string | null;
   defaultSessionMinutes: number;
   defaultRate: string | null;
 };
@@ -290,6 +299,8 @@ export type IntroAnswers = {
   clientGroups: ClientGroup[];
   workingHours: WorkingDay[];
   dashboardFocus: DashboardFocus | null;
+  /** always a set: the default one when none was chosen */
+  colorTheme: ColorThemeId;
   defaultSessionMinutes: number;
   /** a plain number as text, or null */
   defaultRate: string | null;
@@ -301,6 +312,7 @@ export function introAnswers(user: IntroFields): IntroAnswers {
     clientGroups: cleanClientGroups(user.clientGroups),
     workingHours: parseWorkingHours(user.workingHours),
     dashboardFocus: cleanFocus(user.dashboardFocus),
+    colorTheme: cleanColorTheme(user.colorTheme) ?? DEFAULT_THEME_ID,
     defaultSessionMinutes: user.defaultSessionMinutes,
     defaultRate: user.defaultRate === "" ? null : user.defaultRate,
   };
@@ -317,5 +329,7 @@ export function introRows(a: IntroAnswers, formatRate: (rate: string) => string)
     { id: "hours", label: "ימי ושעות העבודה", value: workingHoursText(a.workingHours) },
     { id: "session", label: "פגישה רגילה", value: session.join(" · ") },
     { id: "focus", label: "הכי חשוב לראות ראשון", value: FOCUS_OPTIONS.find((f) => f.id === a.dashboardFocus)?.label ?? null },
+    // Never "not answered": an account that chose nothing is in the default set
+    { id: "color", label: "צבע הממשק", value: colorTheme(a.colorTheme).label },
   ];
 }

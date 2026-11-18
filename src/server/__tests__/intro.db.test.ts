@@ -52,6 +52,7 @@ describe.skipIf(!TEST_DATABASE_URL)("שאלון היכרות (real Postgres)", (
         clientGroups: true,
         workingHours: true,
         dashboardFocus: true,
+        colorTheme: true,
         introDoneAt: true,
         defaultSessionMinutes: true,
         defaultRate: true,
@@ -178,6 +179,27 @@ describe.skipIf(!TEST_DATABASE_URL)("שאלון היכרות (real Postgres)", (
     await actions.finishIntroAction();
     expect(await answersOf(b.userId)).toEqual(before);
     for (const key of ANSWERS) expect(JSON.stringify((await answersOf(b.userId))[key])).not.toContain("זוגי");
+  });
+
+  it("the colour set: a known set is saved, anything else is the default, on this account only", async () => {
+    expect((await answersOf(a.userId)).colorTheme).toBeNull();
+    expect(await actions.saveIntroAnswersAction({ colorTheme: "ocean" })).toEqual({ ok: true });
+    expect((await answersOf(a.userId)).colorTheme).toBe("ocean");
+    expect((await answersOf(b.userId)).colorTheme).toBeNull();
+    // saving another answer leaves the set alone
+    await actions.saveIntroAnswersAction({ clinicType: "פסיכותרפיה" });
+    expect((await answersOf(a.userId)).colorTheme).toBe("ocean");
+    // the default set is stored as "nothing chosen"; so is a value that is no set at all
+    await actions.saveIntroAnswersAction({ colorTheme: "sage" });
+    expect((await answersOf(a.userId)).colorTheme).toBeNull();
+    await actions.saveIntroAnswersAction({ colorTheme: "mauve" });
+    await actions.saveIntroAnswersAction({ colorTheme: "</style>" });
+    expect((await answersOf(a.userId)).colorTheme).toBeNull();
+    // and an expired account keeps the set it had
+    await actions.saveIntroAnswersAction({ colorTheme: "teal" });
+    await expire(a.userId);
+    expect((await actions.saveIntroAnswersAction({ colorTheme: "slate" })).error).toBeTruthy();
+    expect((await answersOf(a.userId)).colorTheme).toBe("teal");
   });
 
   it("finishing is remembered once, and a second time changes nothing", async () => {

@@ -32,6 +32,7 @@ export default async function IntroPage({ searchParams }: { searchParams: Promis
       clientGroups: true,
       workingHours: true,
       dashboardFocus: true,
+      colorTheme: true,
       defaultSessionMinutes: true,
       defaultRate: true,
     },

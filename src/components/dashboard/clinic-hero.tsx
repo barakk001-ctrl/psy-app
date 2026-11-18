@@ -1,7 +1,9 @@
 /**
  * Warm clinic-room illustration for the dashboard hero — armchair, plant and
  * a sunny window in the app's sage/cream/terracotta palette. Pure inline SVG
- * so it ships with the page and inherits no external assets.
+ * so it ships with the page and inherits no external assets. The armchair and
+ * the window's tint follow the account's colour set (the --sage-* variables,
+ * src/lib/color-themes.ts); the plant and the leaf print stay green.
  */
 export function ClinicHero({ className }: { className?: string }) {
   return (
@@ -16,7 +18,7 @@ export function ClinicHero({ className }: { className?: string }) {
       <ellipse cx="235" cy="243" rx="130" ry="17" fill="#E8E2D5" opacity="0.6" />
 
       {/* window with morning sun */}
-      <rect x="42" y="28" width="150" height="122" rx="12" fill="#F1F4ED" stroke="#D4CCB9" strokeWidth="6" />
+      <rect x="42" y="28" width="150" height="122" rx="12" fill="rgb(var(--sage-50))" stroke="#D4CCB9" strokeWidth="6" />
       <line x1="117" y1="34" x2="117" y2="144" stroke="#D4CCB9" strokeWidth="5" />
       <line x1="48" y1="89" x2="186" y2="89" stroke="#D4CCB9" strokeWidth="5" />
       <circle cx="90" cy="66" r="17" fill="#E3B187" />
@@ -27,11 +29,12 @@ export function ClinicHero({ className }: { className?: string }) {
       <path d="M278 92 C270 78 272 64 278 54 C284 64 286 78 278 92 Z" fill="#A8B79C" />
 
       {/* armchair */}
-      <rect x="248" y="122" width="118" height="74" rx="26" fill="#5C7559" />
-      <rect x="258" y="132" width="98" height="46" rx="18" fill="#6E8A6B" />
-      <rect x="236" y="158" width="142" height="52" rx="22" fill="#4A6048" />
-      <circle cx="247" cy="176" r="17" fill="#5C7559" />
-      <circle cx="367" cy="176" r="17" fill="#5C7559" />
+      <rect x="248" y="122" width="118" height="74" rx="26" fill="rgb(var(--sage-500))" />
+      {/* the back's lighter panel: the 300 shade laid thinly over the 500 (≈ #6E8A6B in the default set) */}
+      <rect x="258" y="132" width="98" height="46" rx="18" fill="rgb(var(--sage-300) / 0.25)" />
+      <rect x="236" y="158" width="142" height="52" rx="22" fill="rgb(var(--sage-600))" />
+      <circle cx="247" cy="176" r="17" fill="rgb(var(--sage-500))" />
+      <circle cx="367" cy="176" r="17" fill="rgb(var(--sage-500))" />
       {/* cushion */}
       <rect x="270" y="150" width="40" height="30" rx="12" fill="#B5654A" transform="rotate(-8 290 165)" />
       {/* legs */}
