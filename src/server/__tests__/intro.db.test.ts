@@ -53,6 +53,7 @@ describe.skipIf(!TEST_DATABASE_URL)("שאלון היכרות (real Postgres)", (
         workingHours: true,
         dashboardFocus: true,
         colorTheme: true,
+        clientWord: true,
         introDoneAt: true,
         defaultSessionMinutes: true,
         defaultRate: true,
@@ -200,6 +201,33 @@ describe.skipIf(!TEST_DATABASE_URL)("שאלון היכרות (real Postgres)", (
     await expire(a.userId);
     expect((await actions.saveIntroAnswersAction({ colorTheme: "slate" })).error).toBeTruthy();
     expect((await answersOf(a.userId)).colorTheme).toBe("teal");
+  });
+
+  it("the word for clients: a known word is saved, anything else is the default, on this account only", async () => {
+    const { sayTo } = await import("@/lib/client-word-server");
+    expect((await answersOf(a.userId)).clientWord).toBeNull();
+    expect(await actions.saveIntroAnswersAction({ clientWord: "patients" })).toEqual({ ok: true });
+    expect((await answersOf(a.userId)).clientWord).toBe("patients");
+    expect((await answersOf(b.userId)).clientWord).toBeNull();
+    expect(await sayTo(a.userId, "לקוח/ה לא נמצא/ה")).toBe("מטופל/ת לא נמצא/ה");
+    expect(await sayTo(b.userId, "לקוח/ה לא נמצא/ה")).toBe("לקוח/ה לא נמצא/ה");
+    // saving another answer leaves the word alone
+    await actions.saveIntroAnswersAction({ colorTheme: "ocean" });
+    expect((await answersOf(a.userId)).clientWord).toBe("patients");
+    // "לקוחות" is stored as "nothing chosen"; so is a value that is no word at all
+    await actions.saveIntroAnswersAction({ clientWord: "clients" });
+    expect((await answersOf(a.userId)).clientWord).toBeNull();
+    await actions.saveIntroAnswersAction({ clientWord: "counselees" });
+    expect((await answersOf(a.userId)).clientWord).toBe("counselees");
+    await actions.saveIntroAnswersAction({ clientWord: "<b>" });
+    expect((await answersOf(a.userId)).clientWord).toBeNull();
+    // an expired account keeps the word it had
+    await actions.saveIntroAnswersAction({ clientWord: "patients" });
+    await expire(a.userId);
+    expect((await actions.saveIntroAnswersAction({ clientWord: "counselees" })).error).toBeTruthy();
+    expect((await answersOf(a.userId)).clientWord).toBe("patients");
+    // nothing but the wording changes: no row of either account is touched
+    expect(await db.client.count({ where: { userId: a.userId } })).toBeGreaterThan(0);
   });
 
   it("finishing is remembered once, and a second time changes nothing", async () => {

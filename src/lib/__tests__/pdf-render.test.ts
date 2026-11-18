@@ -5,6 +5,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { renderPdf } from "@/components/invoices/invoice-pdf";
 import { SummariesPDF, type SummariesPdfData } from "@/components/clients/summaries-pdf";
 import { IncomePDF, type IncomePdfData } from "@/components/reports/income-pdf";
+import { wordingFor } from "@/lib/client-word";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 
 // Made-up data, shaped like what the routes pass. The server renders PDFs one
@@ -49,8 +50,8 @@ const income: IncomePdfData = {
 const isPdf = (b: Uint8Array) => Buffer.from(b).subarray(0, 5).toString() === "%PDF-";
 // The components render a <Document>; renderToBuffer's type wants that element type
 const doc = (el: unknown) => el as ReactElement<DocumentProps>;
-const summariesPdf = () => renderPdf(() => renderToBuffer(doc(createElement(SummariesPDF, { data: summaries }))));
-const incomePdf = () => renderPdf(() => renderToBuffer(doc(createElement(IncomePDF, { data: income }))));
+const summariesPdf = () => renderPdf(() => renderToBuffer(doc(createElement(SummariesPDF, { data: summaries, say: wordingFor("patients") }))));
+const incomePdf = () => renderPdf(() => renderToBuffer(doc(createElement(IncomePDF, { data: income, say: wordingFor("patients") }))));
 
 describe("PDFs rendered in one process", () => {
   it("an income report renders after a summaries PDF, and the other way round", async () => {

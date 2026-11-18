@@ -4,6 +4,7 @@ import { decryptNote } from "@/lib/crypto";
 import { logAudit } from "@/lib/audit";
 import { clientIdNumber } from "@/lib/sensitive-fields";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { sayFor } from "@/lib/client-word-server";
 import { SummariesPDF } from "@/components/clients/summaries-pdf";
 import { pdfResponse } from "@/components/pdf/pdf-response";
 
@@ -61,6 +62,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const clientName = `${client.firstName} ${client.lastName}`.trim();
   return pdfResponse(
     <SummariesPDF
+      say={await sayFor(userId)}
       data={{
         practiceName: user?.brandName || user?.businessName || user?.name || "",
         clientName,

@@ -7,6 +7,7 @@ import { IntroEdit, IntroStepper } from "@/components/intro/intro-screens";
 import { INTRO_QUESTIONS, INTRO_TITLE, introAnswers, isIntroQuestionId } from "@/lib/intro";
 import { MY_CLINIC_PATH, MY_CLINIC_TITLE } from "@/lib/my-clinic";
 import { subscriptionStateFor } from "@/lib/subscription-server";
+import { sayFor } from "@/lib/client-word-server";
 
 /**
  * The שאלון היכרות (src/lib/intro.ts): a few questions about the practice
@@ -20,6 +21,7 @@ export default async function IntroPage({ searchParams }: { searchParams: Promis
   const session = await auth();
   if (!session?.user?.id) return null;
   const userId = session.user.id;
+  const say = await sayFor(userId);
 
   // A read-only account could save none of it
   const sub = await subscriptionStateFor(userId);
@@ -33,6 +35,7 @@ export default async function IntroPage({ searchParams }: { searchParams: Promis
       workingHours: true,
       dashboardFocus: true,
       colorTheme: true,
+      clientWord: true,
       defaultSessionMinutes: true,
       defaultRate: true,
     },
@@ -55,7 +58,7 @@ export default async function IntroPage({ searchParams }: { searchParams: Promis
         <h1 className="font-display text-3xl text-ink">{INTRO_TITLE}</h1>
         {!one && (
           <p className="text-ink-muted text-sm mt-1">
-            {INTRO_QUESTIONS.length} שאלות קצרות על המרפאה עצמה, לא על לקוחות. כשתי דקות. אפשר לדלג על כל שאלה,
+            {INTRO_QUESTIONS.length} {say("שאלות קצרות על המרפאה עצמה, לא על לקוחות. כשתי דקות. אפשר לדלג על כל שאלה,")}
             ולשנות כל תשובה אחר כך מ״{MY_CLINIC_TITLE}״.
           </p>
         )}

@@ -8,6 +8,7 @@ import { isStandaloneApp } from "@/components/ui/pdf-button";
 import { ReauthField } from "@/components/settings/reauth-field";
 import { prepareAccountExportAction } from "@/server/actions/account";
 import type { ReauthMethod } from "@/lib/reauth";
+import { useSay } from "@/components/layout/client-word";
 
 const EXPORT_MESSAGES: Record<string, string> = {
   expired: "תוקף האישור פג — ממלאים שוב ומורידים.",
@@ -52,6 +53,7 @@ export function AccountExportCard({
   /** ?export= on return from a refused download */
   message?: string;
 }) {
+  const say = useSay();
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(message ? (EXPORT_MESSAGES[message] ?? null) : null);
   const [started, setStarted] = useState(false);
@@ -104,7 +106,7 @@ export function AccountExportCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-ink-soft leading-relaxed">
-          קובץ ZIP אחד עם כל מה שבחשבון: לקוחות, פגישות, סיכומים, מסמכים וקבצים, תשלומים וחשבוניות.
+          {say("קובץ ZIP אחד עם כל מה שבחשבון: לקוחות, פגישות, סיכומים, מסמכים וקבצים, תשלומים וחשבוניות.")}{" "}
           הקובץ <strong>לא מוצפן</strong>, ולכן כדאי לשמור אותו במקום מאובטח. בחשבון גדול ההכנה עשויה
           לקחת כמה דקות.
         </p>

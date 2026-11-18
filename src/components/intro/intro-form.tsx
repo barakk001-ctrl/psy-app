@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { DURATION_CHOICES, withDuration } from "@/lib/session-duration";
+import { CLIENT_WORDS, type ClientWordId } from "@/lib/client-word";
 import { COLOR_THEMES, themeVars, type ColorThemeId } from "@/lib/color-themes";
 import {
   CLIENT_GROUPS,
@@ -25,6 +26,7 @@ import {
   type WorkingDay,
 } from "@/lib/intro";
 import { saveIntroAnswersAction } from "@/server/actions/intro";
+import { useSay } from "@/components/layout/client-word";
 
 const CHIP =
   "px-3 py-1.5 rounded-full border text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500";
@@ -53,6 +55,7 @@ export function IntroForm({
   hideSave?: boolean;
   saveLabel?: string;
 }) {
+  const say = useSay();
   const [clinicType, setClinicType] = useState(initial.clinicType ?? "");
   const [groups, setGroups] = useState<ClientGroup[]>(initial.clientGroups);
   const [hours, setHours] = useState<WorkingDay[]>(initial.workingHours);
@@ -60,6 +63,7 @@ export function IntroForm({
   const [rate, setRate] = useState(initial.defaultRate ?? "");
   const [focus, setFocus] = useState<DashboardFocus | null>(initial.dashboardFocus);
   const [theme, setTheme] = useState<ColorThemeId>(initial.colorTheme);
+  const [word, setWord] = useState<ClientWordId>(initial.clientWord);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -110,6 +114,7 @@ export function IntroForm({
         ...(asks("session") ? { defaultSessionMinutes: minutes, defaultRate: rate } : {}),
         ...(asks("focus") ? { dashboardFocus: focus ?? "" } : {}),
         ...(asks("color") ? { colorTheme: theme } : {}),
+        ...(asks("word") ? { clientWord: word } : {}),
       });
       if (res.error) setError(res.error);
       else onSaved?.();
@@ -260,7 +265,7 @@ export function IntroForm({
             </div>
           </div>
           <p className="text-xs text-ink-muted">
-            פגישה חדשה תיפתח עם המשך הזה, ותקבל את המחיר הזה כשללקוח/ה אין מחיר משלו/ה ולא הוקלד מחיר אחר.
+            {say("פגישה חדשה תיפתח עם המשך הזה, ותקבל את המחיר הזה כשללקוח/ה אין מחיר משלו/ה ולא הוקלד מחיר אחר.")}
             פגישות שכבר נקבעו לא משתנות.
           </p>
         </div>
@@ -338,6 +343,32 @@ export function IntroForm({
           </div>
           <p className="text-xs text-ink-muted">
             הבחירה נראית מיד, ונשמרת בלחיצה על הכפתור שלמטה. צבעי האזהרות, המסמכים והצבע של כל סוג מפגש ביומן לא משתנים.
+          </p>
+        </div>
+      )}
+
+      {asks("word") && (
+        <div className="space-y-3">
+          {heading("word")}
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="המילה למי שמגיע לטיפול">
+            {CLIENT_WORDS.map((w) => {
+              const on = word === w.id;
+              return (
+                <button
+                  key={w.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setWord(w.id)}
+                  className={cn(CHIP, "min-h-10 px-4 text-base", on ? CHIP_ON : CHIP_OFF)}
+                >
+                  {w.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-ink-muted">
+            לדוגמה: ״{CLIENT_WORDS.find((w) => w.id === word)!.both} חדש/ה״, ״כל ה{CLIENT_WORDS.find((w) => w.id === word)!.many}״.
           </p>
         </div>
       )}

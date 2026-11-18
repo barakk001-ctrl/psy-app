@@ -6,6 +6,7 @@ import { TaskForm, TaskRows, TaskSections } from "@/components/tasks/task-list";
 import { groupTasks } from "@/lib/tasks";
 import { loadDoneTasks, loadOpenTasks, loadTaskClients, loadTaskSuggestions } from "@/lib/tasks-data";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
+import { sayFor } from "@/lib/client-word-server";
 
 export const metadata: Metadata = { title: "משימות" };
 
@@ -16,6 +17,7 @@ export default async function TasksPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
+  const say = await sayFor(userId);
 
   const today = toZonedDateTimeLocal(new Date()).slice(0, 10);
   const [open, done, clients, suggestions] = await Promise.all([
@@ -31,7 +33,7 @@ export default async function TasksPage() {
       <header>
         <h1 className="font-display text-3xl text-ink">משימות</h1>
         <p className="text-ink-muted mt-1 text-sm">
-          מה שצריך לעשות מחוץ לפגישות: שיחות, תיאומים, דוחות ומעקב. אפשר לשייך משימה ללקוח/ה ולקבוע לה תאריך.
+          {say("מה שצריך לעשות מחוץ לפגישות: שיחות, תיאומים, דוחות ומעקב. אפשר לשייך משימה ללקוח/ה ולקבוע לה תאריך.")}
         </p>
       </header>
 

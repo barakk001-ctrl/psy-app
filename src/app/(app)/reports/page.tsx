@@ -21,6 +21,7 @@ import { IncomeExportForm } from "@/components/reports/income-export-form";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { documentsEnabled } from "@/lib/features";
 import { MaybeLink } from "@/components/ui/maybe-link";
+import { sayFor } from "@/lib/client-word-server";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,7 @@ export default async function ReportsPage({
 }) {
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
 
   // One clock for the whole page: the picker's labels ("שנה נוכחית (2026)")
   // and the numbers under them are cut by the same moment, in Israel time
@@ -175,7 +177,7 @@ export default async function ReportsPage({
 
             <Card>
               <CardHeader>
-                <CardTitle>לקוחות מובילים</CardTitle>
+                <CardTitle>{say("לקוחות מובילים")}</CardTitle>
                 <p className="text-xs text-ink-muted mt-1">{p.heading}</p>
               </CardHeader>
               <CardContent className="p-0">
@@ -203,8 +205,7 @@ export default async function ReportsPage({
             <CardHeader>
               <CardTitle>ייצוא דוח הכנסות</CardTitle>
               <p className="text-xs text-ink-muted mt-1">
-                בוחרים חודש או טווח תאריכים ומקבלים PDF עם הסיכומים, פילוח לפי לקוח/ה ורשימת
-                הפגישות והתשלומים.
+                {say("בוחרים חודש או טווח תאריכים ומקבלים PDF עם הסיכומים, פילוח לפי לקוח/ה ורשימת הפגישות והתשלומים.")}
               </p>
             </CardHeader>
             <CardContent>

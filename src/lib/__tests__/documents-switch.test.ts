@@ -123,7 +123,7 @@ describe("what a user can reach while documents are off", () => {
     for (const s of popularHelpSlugs(false)) expect(slugs.has(s)).toBe(true);
     expect(off.length).toBeGreaterThanOrEqual(8);
     // on: every article as before
-    expect(helpArticles(true)).toBe(HELP_ARTICLES);
+    expect(helpArticles(true).map((a) => a.slug)).toEqual(HELP_ARTICLES.map((a) => a.slug));
   });
 
   it("help search finds no hidden article, and still finds how to record a number", () => {

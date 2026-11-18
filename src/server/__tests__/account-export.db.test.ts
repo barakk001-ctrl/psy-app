@@ -128,6 +128,28 @@ describe.skipIf(!TEST_DATABASE_URL)("full account export (real Postgres)", () =>
     expect(csv("סיכום הייצוא.txt")).toContain("הכול נקרא בהצלחה");
   }, 30_000);
 
+  it("is written in the account's own word for clients", async () => {
+    await db.user.update({ where: { id: a.userId }, data: { clientWord: "patients" } });
+    const zip = await download();
+    const names = [...zip.keys()];
+    expect(names).toContain("מטופלים.csv");
+    expect(names).not.toContain("לקוחות.csv");
+    const text = (n: string) => zip.get(n)!.toString("utf8");
+    const NL = String.fromCharCode(10);
+    expect(text("מטופלים.csv")).toContain(a.canary);
+    expect(text("פגישות.csv").split("\n")[0]).toContain("מטופל/ת");
+    expect(text("קראו אותי.txt")).toContain("מטופלים.csv");
+    expect(text("סיכום הייצוא.txt")).toContain("מטופלים.csv");
+    // the titles, the read-me and the summary are reworded; the data is not:
+    // the made-up surname "לקוח" of the fixture's clients stays as it was typed
+    for (const n of names.filter((x) => x.endsWith(".csv"))) {
+      expect(text(n).split(NL)[0], n).not.toContain("לקוח");
+    }
+    for (const n of ["קראו אותי.txt", "סיכום הייצוא.txt"]) expect(text(n), n).not.toContain("לקוח");
+    expect(text("מטופלים.csv")).toContain(",לקוח,");
+    expect(text("חשבון.json")).toMatch(/"clientWord":\s*"patients"/);
+  }, 30_000);
+
   it("includes clients in the recycle bin and leaves out every secret", async () => {
     const zip = await download();
     expect(zip.get("לקוחות.csv")!.toString("utf8")).toContain(`בסל-${a.canary}`);

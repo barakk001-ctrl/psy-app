@@ -4,12 +4,14 @@ import { db } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
 import { ImportMessageForm } from "@/components/import/import-message-form";
+import { sayFor } from "@/lib/client-word-server";
 
 export const metadata = { title: "קליטת הודעות — מרפאה אישית" };
 
 export default async function ImportPage() {
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
 
   const now = new Date();
   const [clients, inbox, sessions] = await Promise.all([
@@ -46,8 +48,7 @@ export default async function ImportPage() {
       <header>
         <h1 className="font-display text-3xl text-ink">ייבוא פגישה מהודעה</h1>
         <p className="text-ink-muted text-sm mt-1">
-          מעתיקים הודעת וואטסאפ או אימייל עם פרטי הפגישה, מדביקים כאן — והאפליקציה
-          מזהה את התאריך, השעה והלקוח/ה.
+          {say("מעתיקים הודעת וואטסאפ או אימייל עם פרטי הפגישה, מדביקים כאן — והאפליקציה מזהה את התאריך, השעה והלקוח/ה.")}
         </p>
       </header>
 

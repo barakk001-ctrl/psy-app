@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { ClientListRow, ListTag, type ClientListItem } from "@/components/clients/client-list-row";
 import { EntryRow, type WaitlistRow } from "@/components/clients/waitlist-panel";
 import { isNumberSearch, matchesSearch, searchWords } from "@/lib/client-search";
+import { useSay } from "@/components/layout/client-word";
 
 type ListKey = "ACTIVE" | "INACTIVE" | "WAITLIST";
 const LISTS: ListKey[] = ["ACTIVE", "INACTIVE", "WAITLIST"];
@@ -45,6 +46,7 @@ export function ClientsBrowser({
   clients: ClientListItem[];
   waitlist: WaitlistRow[];
 }) {
+  const say = useSay();
   const [query, setQuery] = useState("");
   // The open tab: its people come first, without a label
   const [current, setCurrent] = useState(active);
@@ -111,7 +113,7 @@ export function ClientsBrowser({
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
-        aria-label="חיפוש לקוח לפי שם או טלפון"
+        aria-label={say("חיפוש לקוח לפי שם או טלפון")}
         placeholder="חיפוש לפי שם או טלפון"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -154,7 +156,7 @@ export function ClientsBrowser({
         <CardContent className="py-12 text-center">
           <Search className="w-10 h-10 mx-auto text-ink-subtle mb-3" strokeWidth={1.25} />
           <h3 className="font-display text-xl text-ink">
-            {isNumberSearch(query) ? "לא נמצאו לקוחות עם המספר הזה" : "לא נמצאו לקוחות בשם הזה"}
+            {say(isNumberSearch(query) ? "לא נמצאו לקוחות עם המספר הזה" : "לא נמצאו לקוחות בשם הזה")}
           </h3>
           <p className="text-ink-muted text-sm mt-1">
             החיפוש עובר על הפעילים, הלא פעילים ורשימת ההמתנה.

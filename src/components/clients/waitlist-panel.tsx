@@ -30,6 +30,7 @@ import {
   updateWaitlistEntryAction,
   type WaitlistFormState,
 } from "@/server/actions/waitlist";
+import { useSay } from "@/components/layout/client-word";
 
 export type WaitlistRow = {
   id: string;
@@ -143,6 +144,7 @@ function EntryForm({
 export function EntryRow({ entry, tag }: { entry: WaitlistRow; tag?: ReactNode }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
+  const say = useSay();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startDelete] = useTransition();
@@ -247,7 +249,7 @@ export function EntryRow({ entry, tag }: { entry: WaitlistRow; tag?: ReactNode }
         <div className="flex flex-wrap items-center gap-2">
           <Link href={`/clients/new?fromWaitlist=${entry.id}`}>
             <Button type="button" size="sm">
-              <UserPlus className="w-4 h-4" /> הפיכה ללקוח
+              <UserPlus className="w-4 h-4" /> {say("הפיכה ללקוח")}
             </Button>
           </Link>
           <Button type="button" size="sm" variant="secondary" onClick={() => setEditing(true)}>
@@ -270,14 +272,14 @@ export function EntryRow({ entry, tag }: { entry: WaitlistRow; tag?: ReactNode }
 
 /** The "רשימת המתנה" tab on the clients page. */
 export function WaitlistPanel({ entries }: { entries: WaitlistRow[] }) {
+  const say = useSay();
   const [adding, setAdding] = useState(entries.length === 0);
 
   return (
     <Card>
       <div className="px-5 pt-4 pb-3 border-b border-cream-200 space-y-3">
         <p className="text-sm text-ink-muted leading-relaxed">
-          פונים שמחכים למקום פנוי. כשמתפנה שעה — ״הפיכה ללקוח״ פותחת תיק חדש עם הפרטים
-          שכבר מולאו, והרשומה יורדת מהרשימה.
+          {say("פונים שמחכים למקום פנוי. כשמתפנה שעה — ״הפיכה ללקוח״ פותחת תיק חדש עם הפרטים שכבר מולאו, והרשומה יורדת מהרשימה.")}
         </p>
         {adding ? (
           <EntryForm onDone={() => setAdding(false)} />

@@ -22,6 +22,8 @@ export const introAnswersSchema = z
     dashboardFocus: z.string().max(20),
     // a set's id from src/lib/color-themes.ts; anything else = the default set
     colorTheme: z.string().max(20),
+    // a word's id from src/lib/client-word.ts; anything else = "לקוחות"
+    clientWord: z.string().max(20),
     defaultSessionMinutes: sessionDefaultsSchema.shape.defaultSessionMinutes,
     // "" = no usual price
     defaultRate: z

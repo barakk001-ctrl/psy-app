@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { ClientWordProvider } from "@/components/layout/client-word";
 import { ThemeStyle } from "@/components/layout/theme-style";
 import { db } from "@/lib/db";
 import { normalizeIdleTimeout } from "@/lib/idle-timeout";
@@ -49,6 +50,7 @@ export default async function SetupPage({
         workingHours: true,
         dashboardFocus: true,
         colorTheme: true,
+        clientWord: true,
       },
     }),
     db.meetingType.findMany({
@@ -62,7 +64,7 @@ export default async function SetupPage({
   const { step: stepParam } = await searchParams;
   const step = stepToOpen(stepParam, user.onboardingStep);
   return (
-    <>
+    <ClientWordProvider word={user.clientWord}>
       <ThemeStyle theme={user.colorTheme} />
       <BiometricLockOverlay />
       <IdleGuard
@@ -89,6 +91,6 @@ export default async function SetupPage({
         defaultMinutes={user.defaultSessionMinutes}
         intro={introAnswers({ ...user, defaultRate: user.defaultRate ? user.defaultRate.toString() : null })}
       />
-    </>
+    </ClientWordProvider>
   );
 }

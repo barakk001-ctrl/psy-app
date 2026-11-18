@@ -25,8 +25,13 @@ import { documentsEnabled } from "@/lib/features";
 import { ClientTasksCard } from "@/components/tasks/client-tasks-card";
 import { loadDoneTasks, loadOpenTasks, loadTaskSuggestions } from "@/lib/tasks-data";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
+import { getSay } from "@/lib/client-word-server";
+import { sayFor } from "@/lib/client-word-server";
 
-export const metadata = { title: "תיק לקוח/ה — מרפאה אישית" };
+export async function generateMetadata() {
+  const say = await getSay();
+  return { title: say("תיק לקוח/ה — מרפאה אישית") };
+}
 
 export default async function ClientDetailPage({
   params,
@@ -52,6 +57,7 @@ export default async function ClientDetailPage({
       : null;
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
 
   const client = await db.client.findFirst({
     where: { id, userId },
@@ -185,7 +191,7 @@ export default async function ClientDetailPage({
         className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"
       >
         <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
-        חזרה לרשימת הלקוחות
+        {say("חזרה לרשימת הלקוחות")}
       </Link>
 
       {bulk && (
@@ -241,7 +247,7 @@ export default async function ClientDetailPage({
           <Link href={`/clients/${client.id}/edit`}>
             <Button variant="secondary" size="sm">
               <Pencil className="w-4 h-4" />
-              עריכת פרטי לקוח/ה
+              {say("עריכת פרטי לקוח/ה")}
             </Button>
           </Link>
           {documentsEnabled() && (

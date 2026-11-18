@@ -14,6 +14,7 @@ import {
   trashClientAction,
   type ClientDeletionPreview,
 } from "@/server/actions/clients";
+import { useSay } from "@/components/layout/client-word";
 
 function idForm(clientId: string) {
   const fd = new FormData();
@@ -47,6 +48,7 @@ export function DeleteClientButton({
   clientId: string;
   variant?: "card" | "row";
 }) {
+  const say = useSay();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [preview, setPreview] = useState<ClientDeletionPreview | null>(null);
@@ -124,7 +126,7 @@ export function DeleteClientButton({
         <p className="font-medium text-ink">אי אפשר למחוק את {preview.name}</p>
         {preview.active ? (
           <p className="text-ink-soft">
-            אפשר למחוק רק לקוח/ה לא פעיל/ה. העבירו קודם ל״לא פעילים״.
+            {say("אפשר למחוק רק לקוח/ה לא פעיל/ה. העבירו קודם ל״לא פעילים״.")}
           </p>
         ) : (
           <>
@@ -133,8 +135,7 @@ export function DeleteClientButton({
               אפשר למחוק את התיק.
             </p>
             <p className="text-xs text-ink-muted">
-              אפשר פשוט להשאיר אותו ב״לא פעילים״: הוא לא מופיע ביומן ובבחירת לקוחות,
-              וההיסטוריה נשמרת.
+              {say("אפשר פשוט להשאיר אותו ב״לא פעילים״: הוא לא מופיע ביומן ובבחירת לקוחות, וההיסטוריה נשמרת.")}
             </p>
           </>
         )}

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { primaryMobileItems } from "./nav-items";
 import { TaskBadge } from "./task-badge";
+import { useSay } from "@/components/layout/client-word";
 
 export function MobileTabBar({
   documents,
@@ -16,6 +17,7 @@ export function MobileTabBar({
   taskCount?: number;
 }) {
   const pathname = usePathname();
+  const say = useSay();
   const [hidden, setHidden] = useState(false);
 
   // iOS drags fixed elements along with the keyboard's "visual viewport",
@@ -74,7 +76,7 @@ export function MobileTabBar({
                     active ? "font-medium" : "font-normal",
                   )}
                 >
-                  {item.label}
+                  {say(item.label)}
                 </span>
               </Link>
             </li>

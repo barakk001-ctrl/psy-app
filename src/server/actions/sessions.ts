@@ -53,6 +53,8 @@ import {
   sessionStatusSchema,
   updateSessionSchema,
 } from "@/server/validators/session";
+import { sayErrors } from "@/lib/client-word";
+import { sayFor, sayTo } from "@/lib/client-word-server";
 
 /** The practitioner's default meeting length, falling back to the app default.
  *  Read per call rather than cached: it is one indexed lookup, and a stale value
@@ -292,7 +294,7 @@ export async function createSessionAction(
   if (!parsed.success) {
     return {
       error: "אנא תקנו את השגיאות בטופס",
-      fieldErrors: parsed.error.flatten().fieldErrors,
+      fieldErrors: sayErrors(await sayFor(userId), parsed.error.flatten().fieldErrors),
     };
   }
   const data = parsed.data;
@@ -302,7 +304,7 @@ export async function createSessionAction(
     where: { id: data.clientId, userId },
     select: { id: true, defaultRate: true },
   });
-  if (!client) return { error: "לקוח לא נמצא" };
+  if (!client) return { error: await sayTo(userId, "לקוח לא נמצא") };
 
   const durationMs = data.durationMinutes * 60 * 1000;
   // What was typed, else the client's own rate, else the practice's usual
@@ -426,7 +428,7 @@ export async function updateSessionAction(
   if (!parsed.success) {
     return {
       error: "אנא תקנו את השגיאות בטופס",
-      fieldErrors: parsed.error.flatten().fieldErrors,
+      fieldErrors: sayErrors(await sayFor(userId), parsed.error.flatten().fieldErrors),
     };
   }
   const data = parsed.data;
@@ -443,7 +445,7 @@ export async function updateSessionAction(
     where: { id: data.clientId, userId },
     select: { id: true },
   });
-  if (!client) return { error: "לקוח לא נמצא" };
+  if (!client) return { error: await sayTo(userId, "לקוח לא נמצא") };
 
   const startsAt = fromZonedDateTimeLocal(data.startsAt);
   const endsAt = new Date(startsAt.getTime() + data.durationMinutes * 60 * 1000);
@@ -690,7 +692,7 @@ export async function quickEditSessionAction(
     where: { id: clientId, userId },
     select: { id: true, firstName: true, lastName: true },
   });
-  if (!client) return { error: "לקוח לא נמצא" };
+  if (!client) return { error: await sayTo(userId, "לקוח לא נמצא") };
 
   const startsAt = fromZonedDateTimeLocal(`${date}T${startTime}`);
   const endsAt = fromZonedDateTimeLocal(`${date}T${endTime}`);
@@ -707,7 +709,7 @@ export async function quickEditSessionAction(
   let following: FollowingCounts | null = null;
   if (cancelFollowing) {
     if (clientId !== existing.clientId) {
-      return { error: "אי אפשר להחליף לקוח/ה ולבטל את הפגישות הבאות באותה שמירה." };
+      return { error: await sayTo(userId, "אי אפשר להחליף לקוח/ה ולבטל את הפגישות הבאות באותה שמירה.") };
     }
     followingPlan = await loadFutureDeletePlan(
       userId,

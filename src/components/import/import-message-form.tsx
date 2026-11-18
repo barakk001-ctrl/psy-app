@@ -28,6 +28,7 @@ import {
   type ClientCandidate,
   type ParsedMessage,
 } from "@/lib/message-parse";
+import { useSay } from "@/components/layout/client-word";
 
 export type InboxItem = { id: string; text: string; createdAt: string };
 
@@ -49,6 +50,7 @@ export function ImportMessageForm({
   inbox?: InboxItem[];
   sessions?: SessionOption[];
 }) {
+  const say = useSay();
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [text, setText] = useState("");
@@ -273,7 +275,7 @@ export function ImportMessageForm({
                 />
               </div>
               <div>
-                <Label htmlFor="importClient">לקוח/ה</Label>
+                <Label htmlFor="importClient">{say("לקוח/ה")}</Label>
                 <Select
                   id="importClient"
                   value={clientId}
@@ -292,7 +294,7 @@ export function ImportMessageForm({
                   ))}
                 </Select>
                 {clientId && (
-                  <p className="text-xs text-sage-600 mt-1">לקוח/ה זוהה אוטומטית ✓</p>
+                  <p className="text-xs text-sage-600 mt-1">{say("לקוח/ה זוהה אוטומטית ✓")}</p>
                 )}
               </div>
             </div>
@@ -301,7 +303,7 @@ export function ImportMessageForm({
               {!clientId && (
                 <Button type="button" variant="secondary" onClick={continueToNewClient}>
                   <UserPlus className="w-4 h-4" />
-                  יצירת לקוח/ה חדש/ה מהפרטים
+                  {say("יצירת לקוח/ה חדש/ה מהפרטים")}
                 </Button>
               )}
               <Button type="button" onClick={continueToSession} disabled={!startsAt}>

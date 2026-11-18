@@ -90,6 +90,8 @@ model User {
   workingHours   Json?                     // [{ day: 0-6, from: "HH:mm", to: "HH:mm" }]
   dashboardFocus String?                   // CALENDAR | PAYMENTS | NOTES
   colorTheme     String?                   // a set from src/lib/color-themes.ts; null = the default
+  // the word for the people treated: null = לקוחות (src/lib/client-word.ts)
+  clientWord     String?
   // Finished or put aside; null = /my-clinic still invites to fill it in
   introDoneAt    DateTime?
 

@@ -10,6 +10,7 @@ import {
   calendarFeedEnableAction,
   calendarFeedModeAction,
 } from "@/server/actions/settings";
+import { useSay } from "@/components/layout/client-word";
 
 export function CalendarFeedCard({
   token,
@@ -20,6 +21,7 @@ export function CalendarFeedCard({
   mode: string;
   origin: string;
 }) {
+  const say = useSay();
   const [copied, setCopied] = useState(false);
   const url = token ? `${origin}/api/calendar/${token}` : null;
 
@@ -71,7 +73,7 @@ export function CalendarFeedCard({
             <form action={calendarFeedModeAction} className="flex items-end gap-2">
               <div className="flex-1">
                 <label className="f-mono text-[10px] uppercase tracking-[0.2em] opacity-55 block mb-1">
-                  איך יוצגו שמות הלקוחות ביומן
+                  {say("איך יוצגו שמות הלקוחות ביומן")}
                 </label>
                 <Select name="mode" defaultValue={mode}>
                   <option value="FIRST">שם פרטי בלבד (מומלץ)</option>

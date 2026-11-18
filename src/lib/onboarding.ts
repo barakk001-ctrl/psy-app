@@ -18,7 +18,7 @@ const question = (id: IntroQuestionId) => {
 /** The questionnaire's questions on each of its steps. New steps go before
  *  "done" and after these, so a step saved mid-way keeps meaning the same. */
 export const INTRO_STEPS: Partial<Record<SetupStepId, IntroQuestionId[]>> = {
-  about: ["type", "groups"],
+  about: ["type", "groups", "word"],
   hours: ["hours"],
   focus: ["focus", "color"],
 };

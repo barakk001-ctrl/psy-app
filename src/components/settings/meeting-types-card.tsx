@@ -18,6 +18,7 @@ import {
   updateSessionDefaultsAction,
   type SettingsFormState,
 } from "@/server/actions/settings";
+import { useSay } from "@/components/layout/client-word";
 
 const DEFAULT_COLOR = MEETING_TYPE_COLORS[0];
 
@@ -36,6 +37,7 @@ export function MeetingTypesCard({
   hideSave?: boolean;
 }) {
   const router = useRouter();
+  const say = useSay();
   const [durationState, durationAction, durationPending] = useActionState<
     SettingsFormState,
     FormData
@@ -123,7 +125,7 @@ export function MeetingTypesCard({
         </form>
 
         <p className="text-sm text-ink-muted leading-relaxed">
-          הסוגים שמוגדרים כאן יופיעו לבחירה בפתיחת לקוח חדש ובקביעת פגישה ביומן.
+          {say("הסוגים שמוגדרים כאן יופיעו לבחירה בפתיחת לקוח חדש ובקביעת פגישה ביומן.")}{" "}
           לחיצה על העיגול הצבעוני בוחרת צבע לפגישות מהסוג הזה ביומן.
         </p>
 
@@ -217,7 +219,7 @@ export function MeetingTypesCard({
         </form>
 
         <p className="text-xs text-ink-subtle">
-          הסרת סוג לא משנה פגישות ולקוחות קיימים — הם שומרים את הסוג שנבחר להם.
+          {say("הסרת סוג לא משנה פגישות ולקוחות קיימים — הם שומרים את הסוג שנבחר להם.")}
         </p>
       </CardContent>
     </Card>

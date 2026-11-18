@@ -6,8 +6,13 @@ import { decryptSecret } from "@/lib/crypto";
 import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { splitFullName } from "@/lib/waitlist";
 import { ClientForm } from "@/components/clients/client-form";
+import { getSay } from "@/lib/client-word-server";
+import { sayFor } from "@/lib/client-word-server";
 
-export const metadata = { title: "לקוח/ה חדש/ה — מרפאה אישית" };
+export async function generateMetadata() {
+  const say = await getSay();
+  return { title: say("לקוח/ה חדש/ה — מרפאה אישית") };
+}
 
 export default async function NewClientPage({
   searchParams,
@@ -23,6 +28,7 @@ export default async function NewClientPage({
   const params = await searchParams;
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
   const meetingTypes = await getMeetingTypeNames(userId);
 
   // "הפיכה ללקוח" from the waiting list: prefill from the entry (her own only)
@@ -52,10 +58,10 @@ export default async function NewClientPage({
         className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"
       >
         <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
-        {entry ? "חזרה לרשימת ההמתנה" : "חזרה לרשימת הלקוחות"}
+        {entry ? "חזרה לרשימת ההמתנה" : say("חזרה לרשימת הלקוחות")}
       </Link>
       <header>
-        <h1 className="font-display text-3xl text-ink">לקוח חדש</h1>
+        <h1 className="font-display text-3xl text-ink">{say("לקוח חדש")}</h1>
         <p className="text-ink-muted text-sm mt-1">
           {entry
             ? "הפרטים מרשימת ההמתנה כבר מולאו — אפשר להשלים ולשמור. אחרי השמירה הרשומה תוסר מרשימת ההמתנה."

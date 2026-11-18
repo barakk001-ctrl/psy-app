@@ -8,6 +8,7 @@ import {
   generateInboxTokenAction,
   revokeInboxTokenAction,
 } from "@/server/actions/inbox";
+import { useSay } from "@/components/layout/client-word";
 
 function CopyRow({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -47,6 +48,7 @@ export function InboxSettings({
   /** the private API key for shortcuts/automations — never shared */
   apiToken: string | null;
 }) {
+  const say = useSay();
   const [origin, setOrigin] = useState("");
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -59,9 +61,7 @@ export function InboxSettings({
       </CardHeader>
       <CardContent className="space-y-5">
         <p className="text-sm text-ink-muted leading-relaxed">
-          מאפשר לשלוח הודעות עם פרטי פגישה ישירות לאפליקציה — מקיצור דרך באייפון,
-          מטופס אינטרנטי ללקוחות, או מכל אוטומציה. ההודעות מחכות בעמוד ״ייבוא
-          פגישה מהודעה״.
+          {say("מאפשר לשלוח הודעות עם פרטי פגישה ישירות לאפליקציה — מקיצור דרך באייפון, מטופס אינטרנטי ללקוחות, או מכל אוטומציה. ההודעות מחכות בעמוד ״ייבוא פגישה מהודעה״.")}
         </p>
 
         {!token ? (
@@ -76,7 +76,7 @@ export function InboxSettings({
             {origin && (
               <div className="space-y-3">
                 <CopyRow
-                  label="טופס בקשת פגישה ללקוחות (אפשר לשלוח את הקישור)"
+                  label={say("טופס בקשת פגישה ללקוחות (אפשר לשלוח את הקישור)")}
                   value={`${origin}/request/${token}`}
                 />
                 {apiToken ? (

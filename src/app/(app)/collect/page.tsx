@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { documentsEnabled } from "@/lib/features";
 import { MaybeLink } from "@/components/ui/maybe-link";
+import { sayFor } from "@/lib/client-word-server";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,7 @@ export default async function CollectPage({
 }) {
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
   const now = new Date();
 
   const filters = parseFollowUpFilters(await searchParams, COLLECT_STATUSES, DEFAULT_COLLECT_STATUS);
@@ -220,7 +222,7 @@ export default async function CollectPage({
                 className="w-8 h-8 mx-auto text-ink-subtle"
                 strokeWidth={1.5}
               />
-              <p>{selectedClient ? "אין חשבוניות פתוחות ללקוח/ה שנבחר/ה." : "אין חשבוניות פתוחות — הכול שולם 🎉"}</p>
+              <p>{selectedClient ? say("אין חשבוניות פתוחות ללקוח/ה שנבחר/ה.") : "אין חשבוניות פתוחות — הכול שולם 🎉"}</p>
               <Link
                 href="/invoices/new"
                 className="inline-block text-sage-600 hover:text-sage-700"

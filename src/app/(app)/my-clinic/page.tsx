@@ -26,6 +26,7 @@ import {
   type MyClinicRow,
   type MyClinicSectionId,
 } from "@/lib/my-clinic";
+import { sayFor } from "@/lib/client-word-server";
 
 /**
  * "המרפאה שלי": the clinic's own settings on one page (name, logo, contact
@@ -73,6 +74,7 @@ function Row({ row, title }: { row: MyClinicRow; title: string }) {
 export default async function MyClinicPage() {
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
 
   const [user, meetingTypes, sub] = await Promise.all([
     db.user.findUnique({
@@ -99,6 +101,7 @@ export default async function MyClinicPage() {
         workingHours: true,
         dashboardFocus: true,
         colorTheme: true,
+        clientWord: true,
         introDoneAt: true,
       },
     }),
@@ -182,7 +185,7 @@ export default async function MyClinicPage() {
                     </Link>
                   )}
                 </div>
-                <p className="text-xs text-ink-muted">{s.hint}</p>
+                <p className="text-xs text-ink-muted">{say(s.hint)}</p>
 
                 {s.id === "logo" ? (
                   <div className="flex items-center gap-3 pt-1">

@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { matchClients, type ClientChoice } from "@/lib/follow-up-filters";
 import { cn } from "@/lib/utils";
+import { useSay } from "@/components/layout/client-word";
 
 /** The wording around the list; the default is the filter's ("כל הלקוחות"). */
 export type ClientComboboxTexts = {
@@ -33,7 +34,7 @@ export function ClientCombobox({
   value,
   onChange,
   className,
-  texts = FILTER_TEXTS,
+  texts: written = FILTER_TEXTS,
 }: {
   id?: string;
   clients: ClientChoice[];
@@ -43,6 +44,14 @@ export function ClientCombobox({
   /** for a picker that is not a filter (a task's client) */
   texts?: ClientComboboxTexts;
 }) {
+  const say = useSay();
+  // FILTER_TEXTS, or the caller's, in the account's own word
+  const texts: ClientComboboxTexts = {
+    none: say(written.none),
+    placeholder: say(written.placeholder),
+    label: say(written.label),
+    clear: say(written.clear),
+  };
   const selected = value ? clients.find((c) => c.id === value) ?? null : null;
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -179,7 +188,7 @@ export function ClientCombobox({
             </li>
           ))}
           {query && matches.length === 0 && (
-            <li className="px-3.5 py-2.5 text-sm text-ink-muted">לא נמצא/ה לקוח/ה בשם הזה.</li>
+            <li className="px-3.5 py-2.5 text-sm text-ink-muted">{say("לא נמצא/ה לקוח/ה בשם הזה.")}</li>
           )}
         </ul>
       )}

@@ -11,6 +11,7 @@ import {
   type PlanOption,
   type PlanTier,
 } from "@/lib/plans";
+import type { Say } from "@/lib/client-word";
 
 /** The free-trial option ("מנוי היכרות"), shown first when passed. */
 export type TrialCardProps = {
@@ -38,6 +39,7 @@ export function PlanCards({
   currentPlan,
   trial,
   headingLevel = 2,
+  say,
 }: {
   renderAction?: (plan: PlanOption) => React.ReactNode;
   /** the paid option the account is on now, marked "המנוי שלך" */
@@ -46,6 +48,8 @@ export function PlanCards({
   trial?: TrialCardProps | null;
   /** the level of the plan names: 2 under a page's h1, 3 inside a section that has an h2 */
   headingLevel?: Level;
+  /** the signed-in account's word for clients (src/lib/client-word.ts); the public pages pass none */
+  say?: Say;
 }) {
   const [available, ...future] = PLAN_TIERS;
   const Title = `h${headingLevel}` as "h2" | "h3";
@@ -66,7 +70,7 @@ export function PlanCards({
           </span>
         </div>
 
-        <FeatureList tier={available} className="mt-4 grid sm:grid-cols-2 gap-x-6 gap-y-2" />
+        <FeatureList tier={available} say={say} className="mt-4 grid sm:grid-cols-2 gap-x-6 gap-y-2" />
 
         <div className={cn("mt-6 grid gap-4", trial ? "md:grid-cols-3" : "sm:grid-cols-2")}>
           {trial && (
@@ -116,7 +120,7 @@ export function PlanCards({
               {tier.title}
             </Title>
             <p className="mt-2 text-sm font-medium text-ink-muted">{FUTURE_PLAN_PRICE_NOTE}</p>
-            <FeatureList tier={tier} muted className="mt-4 space-y-2" />
+            <FeatureList tier={tier} say={say} muted className="mt-4 space-y-2" />
           </section>
         ))}
       </div>
@@ -134,7 +138,9 @@ function FeatureList({
   tier,
   muted,
   className,
+  say = (text) => text,
 }: {
+  say?: Say;
   tier: PlanTier;
   muted?: boolean;
   className?: string;
@@ -147,7 +153,7 @@ function FeatureList({
             aria-hidden
             className={cn("w-4 h-4 mt-0.5 shrink-0", muted ? "text-ink-subtle" : "text-sage-600")}
           />
-          <span>{f}</span>
+          <span>{say(f)}</span>
         </li>
       ))}
     </ul>

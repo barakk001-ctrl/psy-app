@@ -10,6 +10,7 @@ import { navItems } from "./nav-items";
 import { TaskBadge } from "./task-badge";
 import { BrandMark, type Branding } from "@/components/layout/brand-mark";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
+import { useSay } from "@/components/layout/client-word";
 
 export function MobileTopBar({
   userName,
@@ -25,6 +26,7 @@ export function MobileTopBar({
   taskCount?: number;
 }) {
   const pathname = usePathname();
+  const say = useSay();
   const [open, setOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   useDialogFocus(open, drawerRef, () => setOpen(false));
@@ -135,7 +137,7 @@ export function MobileTopBar({
                     )}
                   >
                     <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
-                    <span>{item.label}</span>
+                    <span>{say(item.label)}</span>
                     {item.taskBadge && <TaskBadge count={taskCount} active={active} className="ms-auto" />}
                   </Link>
                 </li>

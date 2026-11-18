@@ -14,6 +14,7 @@ import { IntroForm } from "@/components/intro/intro-form";
 import type { IntroAnswers } from "@/lib/intro";
 import { FORM_STEPS, INTRO_STEPS, LAST_STEP, SETUP_STEPS } from "@/lib/onboarding";
 import { pauseOnboardingAction, setOnboardingStepAction } from "@/server/actions/onboarding";
+import { useSay } from "@/components/layout/client-word";
 
 const FORM_ID = "setup-step-form";
 
@@ -36,6 +37,7 @@ type Props = {
  * the שאלון היכרות, which can also be skipped whole.
  */
 export function SetupWizard({ step, brand, business, meetingTypes, defaultMinutes, intro, documents }: Props) {
+  const say = useSay();
   const router = useRouter();
   const [busy, startBusy] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +125,7 @@ export function SetupWizard({ step, brand, business, meetingTypes, defaultMinute
           {isDone && <CheckCircle2 className="mx-auto h-14 w-14 text-sage-600" />}
           <div className={isDone ? "text-center" : ""}>
             <h1 className="font-display text-2xl text-ink">{current.title}</h1>
-            <p className="mt-1 text-sm leading-relaxed text-ink-muted">{current.subtitle}</p>
+            <p className="mt-1 text-sm leading-relaxed text-ink-muted">{say(current.subtitle)}</p>
           </div>
 
           {current.id === "brand" && <BrandingCard initial={brand} documents={documents} {...shared} hideSave />}
@@ -154,7 +156,7 @@ export function SetupWizard({ step, brand, business, meetingTypes, defaultMinute
                 className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-sage-500 to-sage-600 px-5 text-sm font-medium text-cream-50 shadow-glow"
               >
                 <UserPlus className="h-5 w-5" />
-                הוספת לקוח/ה ראשון/ה
+                {say("הוספת לקוח/ה ראשון/ה")}
               </Link>
               <Link
                 href="/dashboard"

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { helpArticles, popularHelpSlugs } from "@/lib/help-articles";
 import { indexArticles, searchHelp, type HelpArticle, type HelpBlock } from "@/lib/help-search";
 import { SupportForm, type SupportUser } from "./support-form";
+import { useSay } from "@/components/layout/client-word";
 
 type Tab = "home" | "articles" | "contact";
 
@@ -55,7 +56,8 @@ const FOCUSABLE =
  */
 export function HelpWidget({ user, documents }: { user: SupportUser; documents: boolean }) {
   // Without the income/expense document articles while documents are hidden
-  const articles = useMemo(() => helpArticles(documents), [documents]);
+  const say = useSay();
+  const articles = useMemo(() => helpArticles(documents, say), [documents, say]);
   const popular = useMemo(() => popularHelpSlugs(documents), [documents]);
   const helpArticleBySlug = useCallback(
     (slug: string) => articles.find((a) => a.slug === slug),

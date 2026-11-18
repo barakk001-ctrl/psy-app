@@ -16,6 +16,7 @@ import {
   submitSupportRequestAction,
   type SupportFormState,
 } from "@/server/actions/support";
+import { useSay } from "@/components/layout/client-word";
 
 export type SupportUser = { name: string; email: string; phone: string | null };
 
@@ -48,6 +49,7 @@ export function SupportForm({
   /** "פנייה נוספת" after a successful send */
   onDone: () => void;
 }) {
+  const say = useSay();
   const [state, formAction, pending] = useActionState<SupportFormState, FormData>(
     submitSupportRequestAction,
     null,
@@ -133,7 +135,7 @@ export function SupportForm({
         <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
         <p>
           <strong className="font-semibold">שמירה על פרטיות:</strong> אין לכתוב בפנייה שמות או
-          פרטים מזהים של לקוחות. אם מצרפים צילום מסך — כדאי לוודא שלא מופיעים בו פרטי לקוחות.
+          {say("פרטים מזהים של לקוחות. אם מצרפים צילום מסך — כדאי לוודא שלא מופיעים בו פרטי לקוחות.")}
         </p>
       </div>
 

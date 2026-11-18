@@ -11,6 +11,7 @@ import {
   updateBusinessInfoAction,
   type SettingsFormState,
 } from "@/server/actions/settings";
+import { useSay } from "@/components/layout/client-word";
 
 type Props = {
   initial: {
@@ -47,6 +48,7 @@ type Props = {
 };
 
 export function BusinessInfoForm({ initial, full = false, documents = true, formId, onSaved, hideSave = false }: Props) {
+  const say = useSay();
   const [state, formAction, pending] = useActionState<SettingsFormState, FormData>(
     updateBusinessInfoAction,
     null,
@@ -169,8 +171,7 @@ export function BusinessInfoForm({ initial, full = false, documents = true, form
               <option value="true">עוסק מורשה — המחירים כוללים מע״מ</option>
             </Select>
             <p className={documents ? "text-xs text-ink-muted mt-1" : "hidden"}>
-              לעוסק מורשה, החשבוניות יציגו פירוט מע״מ (המחיר ללקוח נשאר זהה —
-              המע״מ מחושב מתוכו).
+              {say("לעוסק מורשה, החשבוניות יציגו פירוט מע״מ (המחיר ללקוח נשאר זהה — המע״מ מחושב מתוכו).")}
             </p>
           </div>
         </CardContent>

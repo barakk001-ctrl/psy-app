@@ -17,6 +17,7 @@ import {
 import { saveDocumentBytes } from "@/lib/document-storage";
 import { documentStore } from "@/lib/document-storage-pg";
 import { documentUpdateSchema, documentUploadSchema } from "@/server/validators/document";
+import { sayTo } from "@/lib/client-word-server";
 
 // Documents uploaded to a client's file ("מסמכים" on the client card). The
 // browser sends one file per call (a batch is a loop), so a refused file never
@@ -60,7 +61,7 @@ export async function uploadClientDocumentAction(formData: FormData): Promise<Do
     where: { id: parsed.data.clientId, userId },
     select: { id: true },
   });
-  if (!client) return { error: "הלקוח/ה לא נמצא/ה" };
+  if (!client) return { error: await sayTo(userId, "הלקוח/ה לא נמצא/ה") };
 
   const bytes = Buffer.from(await file.arrayBuffer());
   const check = checkDocument({ name: file.name, size: file.size }, bytes);

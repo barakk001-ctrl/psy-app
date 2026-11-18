@@ -10,6 +10,7 @@ import { SkipLink } from "@/components/ui/skip-link";
 import { normalizeIdleTimeout } from "@/lib/idle-timeout";
 import { shouldEnterSetup } from "@/lib/onboarding";
 import { ClinicBanner } from "@/components/layout/clinic-banner";
+import { ClientWordProvider } from "@/components/layout/client-word";
 import { ThemeStyle } from "@/components/layout/theme-style";
 import { SubscriptionBanner } from "@/components/layout/subscription-banner";
 import { subscriptionStateFor } from "@/lib/subscription-server";
@@ -37,6 +38,7 @@ export default async function AppLayout({
         logoUrl: true,
         clinicType: true,
         colorTheme: true,
+        clientWord: true,
         idleTimeoutMinutes: true,
         name: true,
         email: true,
@@ -61,6 +63,7 @@ export default async function AppLayout({
     (sub.status === "trial" && (sub.daysLeft ?? 99) <= 7);
 
   return (
+    <ClientWordProvider word={branding?.clientWord}>
     <div className="min-h-screen flex">
       <ThemeStyle theme={branding?.colorTheme} />
       <SkipLink />
@@ -106,5 +109,6 @@ export default async function AppLayout({
         }}
       />
     </div>
+    </ClientWordProvider>
   );
 }

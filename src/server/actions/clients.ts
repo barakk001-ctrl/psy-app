@@ -29,6 +29,7 @@ import type { Prisma } from "@prisma/client";
 
 import { clientSchema, clientStatusSchema } from "@/server/validators/client";
 import { sealClientFields } from "@/lib/sensitive-fields";
+import { sayTo } from "@/lib/client-word-server";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -183,7 +184,7 @@ export async function updateClientAction(
   const userId = await requireUserId();
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "מזהה לקוח חסר" };
+  if (!id) return { error: await sayTo(userId, "מזהה לקוח חסר") };
 
   const parsed = parseClientForm(formData);
   if (!parsed.success) {
@@ -199,7 +200,7 @@ export async function updateClientAction(
     where: { id, userId },
     select: { id: true, status: true },
   });
-  if (!existing) return { error: "לקוח לא נמצא" };
+  if (!existing) return { error: await sayTo(userId, "לקוח לא נמצא") };
 
   // Active → inactive takes the future meetings off the calendar; ask first
   let plan: DeactivationPlan | null = null;
@@ -301,9 +302,9 @@ export async function clientDeletionPreviewAction(
   inTrash = false,
 ): Promise<ClientDeletionPreview> {
   const userId = await requireUserId();
-  if (typeof clientId !== "string" || !clientId) return { error: "לקוח לא נמצא" };
+  if (typeof clientId !== "string" || !clientId) return { error: await sayTo(userId, "לקוח לא נמצא") };
   const facts = await loadDeletionFacts(userId, clientId, inTrash === true);
-  if (!facts) return { error: "לקוח לא נמצא" };
+  if (!facts) return { error: await sayTo(userId, "לקוח לא נמצא") };
   const decision = inTrash
     ? ({ allowed: true, clinicalWarning: facts.notes > 0 || facts.files > 0 } as const)
     : clientDeletionDecision(facts);
@@ -318,7 +319,7 @@ export async function clientDeletionPreviewAction(
   return {
     name: facts.name,
     allowed: true,
-    contents: deletionContentsText(facts),
+    contents: await sayTo(userId, deletionContentsText(facts)),
     clinicalWarning: decision.clinicalWarning,
   };
 }
@@ -336,15 +337,15 @@ export async function trashClientAction(formData: FormData): Promise<TrashResult
   const userId = await requireUserId();
   if (await subscriptionReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "מזהה לקוח חסר" };
+  if (!id) return { error: await sayTo(userId, "מזהה לקוח חסר") };
 
   const facts = await loadDeletionFacts(userId, id, false);
-  if (!facts) return { error: "לקוח לא נמצא" };
+  if (!facts) return { error: await sayTo(userId, "לקוח לא נמצא") };
   const decision = clientDeletionDecision(facts);
   if (!decision.allowed) {
     return {
       error: decision.blockers.includes("active")
-        ? "אפשר למחוק רק לקוח/ה לא פעיל/ה. העבירו קודם ל״לא פעילים״."
+        ? await sayTo(userId, "אפשר למחוק רק לקוח/ה לא פעיל/ה. העבירו קודם ל״לא פעילים״.")
         : `אי אפשר למחוק: יש בתיק ${blockersText(decision.blockers)}, שחייבים להישמר לפי דיני המס.`,
     };
   }
@@ -362,7 +363,7 @@ export async function trashClientAction(formData: FormData): Promise<TrashResult
     });
     return true;
   });
-  if (!moved) return { error: "לקוח לא נמצא" };
+  if (!moved) return { error: await sayTo(userId, "לקוח לא נמצא") };
   await logAudit(userId, "CLIENT_TRASH", { clientId: id });
 
   revalidateEverywhere();
@@ -375,13 +376,13 @@ export async function restoreClientAction(formData: FormData): Promise<TrashResu
   const userId = await requireUserId();
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "מזהה לקוח חסר" };
+  if (!id) return { error: await sayTo(userId, "מזהה לקוח חסר") };
 
   const { count } = await dbAll.client.updateMany({
     where: { id, userId, deletedAt: { not: null } },
     data: { deletedAt: null, status: "INACTIVE" },
   });
-  if (count === 0) return { error: "הלקוח/ה כבר לא בסל המחזור" };
+  if (count === 0) return { error: await sayTo(userId, "הלקוח/ה כבר לא בסל המחזור") };
 
   const upcoming = await db.session.findMany({
     where: { userId, clientId: id, status: "SCHEDULED", startsAt: { gt: new Date() } },
@@ -399,8 +400,8 @@ export async function purgeClientNowAction(formData: FormData): Promise<TrashRes
   const userId = await requireUserId();
   if (await isReadOnly(userId)) return { error: READ_ONLY_ERROR };
   const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "מזהה לקוח חסר" };
-  if (!(await purgeClient(userId, id))) return { error: "הלקוח/ה כבר לא בסל המחזור" };
+  if (!id) return { error: await sayTo(userId, "מזהה לקוח חסר") };
+  if (!(await purgeClient(userId, id))) return { error: await sayTo(userId, "הלקוח/ה כבר לא בסל המחזור") };
   revalidateEverywhere();
   return { done: true };
 }

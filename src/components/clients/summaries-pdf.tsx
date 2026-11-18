@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { RParagraphs, RText, rtlBase } from "@/components/pdf/rtl-text";
+import type { Say } from "@/lib/client-word";
 
 // A client's session summaries as a PDF (clinical record export). Hebrew
 // rules for react-pdf are in components/pdf/rtl-text.tsx — every text goes
@@ -74,7 +75,7 @@ export type SummariesPdfData = {
   entries: { date: string; tag: string; text: string }[];
 };
 
-export function SummariesPDF({ data }: { data: SummariesPdfData }) {
+export function SummariesPDF({ data, say }: { data: SummariesPdfData; say: Say }) {
   return (
     <Document title={`סיכומי פגישות — ${data.clientName}`} author={data.practiceName} language="he">
       <Page size="A4" style={s.page} wrap>
@@ -94,7 +95,7 @@ export function SummariesPDF({ data }: { data: SummariesPdfData }) {
         </View>
 
         {data.entries.length === 0 ? (
-          <Text style={[rtlBase, s.empty]}>עדיין אין סיכומים מתועדים ללקוח/ה זה/ו.</Text>
+          <Text style={[rtlBase, s.empty]}>{say("עדיין אין סיכומים מתועדים ללקוח/ה זה/ו.")}</Text>
         ) : (
           data.entries.map((e, i) => (
             <View key={i} style={s.entry}>

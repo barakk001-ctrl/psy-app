@@ -10,6 +10,7 @@ import {
   type DeactivationConfirm,
 } from "@/server/actions/clients";
 import { cn } from "@/lib/utils";
+import { useSay } from "@/components/layout/client-word";
 
 type Status = "ACTIVE" | "INACTIVE";
 
@@ -100,6 +101,7 @@ export function ClientStatusToggle({
   clientId: string;
   status: Status;
 }) {
+  const say = useSay();
   const [shown, setShown] = useOptimistic(status);
   // After meetings were removed, land on the card's result notice (the same
   // one the bulk delete shows). A full load rather than a client navigation:
@@ -118,7 +120,7 @@ export function ClientStatusToggle({
     <div className="relative inline-flex">
       <div
         role="radiogroup"
-        aria-label="סטטוס לקוח/ה"
+        aria-label={say("סטטוס לקוח/ה")}
         className={cn(
           "inline-flex bg-cream-100 border border-cream-300 rounded-full p-1",
           pending && "opacity-70",

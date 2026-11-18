@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { ClientForm } from "@/components/clients/client-form";
+import { sayFor } from "@/lib/client-word-server";
 
 export const metadata = { title: "עריכת תיק — מרפאה אישית" };
 
@@ -17,6 +18,7 @@ export default async function EditClientPage({
   const { id } = await params;
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
 
   const client = await db.client.findFirst({
     where: { id, userId },
@@ -31,7 +33,7 @@ export default async function EditClientPage({
         className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"
       >
         <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
-        חזרה לכרטיס הלקוח/ה
+        {say("חזרה לכרטיס הלקוח/ה")}
       </Link>
       <header>
         <h1 className="font-display text-3xl text-ink">

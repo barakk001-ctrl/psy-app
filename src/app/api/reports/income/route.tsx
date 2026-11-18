@@ -4,6 +4,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { clientBreakdown, PAYMENT_METHOD_LABELS, sessionPaymentAmount, tookPlace } from "@/lib/income";
 import { loadInvoicePayments, loadSessions } from "@/lib/income-data";
 import { parseDateRange, rangeLabel, summarizeIncome } from "@/lib/report-periods";
+import { sayFor } from "@/lib/client-word-server";
 import { IncomePDF } from "@/components/reports/income-pdf";
 import { pdfResponse } from "@/components/pdf/pdf-response";
 
@@ -70,6 +71,7 @@ export async function GET(req: Request) {
 
   return pdfResponse(
     <IncomePDF
+      say={await sayFor(userId)}
       data={{
         practiceName: user?.brandName || user?.businessName || user?.name || "",
         periodLabel: rangeLabel(parsed.from, parsed.to),

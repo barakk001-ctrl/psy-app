@@ -14,6 +14,7 @@ import {
   type ClientFormState,
 } from "@/server/actions/clients";
 import { DeactivationConfirmPanel } from "./client-status-toggle";
+import { useSay } from "@/components/layout/client-word";
 
 export type ClientFormInitial = {
   id: string;
@@ -44,6 +45,7 @@ export function ClientForm({
   /** Opened from the waiting list — the entry is removed once the client is saved */
   waitlistId?: string;
 }) {
+  const say = useSay();
   const typeOptions =
     initial?.treatmentType && !meetingTypes.includes(initial.treatmentType)
       ? [initial.treatmentType, ...meetingTypes]
@@ -107,8 +109,7 @@ export function ClientForm({
               <option value="INACTIVE">לא פעיל/ה — בהפסקה או סיים/ה טיפול</option>
             </Select>
             <p className="text-xs text-ink-muted">
-              לקוחות לא פעילים עוברים ללשונית ״לא פעילים״ ולא מוצגים בבחירת לקוח/ה לפגישה
-              חדשה. כל ההיסטוריה נשמרת.
+              {say("לקוחות לא פעילים עוברים ללשונית ״לא פעילים״ ולא מוצגים בבחירת לקוח/ה לפגישה חדשה. כל ההיסטוריה נשמרת.")}
             </p>
             {initialStatus === "ACTIVE" && status === "INACTIVE" && (
               <p className="text-xs text-terracotta-600">

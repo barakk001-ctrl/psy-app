@@ -9,6 +9,7 @@ import { sealTaskTitle, sealText } from "@/lib/sensitive-fields";
 import { isReadOnly } from "@/lib/subscription-server";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { taskSchema } from "@/server/validators/task";
+import { sayTo } from "@/lib/client-word-server";
 
 // Tasks ("משימות", rules in src/lib/tasks.ts). The title and the note are
 // stored encrypted. A task may be about a client: that client must be one of
@@ -60,7 +61,7 @@ export async function addTaskAction(_: TaskFormState, formData: FormData): Promi
   let client: string | null = null;
   if (clientId) {
     client = await ownClientId(userId, clientId);
-    if (!client) return { error: "הלקוח/ה לא נמצא/ה" };
+    if (!client) return { error: await sayTo(userId, "הלקוח/ה לא נמצא/ה") };
   }
   await db.todo.create({
     data: {
@@ -94,7 +95,7 @@ export async function updateTaskAction(_: TaskFormState, formData: FormData): Pr
   let client: string | null = null;
   if (clientId) {
     client = await ownClientId(userId, clientId);
-    if (!client) return { error: "הלקוח/ה לא נמצא/ה" };
+    if (!client) return { error: await sayTo(userId, "הלקוח/ה לא נמצא/ה") };
   }
   await db.todo.updateMany({
     where: { id: existing.id, userId },

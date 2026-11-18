@@ -3,7 +3,8 @@
 // quoted from the UI. When a feature's labels or behavior change, update the
 // article in the same change. Search: src/lib/help-search.ts.
 
-import type { HelpArticle } from "@/lib/help-search";
+import { AS_WRITTEN, wordingFor, type Say } from "@/lib/client-word";
+import type { HelpArticle, HelpBlock } from "@/lib/help-search";
 
 export const HELP_ARTICLES: HelpArticle[] = [
   {
@@ -488,7 +489,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "intro-questionnaire",
     title: "שאלון היכרות: התאמת האפליקציה למרפאה",
     category: "הגדרות",
-    summary: "שש שאלות קצרות על המרפאה עצמה, ומה כל תשובה משנה באפליקציה.",
+    summary: "שבע שאלות קצרות על המרפאה עצמה, ומה כל תשובה משנה באפליקציה.",
     keywords: [
       "שאלון",
       "שאלון היכרות",
@@ -511,6 +512,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "צבעי הממשק",
       "ערכת צבעים",
       "החלפת צבע",
+      "מטופלים",
+      "נועצים",
+      "מטופל",
+      "נועץ",
+      "המילה לקוחות",
+      "שינוי המילה",
+      "איך לקרוא ללקוחות",
     ],
     body: [
       {
@@ -534,6 +542,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           "״פגישה רגילה״ — המשך והמחיר שפגישה חדשה נפתחת איתם. אלה אותן הגדרות שבמסך ההגדרות: ״משך פגישה רגיל״ ו״תעריף ברירת מחדל״. המחיר חל על לקוח/ה שאין לו/ה תעריף משלו/ה.",
           "״מה הכי חשוב לראות ראשון״ — היומן, התשלומים או תיעוד הפגישות. מסך הבית מסודר לפי הבחירה, ושום דבר לא מוסר ממנו.",
           "״צבע הממשק״ — אחת משש ערכות צבע מוכנות. היא מחליפה את צבע הכפתורים, הקישורים, ההדגשות והתרשימים בכל האפליקציה, ורואים אותה עוד לפני השמירה. הצבע האדום-חום של אזהרות ושגיאות, המסמכים והקבלות, הלוגו והצבע שנבחר לכל סוג מפגש ביומן לא משתנים. הבחירה נשמרת בחשבון, ולכן היא אותה בחירה בכל מכשיר.",
+          `״מי שמגיע לטיפול״ — ${AS_WRITTEN}לקוחות, מטופלים או נועצים. המילה שנבחרה מחליפה את המילה ״${AS_WRITTEN}לקוחות״ בכל האפליקציה, על כל צורותיה: בתפריט, בכפתורים, בהודעות, בדוחות, בהורדת נתוני החשבון ובמאמרי העזרה. שום נתון לא משתנה, ואפשר להחליף שוב בכל רגע.`,
         ],
       },
       {
@@ -680,11 +689,44 @@ const WITHOUT_DOCUMENTS: Record<string, HelpArticle> = {
   },
 };
 
-/** The articles this deployment shows. */
-export function helpArticles(documents: boolean): HelpArticle[] {
-  if (documents) return HELP_ARTICLES;
+const sayBlock = (say: Say, b: HelpBlock): HelpBlock => {
+  switch (b.type) {
+    case "p":
+    case "tip":
+      return { ...b, text: say(b.text) };
+    case "steps":
+    case "bullets":
+      return { ...b, items: b.items.map(say) };
+    case "link":
+      return { ...b, label: say(b.label) };
+  }
+};
+
+/**
+ * An article in the account's word for clients (src/lib/client-word.ts). The
+ * keywords keep the written ones too, so a search for either word finds it.
+ * The articles about income and expense documents stay as written: "לקוח" is
+ * the term of those documents.
+ */
+export function sayArticle(say: Say, a: HelpArticle): HelpArticle {
+  if ((DOCUMENT_HELP_SLUGS as readonly string[]).includes(a.slug)) return a;
+  return {
+    ...a,
+    title: say(a.title),
+    category: say(a.category),
+    summary: say(a.summary),
+    keywords: [...new Set([...a.keywords.map(say), ...a.keywords])],
+    body: a.body.map((b) => sayBlock(say, b)),
+  };
+}
+
+/** The articles this deployment shows, in the account's word for clients. */
+export function helpArticles(documents: boolean, say: Say = wordingFor(null)): HelpArticle[] {
   const hidden = new Set<string>(DOCUMENT_HELP_SLUGS);
-  return HELP_ARTICLES.filter((a) => !hidden.has(a.slug)).map((a) => WITHOUT_DOCUMENTS[a.slug] ?? a);
+  const shown = documents
+    ? HELP_ARTICLES
+    : HELP_ARTICLES.filter((a) => !hidden.has(a.slug)).map((a) => WITHOUT_DOCUMENTS[a.slug] ?? a);
+  return shown.map((a) => sayArticle(say, a));
 }
 
 /** The "מאמרים מומלצים" list for this deployment (reports instead of the hidden one). */

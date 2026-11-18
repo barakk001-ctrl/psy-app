@@ -20,6 +20,7 @@ import {
   type StatusOption,
 } from "@/lib/follow-up-filters";
 import { cn } from "@/lib/utils";
+import { useSay } from "@/components/layout/client-word";
 
 /**
  * The filter bar of /document and /collect: client (type-ahead), status
@@ -44,6 +45,7 @@ export function FollowUpFiltersBar<S extends string>({
   count: number;
 }) {
   const router = useRouter();
+  const say = useSay();
   const [, startTransition] = useTransition();
   const active = hasActiveFilters(filters, defaultStatus);
   // Open on phones only when she taps "סינון" (or a filter is already active)
@@ -126,7 +128,7 @@ export function FollowUpFiltersBar<S extends string>({
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="follow-up-client">לקוח/ה</Label>
+            <Label htmlFor="follow-up-client">{say("לקוח/ה")}</Label>
             <ClientCombobox
               id="follow-up-client"
               clients={clients}

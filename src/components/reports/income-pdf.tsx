@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { Style } from "@react-pdf/types";
 import { RText, rtlBase } from "@/components/pdf/rtl-text";
+import type { Say } from "@/lib/client-word";
 
 // Income report PDF (reports page → ייצוא דוח הכנסות). Hebrew rules for
 // react-pdf are in components/pdf/rtl-text.tsx — every text goes through RText.
@@ -170,7 +171,7 @@ function Table({
   );
 }
 
-export function IncomePDF({ data }: { data: IncomePdfData }) {
+export function IncomePDF({ data, say }: { data: IncomePdfData; say: Say }) {
   const clientCols: Col[] = [{ flex: 4 }, { flex: 1.4, align: "center" }, { flex: 2 }, { flex: 2 }];
   const methodCols: Col[] = [{ flex: 4 }, { flex: 1.4, align: "center" }, { flex: 2 }];
   const sessionCols: Col[] = [
@@ -212,9 +213,9 @@ export function IncomePDF({ data }: { data: IncomePdfData }) {
             : "התקבל = תשלומים שסומנו כ״שולם״ בפגישות. הכנסה צפויה = התעריף של הפגישות שנקבעו או התקיימו."}
         </RText>
 
-        <RText style={s.h2}>פילוח לפי לקוח/ה</RText>
+        <RText style={s.h2}>{say("פילוח לפי לקוח/ה")}</RText>
         <Table
-          head={["לקוח/ה", "התקיימו", "צפוי", "התקבל"]}
+          head={[say("לקוח/ה"), "התקיימו", "צפוי", "התקבל"]}
           cols={clientCols}
           rows={data.clients.map((c) => [c.name, c.held, c.expected, c.received])}
           totals={["סה״כ", data.held, data.expected, data.received]}
@@ -235,7 +236,7 @@ export function IncomePDF({ data }: { data: IncomePdfData }) {
 
         <RText style={s.h2}>פירוט פגישות</RText>
         <Table
-          head={["תאריך", "לקוח/ה", "סטטוס", "תעריף", "שולם", "אמצעי"]}
+          head={["תאריך", say("לקוח/ה"), "סטטוס", "תעריף", "שולם", "אמצעי"]}
           cols={sessionCols}
           rows={data.sessions.map((r) => [r.date, r.client, r.status, r.rate, r.paid, r.method])}
           emptyText="אין פגישות בתקופה זו."
@@ -245,7 +246,7 @@ export function IncomePDF({ data }: { data: IncomePdfData }) {
           <>
             <RText style={s.h2}>תשלומים שנרשמו בחשבוניות</RText>
             <Table
-              head={["תאריך", "לקוח/ה", "סכום", "אמצעי"]}
+              head={["תאריך", say("לקוח/ה"), "סכום", "אמצעי"]}
               cols={paymentCols}
               rows={data.invoicePayments.map((p) => [p.date, p.client, p.amount, p.method])}
               emptyText=""

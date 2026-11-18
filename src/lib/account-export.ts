@@ -29,6 +29,8 @@ import {
   pathAllocator,
   safeFileName,
 } from "@/lib/account-export-format";
+import { sayFor } from "@/lib/client-word-server";
+import type { Say } from "@/lib/client-word";
 
 const PAGE = 500;
 
@@ -133,15 +135,18 @@ function notedSessions(userId: string, clientId: string, after: { startsAt: Date
 }
 type NotedSession = Awaited<ReturnType<typeof notedSessions>>[number];
 
-type Tally = { counts: Record<string, number>; problems: string[] };
+/** `say`: the account's word for clients, in file names and column titles (src/lib/client-word.ts). */
+type Tally = { counts: Record<string, number>; problems: string[]; say: Say };
 
 function csvEntry<T extends { id: string }>(
   tally: Tally,
-  path: string,
-  headers: string[],
+  name: string,
+  titles: string[],
   pages: () => AsyncGenerator<T[]>,
   line: (row: T) => unknown[],
 ): ExportEntry {
+  const path = tally.say(name);
+  const headers = titles.map(tally.say);
   return {
     path,
     compress: true,
@@ -186,7 +191,8 @@ function fileEntry(tally: Tally, path: string, load: () => Promise<Buffer | null
 
 /** Every entry of this account's export, nothing read yet beyond ids and names. */
 export async function buildExportEntries(userId: string): Promise<ExportEntry[]> {
-  const tally: Tally = { counts: {}, problems: [] };
+  const say = await sayFor(userId);
+  const tally: Tally = { counts: {}, problems: [], say };
   const mine = { userId };
   const place = pathAllocator();
 
@@ -228,6 +234,7 @@ export async function buildExportEntries(userId: string): Promise<ExportEntry[]>
       workingHours: true,
       dashboardFocus: true,
       colorTheme: true,
+      clientWord: true,
       agreementVersion: true,
       agreementAcceptedAt: true,
       trialEndsAt: true,
@@ -256,7 +263,7 @@ export async function buildExportEntries(userId: string): Promise<ExportEntry[]>
 
   const { logoUrl, signatureUrl, ...profile } = account;
   const entries: ExportEntry[] = [
-    textEntry("קראו אותי.txt", () => README_TEXT),
+    textEntry("קראו אותי.txt", () => say(README_TEXT)),
     textEntry("חשבון.json", () => `${JSON.stringify(profile, null, 2)}\n`),
   ];
 

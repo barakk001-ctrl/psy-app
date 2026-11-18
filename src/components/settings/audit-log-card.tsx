@@ -3,6 +3,7 @@ import { ShowMoreList } from "@/components/ui/show-more-list";
 import { ScrollText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
+import { getSay } from "@/lib/client-word-server";
 
 const ACTION_LABELS: Record<string, string> = {
   NOTE_VIEW: "צפייה בסיכום פגישה",
@@ -46,7 +47,8 @@ export type AuditEntry = {
   clientHref: string | null;
 };
 
-export function AuditLogCard({ entries }: { entries: AuditEntry[] }) {
+export async function AuditLogCard({ entries }: { entries: AuditEntry[] }) {
+  const say = await getSay();
   return (
     <Card>
       <CardHeader>
@@ -68,7 +70,7 @@ export function AuditLogCard({ entries }: { entries: AuditEntry[] }) {
             {entries.map((e) => (
               <li key={e.id} className="py-2 flex items-center justify-between gap-3">
                 <span className="text-ink-soft">
-                  {ACTION_LABELS[e.action] ?? e.action}
+                  {say(ACTION_LABELS[e.action] ?? e.action)}
                   {e.clientName && (
                     <>
                       {" · "}

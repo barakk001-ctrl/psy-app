@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getMeetingTypeNames } from "@/lib/meeting-types";
 import { SessionForm } from "@/components/sessions/session-form";
 import { schedulingWindowUiFor } from "@/lib/subscription-server";
+import { sayFor } from "@/lib/client-word-server";
 
 export const metadata = { title: "פגישה חדשה — מרפאה אישית" };
 
@@ -16,6 +17,7 @@ export default async function NewSessionPage({
   const params = await searchParams;
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
 
   const clients = await db.client.findMany({
     // Active clients — plus the one this meeting is for, even if inactive
@@ -55,7 +57,7 @@ export default async function NewSessionPage({
       <header>
         <h1 className="font-display text-3xl text-ink">פגישה חדשה</h1>
         <p className="text-ink-muted text-sm mt-1">
-          בוחרים לקוח/ה, מועד ומשך. אפשר לקבוע פגישה קבועה שחוזרת כל שבוע או שבועיים.
+          {say("בוחרים לקוח/ה, מועד ומשך. אפשר לקבוע פגישה קבועה שחוזרת כל שבוע או שבועיים.")}
         </p>
       </header>
       <SessionForm

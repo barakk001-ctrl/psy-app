@@ -8,6 +8,7 @@ import { toZonedDateTimeLocal } from "@/lib/timezone";
 import { SessionForm } from "@/components/sessions/session-form";
 import { schedulingWindowUiFor } from "@/lib/subscription-server";
 import { sessionScopeInfoAction } from "@/server/actions/sessions";
+import { sayFor } from "@/lib/client-word-server";
 
 export const metadata = { title: "עריכת פגישה — מרפאה אישית" };
 
@@ -19,6 +20,7 @@ export default async function EditSessionPage({
   const { id } = await params;
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
 
   const sess = await db.session.findFirst({
     where: { id, userId },
@@ -77,7 +79,7 @@ export default async function EditSessionPage({
       <header>
         <h1 className="font-display text-3xl text-ink">עריכת פגישה</h1>
         <p className="text-ink-muted text-sm mt-1">
-          ניתן לשנות לקוח/ה, מועד, משך, מיקום ותעריף.
+          {say("ניתן לשנות לקוח/ה, מועד, משך, מיקום ותעריף.")}
         </p>
       </header>
       <SessionForm

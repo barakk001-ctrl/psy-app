@@ -7,6 +7,7 @@ import { signOutAction } from "@/server/actions/auth";
 import { navItems } from "./nav-items";
 import { TaskBadge } from "./task-badge";
 import { BrandMark, type Branding } from "@/components/layout/brand-mark";
+import { useSay } from "@/components/layout/client-word";
 
 export function DesktopSidebar({
   userName,
@@ -22,6 +23,7 @@ export function DesktopSidebar({
   taskCount?: number;
 }) {
   const pathname = usePathname();
+  const say = useSay();
 
   return (
     <aside className="hidden lg:flex w-64 shrink-0 border-l border-cream-200/60 glass flex-col h-screen sticky top-0">
@@ -48,7 +50,7 @@ export function DesktopSidebar({
                   )}
                 >
                   <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                  <span>{item.label}</span>
+                  <span>{say(item.label)}</span>
                   {item.taskBadge && <TaskBadge count={taskCount} active={active} className="ms-auto" />}
                 </Link>
               </li>

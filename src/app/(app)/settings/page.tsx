@@ -48,6 +48,7 @@ import {
   settingsTabs,
   type SettingsTabKey,
 } from "@/lib/settings-tabs";
+import { sayFor } from "@/lib/client-word-server";
 
 export const metadata = { title: "הגדרות — מרפאה אישית" };
 
@@ -66,6 +67,7 @@ export default async function SettingsPage({
   }
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
   // "הגדרות מסמכים" and the document-only fields are hidden with the documents (src/lib/features.ts)
   const documents = documentsEnabled();
 
@@ -146,7 +148,7 @@ export default async function SettingsPage({
       clientName: !r.clientId
         ? null
         : !c
-          ? "(לקוח שנמחק)"
+          ? say("(לקוח שנמחק)")
           : c.deletedAt
             ? `${name} (בסל המחזור)`
             : name,

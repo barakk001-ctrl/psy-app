@@ -11,6 +11,7 @@ import { billingConfigured } from "@/lib/billing";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { startCardPaymentAction } from "@/server/actions/subscription";
+import { sayFor } from "@/lib/client-word-server";
 
 /**
  * "מנוי ומסלולים": where a therapist sees her plan, what each plan includes
@@ -27,6 +28,7 @@ export default async function SubscriptionPage({
   const sp = await searchParams;
   const session = await auth();
   const state = await subscriptionStateFor(session!.user.id);
+  const say = await sayFor(session!.user.id);
   const cardPayments = billingConfigured();
   const canBuy = state.status !== "exempt";
   const renewing = state.status === "active";
@@ -92,6 +94,7 @@ export default async function SubscriptionPage({
       </div>
 
       <PlanCards
+        say={say}
         currentPlan={state.status === "active" ? state.plan : null}
         // The trial card only while the account is in it; after the trial
         // (paid, expired) or for exempt accounts it is not a choice, so it's left out.

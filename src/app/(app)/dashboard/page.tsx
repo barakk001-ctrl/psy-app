@@ -37,12 +37,14 @@ import {
   NotebookPen,
   Receipt,
 } from "lucide-react";
+import { sayFor } from "@/lib/client-word-server";
 
 export const metadata = { title: "בית — מרפאה אישית" };
 
 export default async function DashboardPage() {
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
   // Income/expense documents are hidden until they can be issued (src/lib/features.ts)
   const documents = documentsEnabled();
 
@@ -116,7 +118,7 @@ export default async function DashboardPage() {
   const layout = dashboardLayout(me?.dashboardFocus);
 
   const stats: Record<DashboardStat, ReactNode> = {
-    clients: <StatCard label="לקוחות פעילים" value={activeClients} />,
+    clients: <StatCard label={say("לקוחות פעילים")} value={activeClients} />,
     expected: (
       <StatCard
         label="הכנסה צפויה החודש"
@@ -316,7 +318,7 @@ export default async function DashboardPage() {
             className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
           >
             <UserPlus className="w-4 h-4 text-sage-600" />
-            <span className="text-sm">הוספת לקוח</span>
+            <span className="text-sm">{say("הוספת לקוח")}</span>
           </Link>
           <Link
             href="/calendar"
@@ -407,7 +409,7 @@ export default async function DashboardPage() {
           <div className="flex flex-wrap gap-2 mt-5">
             <Link href="/clients/new">
               <Button variant="secondary" size="sm">
-                <UserPlus className="w-4 h-4" /> לקוח חדש
+                <UserPlus className="w-4 h-4" /> {say("לקוח חדש")}
               </Button>
             </Link>
             <Link href="/calendar">

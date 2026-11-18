@@ -22,6 +22,7 @@ import {
   type QuickEditState,
   type SessionScopeInfo,
 } from "@/server/actions/sessions";
+import { useSay } from "@/components/layout/client-word";
 
 export type QuickEditData = {
   id: string;
@@ -52,6 +53,7 @@ export function QuickEditDialog({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const say = useSay();
   const [state, formAction, pending] = useActionState<QuickEditState, FormData>(
     quickEditSessionAction,
     null,
@@ -189,7 +191,7 @@ export function QuickEditDialog({
           <input type="hidden" name="id" value={data.id} />
 
           <div>
-            <Label htmlFor="qeClient">לקוח/ה</Label>
+            <Label htmlFor="qeClient">{say("לקוח/ה")}</Label>
             <Select
               id="qeClient"
               name="clientId"

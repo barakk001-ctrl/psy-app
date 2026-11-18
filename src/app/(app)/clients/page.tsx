@@ -15,8 +15,14 @@ import { formatDate } from "@/lib/format";
 import { decryptSecret } from "@/lib/crypto";
 import { waitingText } from "@/lib/waitlist";
 import { WaitlistPanel, type WaitlistRow } from "@/components/clients/waitlist-panel";
+import { getSay } from "@/lib/client-word-server";
+import { sayFor } from "@/lib/client-word-server";
+import type { Say } from "@/lib/client-word";
 
-export const metadata = { title: "לקוחות — מרפאה אישית" };
+export async function generateMetadata() {
+  const say = await getSay();
+  return { title: say("לקוחות — מרפאה אישית") };
+}
 
 export default async function ClientsPage({
   searchParams,
@@ -36,6 +42,7 @@ export default async function ClientsPage({
 
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
 
   // The bin never shows a client whose 30 days are over, even if the hourly
   // purge hasn't reached it yet
@@ -135,13 +142,13 @@ export default async function ClientsPage({
       key: "ACTIVE",
       href: "/clients",
       label: `פעילים (${active.length})`,
-      panel: <ClientRows clients={active} view="ACTIVE" />,
+      panel: <ClientRows clients={active} view="ACTIVE" say={say} />,
     },
     {
       key: "INACTIVE",
       href: "/clients?view=inactive",
       label: `לא פעילים (${inactive.length})`,
-      panel: <ClientRows clients={inactive} view="INACTIVE" />,
+      panel: <ClientRows clients={inactive} view="INACTIVE" say={say} />,
     },
     {
       key: "WAITLIST",
@@ -165,15 +172,14 @@ export default async function ClientsPage({
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl text-ink">לקוחות</h1>
+          <h1 className="font-display text-3xl text-ink">{say("לקוחות")}</h1>
           <p className="text-ink-muted mt-1 text-sm">
-            כל התיקים שלך. לקוחות שסיימו או בהפסקה עוברים ל״לא פעילים״ — ההיסטוריה
-            נשמרת במלואה, ואפשר להחזיר אותם בלחיצה.
+            {say("כל התיקים שלך. לקוחות שסיימו או בהפסקה עוברים ל״לא פעילים״ — ההיסטוריה נשמרת במלואה, ואפשר להחזיר אותם בלחיצה.")}
           </p>
         </div>
         <Link href="/clients/new">
           <Button>
-            <UserPlus className="w-4 h-4" /> לקוח חדש
+            <UserPlus className="w-4 h-4" /> {say("לקוח חדש")}
           </Button>
         </Link>
       </header>
@@ -187,24 +193,24 @@ export default async function ClientsPage({
   );
 }
 
-function ClientRows({ clients, view }: { clients: ClientListItem[]; view: "ACTIVE" | "INACTIVE" }) {
+function ClientRows({ clients, view, say }: { clients: ClientListItem[]; view: "ACTIVE" | "INACTIVE"; say: Say }) {
   if (clients.length === 0) {
     return (
         <Card>
           <CardContent className="py-16 text-center">
             <Users className="w-12 h-12 mx-auto text-ink-subtle mb-4" strokeWidth={1.25} />
             <h3 className="font-display text-xl text-ink">
-              {view === "INACTIVE" && "אין לקוחות לא פעילים"}
-              {view === "ACTIVE" && "עדיין אין לקוחות"}
+              {view === "INACTIVE" && say("אין לקוחות לא פעילים")}
+              {view === "ACTIVE" && say("עדיין אין לקוחות")}
             </h3>
             {view === "ACTIVE" && (
               <>
                 <p className="text-ink-muted text-sm mt-1 max-w-sm mx-auto">
-                  הוספת לקוחות תאפשר לך לקבוע עבורם פגישות, לכתוב סיכומים ולהפיק חשבוניות.
+                  {say("הוספת לקוחות תאפשר לך לקבוע עבורם פגישות, לכתוב סיכומים ולהפיק חשבוניות.")}
                 </p>
                 <Link href="/clients/new" className="inline-block mt-5">
                   <Button>
-                    <UserPlus className="w-4 h-4" /> הוספת לקוח ראשון
+                    <UserPlus className="w-4 h-4" /> {say("הוספת לקוח ראשון")}
                   </Button>
                 </Link>
               </>

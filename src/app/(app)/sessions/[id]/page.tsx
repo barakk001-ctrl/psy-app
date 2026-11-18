@@ -31,6 +31,7 @@ import { SessionFilesCard } from "@/components/sessions/session-files-card";
 import { buildWhatsappReminderText, buildWhatsappUrl } from "@/lib/whatsapp";
 import { documentsEnabled } from "@/lib/features";
 import { MaybeLink } from "@/components/ui/maybe-link";
+import { sayFor } from "@/lib/client-word-server";
 
 const LOCATION_LABELS = {
   OFFICE: "קליניקה",
@@ -49,6 +50,7 @@ export default async function SessionDetailPage({
   const { id } = await params;
   const session = await auth();
   const userId = session!.user.id;
+  const say = await sayFor(userId);
 
   const sess = await db.session.findFirst({
     where: { id, userId },
@@ -230,7 +232,7 @@ export default async function SessionDetailPage({
                 className="inline-flex items-center gap-2 text-ink-soft hover:text-ink"
               >
                 <UserIcon className="w-4 h-4 text-ink-subtle" />
-                כרטיס הלקוח
+                {say("כרטיס הלקוח")}
               </Link>
             </div>
             {sess.client.phone && (
@@ -344,7 +346,7 @@ export default async function SessionDetailPage({
         {sess.reminderJobs.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>תזכורות ללקוח/ה</CardTitle>
+              <CardTitle>{say("תזכורות ללקוח/ה")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-xs">
               {sess.reminderJobs.map((j) => {
@@ -381,7 +383,7 @@ export default async function SessionDetailPage({
               })}
               {!sess.client.phone && !initialNote && (
                 <p className="text-ink-subtle pt-2 border-t border-cream-200">
-                  התזכורות נשלחות לכתובת האימייל של הלקוח/ה.
+                  {say("התזכורות נשלחות לכתובת האימייל של הלקוח/ה.")}
                 </p>
               )}
             </CardContent>

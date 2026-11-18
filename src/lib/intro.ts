@@ -10,16 +10,18 @@
 //   session → what a new meeting opens with                     (User.defaultSessionMinutes, defaultRate)
 //   focus   → the order of the dashboard's boxes                (User.dashboardFocus)
 //   color   → the interface's colour set, src/lib/color-themes  (User.colorTheme)
+//   word    → לקוחות / מטופלים / נועצים, src/lib/client-word    (User.clientWord)
 //
 // "session" adds no column: the usual length and price were already settings
 // (Settings → calendar / business); the questionnaire edits the same two.
 
+import { cleanClientWord, clientWord, DEFAULT_CLIENT_WORD, type ClientWordId } from "@/lib/client-word";
 import { cleanColorTheme, colorTheme, DEFAULT_THEME_ID, type ColorThemeId } from "@/lib/color-themes";
 
 export const INTRO_PATH = "/my-clinic/intro";
 export const INTRO_TITLE = "שאלון היכרות";
 
-export type IntroQuestionId = "type" | "groups" | "hours" | "session" | "focus" | "color";
+export type IntroQuestionId = "type" | "groups" | "hours" | "session" | "focus" | "color" | "word";
 
 export type IntroQuestion = { id: IntroQuestionId; title: string; subtitle: string };
 
@@ -53,6 +55,11 @@ export const INTRO_QUESTIONS: IntroQuestion[] = [
     id: "color",
     title: "צבע הממשק",
     subtitle: "הצבע של הכפתורים, הקישורים וההדגשות בכל האפליקציה. אפשר להחליף בכל רגע.",
+  },
+  {
+    id: "word",
+    title: "איך קוראים אצלכם למי שמגיע לטיפול?",
+    subtitle: "המילה שתיבחר תופיע בכל האפליקציה: בתפריט, בכפתורים, בדוחות ובמדריכים.",
   },
 ];
 
@@ -290,6 +297,7 @@ export type IntroFields = {
   workingHours: unknown;
   dashboardFocus: string | null;
   colorTheme?: string | null;
+  clientWord?: string | null;
   defaultSessionMinutes: number;
   defaultRate: string | null;
 };
@@ -301,6 +309,8 @@ export type IntroAnswers = {
   dashboardFocus: DashboardFocus | null;
   /** always a set: the default one when none was chosen */
   colorTheme: ColorThemeId;
+  /** always a word: "לקוחות" when none was chosen */
+  clientWord: ClientWordId;
   defaultSessionMinutes: number;
   /** a plain number as text, or null */
   defaultRate: string | null;
@@ -313,6 +323,7 @@ export function introAnswers(user: IntroFields): IntroAnswers {
     workingHours: parseWorkingHours(user.workingHours),
     dashboardFocus: cleanFocus(user.dashboardFocus),
     colorTheme: cleanColorTheme(user.colorTheme) ?? DEFAULT_THEME_ID,
+    clientWord: cleanClientWord(user.clientWord) ?? DEFAULT_CLIENT_WORD,
     defaultSessionMinutes: user.defaultSessionMinutes,
     defaultRate: user.defaultRate === "" ? null : user.defaultRate,
   };
@@ -331,5 +342,6 @@ export function introRows(a: IntroAnswers, formatRate: (rate: string) => string)
     { id: "focus", label: "הכי חשוב לראות ראשון", value: FOCUS_OPTIONS.find((f) => f.id === a.dashboardFocus)?.label ?? null },
     // Never "not answered": an account that chose nothing is in the default set
     { id: "color", label: "צבע הממשק", value: colorTheme(a.colorTheme).label },
+    { id: "word", label: "מי שמגיע לטיפול", value: clientWord(a.clientWord).label },
   ];
 }

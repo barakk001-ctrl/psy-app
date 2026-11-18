@@ -22,6 +22,7 @@ import {
 import { addMinutesLocal, useOverlapWarning } from "./use-overlap-warning";
 import { ApplyScopeChoice } from "./apply-scope-choice";
 import { pickerMax, type WindowUi } from "@/lib/scheduling-window";
+import { useSay } from "@/components/layout/client-word";
 
 type ClientOption = {
   id: string;
@@ -67,6 +68,7 @@ export function SessionForm({
   /** Free trial: how far ahead meetings may be booked (null = no limit). */
   scheduleWindow?: WindowUi | null;
 }) {
+  const say = useSay();
   const isEdit = !!initial;
   const action = isEdit ? updateSessionAction : createSessionAction;
 
@@ -142,7 +144,7 @@ export function SessionForm({
       <Card>
         <CardContent className="space-y-5">
           <div>
-            <Label htmlFor="clientId">לקוח/ה *</Label>
+            <Label htmlFor="clientId">{say("לקוח/ה *")}</Label>
             <Select
               id="clientId"
               name="clientId"
@@ -158,7 +160,7 @@ export function SessionForm({
               }}
             >
               <option value="" disabled>
-                בחר/י לקוח/ה
+                {say("בחר/י לקוח/ה")}
               </option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -171,9 +173,9 @@ export function SessionForm({
             )}
             {clients.length === 0 && (
               <p className="text-xs text-ink-muted mt-1">
-                עוד אין לקוחות —{" "}
+                {say("עוד אין לקוחות —")}{" "}
                 <Link href="/clients/new" className="text-sage-600 hover:text-sage-700">
-                  הוספת לקוח חדש
+                  {say("הוספת לקוח חדש")}
                 </Link>
               </p>
             )}
