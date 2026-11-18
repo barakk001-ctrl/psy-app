@@ -6,7 +6,7 @@
 
 import { db } from "@/lib/db";
 import { taskNote, taskTitle } from "@/lib/sensitive-fields";
-import type { TaskSource } from "@/lib/tasks";
+import { taskSuggestionsFor, type TaskSource } from "@/lib/tasks";
 import type { ClientChoice } from "@/lib/follow-up-filters";
 
 /** A task as the screens get it: decrypted, dates as text. */
@@ -103,6 +103,12 @@ export async function countTasksDueNow(userId: string, today: string): Promise<n
 }
 
 /** The practice's clients for the task form's picker, active ones first. */
+/** The starting titles in this practice's order (who it mostly treats, src/lib/intro.ts). */
+export async function loadTaskSuggestions(userId: string): Promise<string[]> {
+  const me = await db.user.findUnique({ where: { id: userId }, select: { clientGroups: true } });
+  return taskSuggestionsFor(me?.clientGroups);
+}
+
 export async function loadTaskClients(userId: string): Promise<ClientChoice[]> {
   const clients = await db.client.findMany({
     where: { userId },

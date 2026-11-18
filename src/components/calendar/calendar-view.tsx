@@ -21,6 +21,7 @@ import {
 } from "@/lib/hebrew-date";
 import type { WindowUi } from "@/lib/scheduling-window";
 import { hourRange, minutesOfDay, slotTime } from "@/lib/calendar-hours";
+import type { BusinessHours } from "@/lib/intro";
 import { darkenForText } from "@/lib/color-contrast";
 import {
   QuickEditDialog,
@@ -39,6 +40,12 @@ type Props = {
   /** The account, for the "תאריך עברי" choice this browser remembers */
   userId?: string;
   defaultMinutes?: number;
+  /** The practice's working days and hours: everything else is greyed, and
+   *  stays bookable (src/lib/intro.ts). undefined = nothing greyed. */
+  businessHours?: BusinessHours[];
+  /** The earliest start and latest end of the working week, in minutes of the
+   *  day, so the hourly grid always shows the working hours whole. */
+  workSpan?: { start: number; end: number } | null;
   /** Free trial: how far ahead meetings may be booked (null = no limit). */
   scheduleWindow?: WindowUi | null;
 };
@@ -95,6 +102,8 @@ export function CalendarView({
   showHolidays: showHolidaysInitial = false,
   userId = "",
   defaultMinutes,
+  businessHours,
+  workSpan,
   scheduleWindow,
 }: Props) {
   const router = useRouter();
@@ -150,15 +159,18 @@ export function CalendarView({
   }, [showHebrew, titleRange]);
 
   const hours = useMemo(() => {
-    if (!visible) return hourRange([]);
+    // The working hours count like a meeting: always on screen, with the same
+    // hour of room either side (where the grey shows)
+    const work = workSpan ? [workSpan] : [];
+    if (!visible) return hourRange(work);
     const inView = events.flatMap((e) => {
       const start = new Date(e.start as string);
       const end = new Date((e.end ?? e.start) as string);
       if (end.getTime() <= visible.start || start.getTime() >= visible.end) return [];
       return [{ start: minutesOfDay(start), end: minutesOfDay(end) }];
     });
-    return hourRange(inView);
-  }, [events, visible]);
+    return hourRange([...work, ...inView]);
+  }, [events, visible, workSpan]);
   // Long days (a meeting at dawn and one late at night) get hour rows, so the
   // labels still fit; otherwise half-hour rows
   const longDay = hours.last - hours.first > 15;
@@ -256,6 +268,8 @@ export function CalendarView({
         // Week/day: only the hours in use, every row stretched to fill the
         // shell (expandRows) and no all-day row (meetings always have times)
         // — the whole grid fits on screen like the month view
+        // Greyed, never blocked: no selectConstraint / eventConstraint
+        businessHours={businessHours ?? false}
         slotMinTime={slotTime(hours.first)}
         slotMaxTime={slotTime(hours.last)}
         slotDuration={longDay ? "01:00:00" : "00:30:00"}
@@ -557,6 +571,7 @@ export function CalendarView({
           --fc-page-bg-color: #ffffff;
           --fc-neutral-bg-color: #faf7f1;
           --fc-today-bg-color: #f1f4ed;
+          --fc-non-business-color: rgba(116, 104, 90, 0.12);
           --fc-button-bg-color: #faf7f1;
           --fc-button-border-color: #e8e2d5;
           --fc-button-text-color: #3a332c;

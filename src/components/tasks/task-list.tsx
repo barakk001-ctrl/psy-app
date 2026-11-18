@@ -44,6 +44,8 @@ type Surroundings = {
   clients?: ClientChoice[];
   /** on a client's page: every task here is about this client */
   fixedClientId?: string;
+  /** the starting titles, in the practice's own order (taskSuggestionsFor) */
+  suggestions?: readonly string[];
 };
 
 const firstError = (state: TaskFormState): string | null => {
@@ -61,6 +63,7 @@ export function TaskForm({
   today,
   clients = [],
   fixedClientId,
+  suggestions = TASK_SUGGESTIONS,
   onClose,
 }: Surroundings & {
   task?: TaskView;
@@ -158,7 +161,7 @@ export function TaskForm({
         <>
           {!editing && !title.trim() && (
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="הצעות לשם המשימה">
-              {TASK_SUGGESTIONS.map((s) => (
+              {suggestions.map((s) => (
                 <button
                   key={s}
                   type="button"

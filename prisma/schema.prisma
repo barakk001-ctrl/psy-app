@@ -83,6 +83,15 @@ model User {
   onboardingCompletedAt DateTime?
   onboardingPausedAt    DateTime?
 
+  // The "שאלון היכרות" (src/lib/intro.ts): a few questions about the practice,
+  // never about clients. All optional; null / empty = not answered.
+  clinicType     String?                   // the line shown under the clinic's name
+  clientGroups   String[]  @default([])    // CHILDREN | TEENS | ADULTS | COUPLES | FAMILIES
+  workingHours   Json?                     // [{ day: 0-6, from: "HH:mm", to: "HH:mm" }]
+  dashboardFocus String?                   // CALENDAR | PAYMENTS | NOTES
+  // Finished or put aside; null = /my-clinic still invites to fill it in
+  introDoneAt    DateTime?
+
   // Data-holding agreement click-acceptance (version from src/lib/agreement.ts;
   // a version bump triggers the re-acceptance banner on the dashboard)
   agreementVersion    String?

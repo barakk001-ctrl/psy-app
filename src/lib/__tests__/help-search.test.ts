@@ -71,9 +71,9 @@ describe("searchHelp", () => {
 });
 
 describe("help articles", () => {
-  it("has 8–17 articles with unique slugs and content", () => {
+  it("has 8–18 articles with unique slugs and content", () => {
     expect(HELP_ARTICLES.length).toBeGreaterThanOrEqual(8);
-    expect(HELP_ARTICLES.length).toBeLessThanOrEqual(17);
+    expect(HELP_ARTICLES.length).toBeLessThanOrEqual(18);
     expect(new Set(HELP_ARTICLES.map((a) => a.slug)).size).toBe(HELP_ARTICLES.length);
     for (const a of HELP_ARTICLES) {
       expect(a.title.length).toBeGreaterThan(3);
@@ -107,5 +107,8 @@ describe("help articles", () => {
     expect(find("העלאת מסמך")[0]).toBe("client-documents");
     expect(find("טופס הסכמה")[0]).toBe("client-documents");
     expect(find("מכתב הפניה")).toContain("client-documents");
+    expect(find("שאלון היכרות")[0]).toBe("intro-questionnaire");
+    expect(find("שעות עבודה")).toContain("intro-questionnaire");
+    expect(find("סוג המרפאה")).toContain("intro-questionnaire");
   });
 });

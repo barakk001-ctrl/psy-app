@@ -1,11 +1,18 @@
 import Link from "next/link";
 import { LogoMark, Wordmark } from "@/components/brand/logo-mark";
 
-export type Branding = { brandName?: string | null; logoUrl?: string | null };
+export type Branding = {
+  brandName?: string | null;
+  logoUrl?: string | null;
+  /** the kind of clinic, from the שאלון היכרות (src/lib/intro.ts) */
+  clinicType?: string | null;
+};
 
 /** The app name in the sidebar and the mobile top bar: the app's mark
  *  (components/brand/logo-mark.tsx) and wordmark, the practice's own logo in
- *  place of the mark when one is set, and its name under the app name. */
+ *  place of the mark when one is set, and its name under the app name. The
+ *  kind of clinic is a line of its own under the name in the sidebar; the
+ *  mobile bar is one line tall there, so it follows the name on the same line. */
 export function BrandMark({
   branding,
   size = "md",
@@ -15,6 +22,7 @@ export function BrandMark({
 }) {
   const px = size === "md" ? 36 : 32;
   const name = branding?.brandName?.trim();
+  const kind = branding?.clinicType?.trim();
   return (
     <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0" aria-label="מרפאה אישית — לוח הבקרה">
       {branding?.logoUrl ? (
@@ -30,7 +38,18 @@ export function BrandMark({
       )}
       <span className="flex flex-col min-w-0 gap-1">
         <Wordmark className={size === "md" ? "text-xl" : "text-lg"} />
-        {name && <span className="text-xs text-ink-muted truncate leading-tight">{name}</span>}
+        {size === "md" ? (
+          <>
+            {name && <span className="text-xs text-ink-muted truncate leading-tight">{name}</span>}
+            {kind && <span className="text-[11px] text-ink-muted truncate leading-tight">{kind}</span>}
+          </>
+        ) : (
+          (name || kind) && (
+            <span className="text-xs text-ink-muted truncate leading-tight">
+              {[name, kind].filter(Boolean).join(" · ")}
+            </span>
+          )
+        )}
       </span>
     </Link>
   );

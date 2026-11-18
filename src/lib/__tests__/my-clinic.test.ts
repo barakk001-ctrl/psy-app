@@ -48,9 +48,49 @@ const types = [
 const row = (sections: ReturnType<typeof myClinicSections>, id: string, label: string) =>
   sections.find((s) => s.id === id)!.rows.find((r) => r.label === label)!;
 
+describe("the questionnaire's card", () => {
+  it("shows every answer, each opening its own question", () => {
+    const sections = myClinicSections(
+      {
+        ...full,
+        clinicType: "פסיכולוגיה חינוכית",
+        clientGroups: ["CHILDREN", "TEENS"],
+        workingHours: [
+          { day: 0, from: "09:00", to: "18:00" },
+          { day: 1, from: "09:00", to: "18:00" },
+        ],
+        dashboardFocus: "NOTES",
+      },
+      types,
+      true,
+    );
+    const intro = sections[0];
+    expect(intro.id).toBe("intro");
+    expect(intro.rows.map((r) => [r.label, r.value, r.href])).toEqual([
+      ["סוג המרפאה", "פסיכולוגיה חינוכית", "/my-clinic/intro?q=type"],
+      ["במי מטפלים בעיקר", "ילדים, נוער", "/my-clinic/intro?q=groups"],
+      ["ימי ושעות העבודה", "א׳, ב׳ 09:00–18:00", "/my-clinic/intro?q=hours"],
+      ["פגישה רגילה", expect.stringMatching(/^50 דקות · .*350/), "/my-clinic/intro?q=session"],
+      ["הכי חשוב לראות ראשון", "תיעוד הפגישות", "/my-clinic/intro?q=focus"],
+    ]);
+  });
+  it("is there, empty, for an account that answered nothing", () => {
+    const intro = myClinicSections(empty, [], true)[0];
+    expect(intro.id).toBe("intro");
+    expect(intro.rows.filter((r) => r.value === null).map((r) => r.label)).toEqual([
+      "סוג המרפאה",
+      "במי מטפלים בעיקר",
+      "ימי ושעות העבודה",
+      "הכי חשוב לראות ראשון",
+    ]);
+    expect(intro.rows.every((r) => r.href?.startsWith("/my-clinic/intro?q="))).toBe(true);
+  });
+});
+
 describe("myClinicSections", () => {
   it("lists the cards in the order they were asked for", () => {
     expect(myClinicSections(full, types, true).map((s) => s.title)).toEqual([
+      "שאלון היכרות",
       "שם הקליניקה",
       "לוגו",
       "פרטי התקשרות",
@@ -62,7 +102,7 @@ describe("myClinicSections", () => {
 
   it("has no document design card and no document email while documents are hidden", () => {
     const sections = myClinicSections(full, types, false);
-    expect(sections.map((s) => s.id)).toEqual(["name", "logo", "contact", "meeting-types", "payment"]);
+    expect(sections.map((s) => s.id)).toEqual(["intro", "name", "logo", "contact", "meeting-types", "payment"]);
     expect(sections.find((s) => s.id === "contact")!.rows.map((r) => r.label)).toEqual([
       "טלפון",
       "כתובת",
@@ -77,6 +117,7 @@ describe("myClinicSections", () => {
     const sections = myClinicSections(full, types, true);
     const href = Object.fromEntries(sections.map((s) => [s.id, s.href]));
     expect(href).toEqual({
+      intro: "/my-clinic/intro",
       name: "/settings?tab=business#branding",
       logo: "/settings?tab=business#branding",
       contact: "/settings?tab=business#contact",

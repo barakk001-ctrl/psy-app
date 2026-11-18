@@ -9,12 +9,14 @@ export function ClientTasksCard({
   open,
   done,
   today,
+  suggestions,
 }: {
   clientId: string;
   open: TaskView[];
   /** the latest ones ticked */
   done: TaskView[];
   today: string;
+  suggestions?: string[];
 }) {
   return (
     <Card>
@@ -27,7 +29,7 @@ export function ClientTasksCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <TaskForm today={today} fixedClientId={clientId} />
+        <TaskForm today={today} fixedClientId={clientId} suggestions={suggestions} />
         {open.length > 0 && <TaskRows tasks={sortOpenTasks(open)} today={today} fixedClientId={clientId} />}
         {done.length > 0 && (
           <section aria-label="משימות שבוצעו">

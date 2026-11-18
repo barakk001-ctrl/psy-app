@@ -11,6 +11,7 @@ import {
   isDay,
   sortOpenTasks,
   taskBucket,
+  taskSuggestionsFor,
 } from "@/lib/tasks";
 
 const TODAY = "2026-11-18"; // a Wednesday
@@ -172,5 +173,37 @@ describe("starting titles", () => {
       expect(s.length).toBeLessThanOrEqual(30);
       expect(s.length).toBeLessThanOrEqual(TASK_TITLE_MAX);
     }
+  });
+  it("keep their order while the practice has not said who it treats", () => {
+    expect(taskSuggestionsFor(null)).toEqual([...TASK_SUGGESTIONS]);
+    expect(taskSuggestionsFor(undefined)).toEqual([...TASK_SUGGESTIONS]);
+    expect(taskSuggestionsFor([])).toEqual([...TASK_SUGGESTIONS]);
+  });
+  it("offer the school and the parents first to a practice that treats children", () => {
+    expect(taskSuggestionsFor(["CHILDREN"])).toEqual([...TASK_SUGGESTIONS]);
+    expect(taskSuggestionsFor(["TEENS", "ADULTS"]).slice(0, 2)).toEqual([
+      "שיחה עם הצוות החינוכי",
+      "קביעת פגישת הורים",
+    ]);
+  });
+  it("offer them last to a practice of adults and couples, and never drop one", () => {
+    const adults = taskSuggestionsFor(["ADULTS", "COUPLES"]);
+    expect(adults).toEqual([
+      "שיחה עם גורם מטפל נוסף",
+      "כתיבת דוח או חוות דעת",
+      "מעקב",
+      "שיחה עם הצוות החינוכי",
+      "קביעת פגישת הורים",
+    ]);
+    expect([...adults].sort()).toEqual([...TASK_SUGGESTIONS].sort());
+  });
+  it("a family practice gets the parents' meeting first, and the school last", () => {
+    const families = taskSuggestionsFor(["FAMILIES"]);
+    expect(families[0]).toBe("קביעת פגישת הורים");
+    expect(families[families.length - 1]).toBe("שיחה עם הצוות החינוכי");
+  });
+  it("does not change the list it is built from", () => {
+    taskSuggestionsFor(["ADULTS"]);
+    expect(TASK_SUGGESTIONS[0]).toBe("שיחה עם הצוות החינוכי");
   });
 });

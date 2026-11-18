@@ -4,14 +4,20 @@
 // links to that section. Nothing is saved from here, so there is no second
 // copy of a form to keep in step.
 //
+// The first card is the שאלון היכרות (src/lib/intro.ts): its answers, each row
+// opening that one question (/my-clinic/intro?q=…). Its "פגישה רגילה" row is
+// the same two settings the meeting-types and payment cards show.
+//
 // Not on the page because they do not exist in the app (each needs a schema
-// change): interface colors, opening hours, and payment details for clients
-// (bank account / Bit).
+// change): interface colors, and payment details for clients (bank account /
+// Bit).
 
 import { formatCurrency } from "@/lib/format";
 import { DOC_COLORS, DOC_TEMPLATE_LABELS, docLook } from "@/lib/document-look";
 import { documentEmail } from "@/lib/document-business";
 import { settingsHref } from "@/lib/settings-tabs";
+import { DEFAULT_SESSION_MINUTES } from "@/lib/session-duration";
+import { INTRO_PATH, INTRO_TITLE, introAnswers, introHref, introRows } from "@/lib/intro";
 
 export const MY_CLINIC_PATH = "/my-clinic";
 export const MY_CLINIC_TITLE = "המרפאה שלי";
@@ -19,7 +25,14 @@ export const MY_CLINIC_TITLE = "המרפאה שלי";
 /** Shown instead of a value that was never filled in. */
 export const NOT_SET = "לא הוגדר";
 
-export type MyClinicSectionId = "name" | "logo" | "contact" | "meeting-types" | "payment" | "documents";
+export type MyClinicSectionId =
+  | "intro"
+  | "name"
+  | "logo"
+  | "contact"
+  | "meeting-types"
+  | "payment"
+  | "documents";
 
 export type MyClinicRow = {
   label: string;
@@ -65,6 +78,11 @@ export type MyClinicUser = {
   docColor: string | null;
   signatureUrl: string | null;
   logoOnDocuments: boolean;
+  /** the שאלון היכרות's answers, as stored */
+  clinicType?: string | null;
+  clientGroups?: unknown;
+  workingHours?: unknown;
+  dashboardFocus?: string | null;
 };
 
 const text = (v: string | null | undefined): string | null => v?.trim() || null;
@@ -82,7 +100,27 @@ export function myClinicSections(
   const business = settingsHref("business", "business");
   const branding = settingsHref("business", "branding");
 
+  const answers = introAnswers({
+    clinicType: user.clinicType ?? null,
+    clientGroups: user.clientGroups,
+    workingHours: user.workingHours,
+    dashboardFocus: user.dashboardFocus ?? null,
+    defaultSessionMinutes: user.defaultSessionMinutes ?? DEFAULT_SESSION_MINUTES,
+    defaultRate: user.defaultRate === null || user.defaultRate === "" ? null : String(user.defaultRate),
+  });
+
   const sections: MyClinicSection[] = [
+    {
+      id: "intro",
+      title: INTRO_TITLE,
+      hint: "כמה תשובות על המרפאה עצמה, שלפיהן האפליקציה מתאימה את עצמה. כל תשובה אפשר לשנות.",
+      href: INTRO_PATH,
+      rows: introRows(answers, formatCurrency).map((r) => ({
+        label: r.label,
+        value: r.value,
+        href: introHref(r.id),
+      })),
+    },
     {
       id: "name",
       title: "שם הקליניקה",

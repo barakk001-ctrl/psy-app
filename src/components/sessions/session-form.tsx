@@ -13,6 +13,7 @@ import {
   DURATION_CHOICES,
   withDuration,
 } from "@/lib/session-duration";
+import { fallbackRateText } from "@/lib/session-rate";
 import {
   createSessionAction,
   updateSessionAction,
@@ -47,6 +48,7 @@ export function SessionForm({
   initial,
   meetingTypes,
   defaultMinutes = DEFAULT_SESSION_MINUTES,
+  practiceRate,
   scope,
   scheduleWindow,
 }: {
@@ -56,6 +58,9 @@ export function SessionForm({
   meetingTypes: string[];
   /** The practitioner's own default meeting length, from settings. */
   defaultMinutes?: number;
+  /** New meetings only: the practice's usual price, used when the client has
+   *  none of their own and the field is left empty (src/lib/session-rate.ts). */
+  practiceRate?: string | null;
   /** Edit only: the client's following meetings in the same standing slot,
    *  offered "all of them" when the date/time changes. */
   scope?: { clientName: string; slotLabel: string; followers: number };
@@ -87,7 +92,7 @@ export function SessionForm({
     : [treatmentType, ...meetingTypes];
 
   const selectedClient = clients.find((c) => c.id === clientId);
-  const ratePlaceholder = selectedClient?.defaultRate ?? "";
+  const ratePlaceholder = fallbackRateText(selectedClient?.defaultRate, isEdit ? null : practiceRate);
 
   // Match the start time to the initial value (edit) or the URL param (create from calendar click)
   const startsAtDefault = initial?.startsAt ?? defaults?.startsAt;

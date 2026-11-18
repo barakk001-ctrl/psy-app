@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   Building2,
+  ClipboardList,
   FileText,
   Image as ImageIcon,
   Pencil,
@@ -14,6 +15,9 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { documentsEnabled } from "@/lib/features";
+import { IntroDismiss } from "@/components/intro/intro-screens";
+import { INTRO_PATH, INTRO_QUESTIONS } from "@/lib/intro";
+import { subscriptionStateFor } from "@/lib/subscription-server";
 import { MEETING_TYPE_COLORS } from "@/lib/meeting-type-colors";
 import {
   MY_CLINIC_TITLE,
@@ -32,6 +36,7 @@ import {
 export const metadata = { title: `${MY_CLINIC_TITLE} — מרפאה אישית` };
 
 const ICONS: Record<MyClinicSectionId, LucideIcon> = {
+  intro: ClipboardList,
   name: Building2,
   logo: ImageIcon,
   contact: Phone,
@@ -69,7 +74,7 @@ export default async function MyClinicPage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const [user, meetingTypes] = await Promise.all([
+  const [user, meetingTypes, sub] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
       select: {
@@ -89,6 +94,11 @@ export default async function MyClinicPage() {
         docColor: true,
         signatureUrl: true,
         logoOnDocuments: true,
+        clinicType: true,
+        clientGroups: true,
+        workingHours: true,
+        dashboardFocus: true,
+        introDoneAt: true,
       },
     }),
     db.meetingType.findMany({
@@ -96,8 +106,12 @@ export default async function MyClinicPage() {
       orderBy: [{ position: "asc" }, { name: "asc" }],
       select: { id: true, name: true, color: true },
     }),
+    subscriptionStateFor(userId),
   ]);
   if (!user) return null;
+  // The invitation to the questionnaire: until it was filled in or put aside
+  // (a read-only account could not save it)
+  const invite = !user.introDoneAt && sub.writable;
 
   const sections = myClinicSections(
     { ...user, defaultRate: user.defaultRate ? user.defaultRate.toString() : null },
@@ -114,6 +128,33 @@ export default async function MyClinicPage() {
           ישר למקום שלו.
         </p>
       </header>
+
+      {invite && (
+        <Card className="border-sage-500/40 bg-sage-50/70">
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-sage-600">
+                <ClipboardList className="w-4 h-4" aria-hidden />
+              </span>
+              <h2 className="font-display text-xl text-ink leading-tight">שאלון היכרות קצר</h2>
+            </div>
+            <p className="text-sm text-ink-soft leading-relaxed">
+              {INTRO_QUESTIONS.length} שאלות על המרפאה עצמה, כשתי דקות. לפי התשובות האפליקציה מתאימה את עצמה: שורה
+              מתחת לשם הקליניקה, שעות העבודה ביומן, פגישה חדשה שנפתחת עם המשך והמחיר הרגילים, וסדר מסך הבית. אפשר
+              לדלג על כל שאלה.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={INTRO_PATH}
+                className="inline-flex h-10 items-center rounded-xl bg-gradient-to-b from-sage-500 to-sage-600 px-4 text-sm font-medium text-cream-50 shadow-glow"
+              >
+                למילוי השאלון
+              </Link>
+              <IntroDismiss />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {sections.map((s) => {

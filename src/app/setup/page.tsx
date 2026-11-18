@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { normalizeIdleTimeout } from "@/lib/idle-timeout";
+import { introAnswers } from "@/lib/intro";
 import { stepToOpen } from "@/lib/onboarding";
 import { READ_ONLY_PATH, subscriptionStateFor } from "@/lib/subscription-server";
 import { BiometricLockOverlay } from "@/components/security/biometric-lock-overlay";
@@ -42,6 +43,10 @@ export default async function SetupPage({
         defaultSessionMinutes: true,
         idleTimeoutMinutes: true,
         onboardingStep: true,
+        clinicType: true,
+        clientGroups: true,
+        workingHours: true,
+        dashboardFocus: true,
       },
     }),
     db.meetingType.findMany({
@@ -79,6 +84,7 @@ export default async function SetupPage({
         }}
         meetingTypes={meetingTypes}
         defaultMinutes={user.defaultSessionMinutes}
+        intro={introAnswers({ ...user, defaultRate: user.defaultRate ? user.defaultRate.toString() : null })}
       />
     </>
   );

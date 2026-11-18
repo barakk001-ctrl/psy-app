@@ -26,6 +26,30 @@ export const TASK_SUGGESTIONS = [
   "מעקב",
 ] as const;
 
+/** Titles that belong to some practices more than others (the groups of src/lib/intro.ts). */
+const SUGGESTION_GROUPS: Partial<Record<(typeof TASK_SUGGESTIONS)[number], string[]>> = {
+  "שיחה עם הצוות החינוכי": ["CHILDREN", "TEENS"],
+  "קביעת פגישת הורים": ["CHILDREN", "TEENS", "FAMILIES"],
+};
+
+/**
+ * The starting titles in the order offered: for a practice that said who it
+ * mostly treats (the שאלון היכרות), the titles that fit those groups come
+ * first and the ones that only fit other groups come last. The same five
+ * titles always; with no answer, the list's own order.
+ */
+export function taskSuggestionsFor(groups: readonly string[] | null | undefined): string[] {
+  const all: string[] = [...TASK_SUGGESTIONS];
+  if (!groups || groups.length === 0) return all;
+  const rank = (title: string): number => {
+    const fits = SUGGESTION_GROUPS[title as (typeof TASK_SUGGESTIONS)[number]];
+    if (!fits) return 1; // fits every practice
+    return fits.some((g) => groups.includes(g)) ? 0 : 2;
+  };
+  // Array.prototype.sort is stable: equal ranks keep the list's order
+  return all.sort((a, b) => rank(a) - rank(b));
+}
+
 /** How far ahead "בקרוב" looks on the dashboard, in days after today. */
 export const TASKS_SOON_DAYS = 7;
 

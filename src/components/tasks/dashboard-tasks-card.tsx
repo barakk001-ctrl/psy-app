@@ -16,11 +16,13 @@ export function DashboardTasksCard({
   doneToday,
   clients,
   today,
+  suggestions,
 }: {
   open: TaskView[];
   doneToday: TaskView[];
   clients: ClientChoice[];
   today: string;
+  suggestions?: string[];
 }) {
   const { groups, hidden } = dashboardTasks(open, today);
   return (
@@ -38,7 +40,7 @@ export function DashboardTasksCard({
         </Link>
       </CardHeader>
       <CardContent className="space-y-4">
-        <TaskForm today={today} clients={clients} />
+        <TaskForm today={today} clients={clients} suggestions={suggestions} />
 
         {open.length === 0 ? (
           <p className="text-sm text-ink-muted text-center py-2">אין משימות פתוחות.</p>

@@ -15,7 +15,8 @@ async function requireUserId(): Promise<string> {
 
 export type OnboardingResult = { ok: boolean; error?: string };
 
-/** Remembers the step reached, and finishes the wizard on the last one. A
+/** Remembers the step reached, and finishes the wizard on the last one — the
+ *  שאלון היכרות is part of it, so "המרפאה שלי" stops inviting to fill it in. A
  *  finished account reopening it from Settings changes nothing here. */
 export async function setOnboardingStepAction(step: number): Promise<OnboardingResult> {
   const userId = await requireUserId();
@@ -23,7 +24,10 @@ export async function setOnboardingStepAction(step: number): Promise<OnboardingR
   const next = clampStep(step);
   await db.user.updateMany({
     where: { id: userId, onboardingCompletedAt: null },
-    data: next === LAST_STEP ? { onboardingStep: next, onboardingCompletedAt: new Date() } : { onboardingStep: next },
+    data:
+      next === LAST_STEP
+        ? { onboardingStep: next, onboardingCompletedAt: new Date(), introDoneAt: new Date() }
+        : { onboardingStep: next },
   });
   return { ok: true };
 }

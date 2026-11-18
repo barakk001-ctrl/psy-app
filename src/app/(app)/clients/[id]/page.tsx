@@ -23,7 +23,7 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { KEEP_REASON_LABELS, type KeepReason } from "@/lib/bulk-delete";
 import { documentsEnabled } from "@/lib/features";
 import { ClientTasksCard } from "@/components/tasks/client-tasks-card";
-import { loadDoneTasks, loadOpenTasks } from "@/lib/tasks-data";
+import { loadDoneTasks, loadOpenTasks, loadTaskSuggestions } from "@/lib/tasks-data";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
 
 export const metadata = { title: "תיק לקוח/ה — מרפאה אישית" };
@@ -94,7 +94,7 @@ export default async function ClientDetailPage({
   const idNumber = clientIdNumber(client);
   const generalNotes = clientGeneralNotes(client);
 
-  const [allSessions, notedSessions, openTasks, doneTasks] = await Promise.all([
+  const [allSessions, notedSessions, openTasks, doneTasks, taskSuggestions] = await Promise.all([
     db.session.findMany({
       where: { clientId: id, userId },
       orderBy: { startsAt: "desc" },
@@ -123,6 +123,7 @@ export default async function ClientDetailPage({
     // The tasks about this client (src/lib/tasks.ts)
     loadOpenTasks(userId, id),
     loadDoneTasks(userId, { clientId: id, take: 5 }),
+    loadTaskSuggestions(userId),
   ]);
 
   // The clinical record: decrypted summaries + cancellations, newest first
@@ -319,6 +320,7 @@ export default async function ClientDetailPage({
             clientId={client.id}
             open={openTasks}
             done={doneTasks}
+            suggestions={taskSuggestions}
             today={toZonedDateTimeLocal(new Date()).slice(0, 10)}
           />
         </div>

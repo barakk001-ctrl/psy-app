@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TaskForm, TaskRows, TaskSections } from "@/components/tasks/task-list";
 import { groupTasks } from "@/lib/tasks";
-import { loadDoneTasks, loadOpenTasks, loadTaskClients } from "@/lib/tasks-data";
+import { loadDoneTasks, loadOpenTasks, loadTaskClients, loadTaskSuggestions } from "@/lib/tasks-data";
 import { toZonedDateTimeLocal } from "@/lib/timezone";
 
 export const metadata: Metadata = { title: "משימות" };
@@ -18,10 +18,11 @@ export default async function TasksPage() {
   const userId = session.user.id;
 
   const today = toZonedDateTimeLocal(new Date()).slice(0, 10);
-  const [open, done, clients] = await Promise.all([
+  const [open, done, clients, suggestions] = await Promise.all([
     loadOpenTasks(userId),
     loadDoneTasks(userId, { take: DONE_SHOWN }),
     loadTaskClients(userId),
+    loadTaskSuggestions(userId),
   ]);
   const groups = groupTasks(open, today);
 
@@ -36,7 +37,7 @@ export default async function TasksPage() {
 
       <Card>
         <CardContent>
-          <TaskForm today={today} clients={clients} />
+          <TaskForm today={today} clients={clients} suggestions={suggestions} />
         </CardContent>
       </Card>
 

@@ -563,6 +563,8 @@ export const NO_ID_INPUT: Record<string, string> = {
   "inbox.generateInboxTokenAction": "own account",
   "inbox.revokeInboxTokenAction": "own account",
   "meeting-types.addMeetingTypeAction": "creates under the signed-in user",
+  "intro.saveIntroAnswersAction": "own account (intro.db.test.ts)",
+  "intro.finishIntroAction": "own account (intro.db.test.ts)",
   "onboarding.setOnboardingStepAction": "own account",
   "onboarding.pauseOnboardingAction": "own account",
   "settings.calendarFeedEnableAction": "own account",

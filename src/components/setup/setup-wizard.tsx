@@ -10,7 +10,9 @@ import { ExplainerVideo } from "@/components/auth/explainer-video";
 import { BrandingCard } from "@/components/settings/branding-card";
 import { BusinessInfoForm } from "@/components/settings/business-info-form";
 import { MeetingTypesCard } from "@/components/settings/meeting-types-card";
-import { FORM_STEPS, LAST_STEP, SETUP_STEPS } from "@/lib/onboarding";
+import { IntroForm } from "@/components/intro/intro-form";
+import type { IntroAnswers } from "@/lib/intro";
+import { FORM_STEPS, INTRO_STEPS, LAST_STEP, SETUP_STEPS } from "@/lib/onboarding";
 import { pauseOnboardingAction, setOnboardingStepAction } from "@/server/actions/onboarding";
 
 const FORM_ID = "setup-step-form";
@@ -21,6 +23,8 @@ type Props = {
   business: React.ComponentProps<typeof BusinessInfoForm>["initial"];
   meetingTypes: React.ComponentProps<typeof MeetingTypesCard>["types"];
   defaultMinutes: number;
+  /** the שאלון היכרות's answers so far (src/lib/intro.ts) */
+  intro: IntroAnswers;
   /** income/expense documents shown (src/lib/features.ts) */
   documents: boolean;
 };
@@ -28,15 +32,17 @@ type Props = {
 /**
  * One topic per screen, each an existing Settings card. "הבא" submits the
  * card's own form through its own server action and moves on once it saved;
- * "דילוג" moves on without saving. Nothing is required.
+ * "דילוג" moves on without saving. Nothing is required. The last screens are
+ * the שאלון היכרות, which can also be skipped whole.
  */
-export function SetupWizard({ step, brand, business, meetingTypes, defaultMinutes, documents }: Props) {
+export function SetupWizard({ step, brand, business, meetingTypes, defaultMinutes, intro, documents }: Props) {
   const router = useRouter();
   const [busy, startBusy] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const current = SETUP_STEPS[step];
   const isDone = current.id === "done";
+  const introQuestions = INTRO_STEPS[current.id];
 
   const goTo = (next: number) =>
     startBusy(async () => {
@@ -124,6 +130,21 @@ export function SetupWizard({ step, brand, business, meetingTypes, defaultMinute
           {current.id === "business" && <BusinessInfoForm initial={business} documents={documents} {...shared} hideSave />}
           {current.id === "types" && (
             <MeetingTypesCard types={meetingTypes} defaultMinutes={defaultMinutes} {...shared} hideSave />
+          )}
+          {introQuestions && (
+            <>
+              <div className="rounded-2xl border border-cream-200 bg-white/70 p-4 shadow-soft">
+                <IntroForm questions={introQuestions} initial={intro} {...shared} hideSave />
+              </div>
+              <button
+                type="button"
+                onClick={() => goTo(LAST_STEP)}
+                disabled={busy}
+                className="min-h-11 px-1 text-sm text-ink-muted underline underline-offset-2"
+              >
+                לדלג על שאלון ההיכרות
+              </button>
+            </>
           )}
 
           {isDone && (

@@ -30,7 +30,7 @@ export default async function NewSessionPage({
   const meetingTypes = await getMeetingTypeNames(userId);
   const me = await db.user.findUnique({
     where: { id: userId },
-    select: { defaultSessionMinutes: true },
+    select: { defaultSessionMinutes: true, defaultRate: true },
   });
   const scheduleWindow = await schedulingWindowUiFor(userId);
 
@@ -63,6 +63,7 @@ export default async function NewSessionPage({
         clients={clientOptions}
         defaults={{ startsAt: params.start, clientId: params.clientId }}
         defaultMinutes={me?.defaultSessionMinutes}
+        practiceRate={me?.defaultRate ? me.defaultRate.toString() : null}
         scheduleWindow={scheduleWindow}
       />
     </div>

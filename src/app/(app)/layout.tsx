@@ -34,6 +34,7 @@ export default async function AppLayout({
       select: {
         brandName: true,
         logoUrl: true,
+        clinicType: true,
         idleTimeoutMinutes: true,
         name: true,
         email: true,
@@ -50,7 +51,9 @@ export default async function AppLayout({
   if (branding && shouldEnterSetup(branding, sub.status)) redirect("/setup");
   // Income/expense documents are hidden until they can be issued (src/lib/features.ts)
   const documents = documentsEnabled();
-  const brand = branding ? { brandName: branding.brandName, logoUrl: branding.logoUrl } : undefined;
+  const brand = branding
+    ? { brandName: branding.brandName, logoUrl: branding.logoUrl, clinicType: branding.clinicType }
+    : undefined;
   const showBanner =
     sub.status === "expired" ||
     (sub.status === "trial" && (sub.daysLeft ?? 99) <= 7);

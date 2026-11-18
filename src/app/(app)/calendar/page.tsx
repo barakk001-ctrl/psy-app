@@ -8,6 +8,7 @@ import { fetchHolidays } from "@/lib/holidays";
 import { Button } from "@/components/ui/button";
 import { CalendarView } from "@/components/calendar/calendar-view";
 import { schedulingWindowUiFor } from "@/lib/subscription-server";
+import { businessHoursFor, parseWorkingHours, workingSpan } from "@/lib/intro";
 import type { EventInput } from "@fullcalendar/core";
 
 export const dynamic = "force-dynamic";
@@ -45,12 +46,15 @@ export default async function CalendarPage() {
     getMeetingTypeColorMap(userId),
     db.user.findUnique({
       where: { id: userId },
-      select: { showHolidays: true, defaultSessionMinutes: true },
+      select: { showHolidays: true, defaultSessionMinutes: true, workingHours: true },
     }),
     // Fetched whether or not they are shown, so ticking the box needs no reload.
     // Cached in memory for a day; an empty map if Hebcal is unreachable.
     fetchHolidays(rangeStart, rangeEnd),
   ]);
+
+  // The practice's working days and hours (שאלון היכרות): the rest is greyed
+  const workingHours = parseWorkingHours(me?.workingHours);
 
   const events: EventInput[] = sessions.map((s) => ({
     id: s.id,
@@ -102,6 +106,8 @@ export default async function CalendarPage() {
         showHolidays={me?.showHolidays ?? false}
         userId={userId}
         defaultMinutes={me?.defaultSessionMinutes}
+        businessHours={businessHoursFor(workingHours)}
+        workSpan={workingSpan(workingHours)}
         scheduleWindow={await schedulingWindowUiFor(userId)}
       />
     </div>

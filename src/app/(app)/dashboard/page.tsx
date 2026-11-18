@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -8,6 +9,7 @@ import { ExplainerVideo } from "@/components/auth/explainer-video";
 import { AGREEMENT_VERSION } from "@/lib/agreement";
 import { DashboardTasksCard } from "@/components/tasks/dashboard-tasks-card";
 import { loadDoneTasks, loadOpenTasks, loadTaskClients } from "@/lib/tasks-data";
+import { taskSuggestionsFor } from "@/lib/tasks";
 import { LogoAvatar } from "@/components/layout/logo-avatar";
 import { HeroLogo } from "@/components/layout/hero-logo";
 import { LogoMark } from "@/components/brand/logo-mark";
@@ -20,6 +22,12 @@ import { loadIncome, loadOpenDocuments } from "@/lib/income-data";
 import { getPeriodRange, periodLabel } from "@/lib/report-periods";
 import { documentsEnabled } from "@/lib/features";
 import { MY_CLINIC_PATH, MY_CLINIC_TITLE } from "@/lib/my-clinic";
+import {
+  dashboardLayout,
+  type DashboardBlock,
+  type DashboardStat,
+  type DashboardTile,
+} from "@/lib/intro";
 import {
   Calendar,
   UserPlus,
@@ -77,7 +85,15 @@ export default async function DashboardPage() {
     loadTaskClients(userId),
     db.user.findUnique({
       where: { id: userId },
-      select: { agreementVersion: true, name: true, logoUrl: true, brandName: true, onboardingCompletedAt: true },
+      select: {
+        agreementVersion: true,
+        name: true,
+        logoUrl: true,
+        brandName: true,
+        onboardingCompletedAt: true,
+        dashboardFocus: true,
+        clientGroups: true,
+      },
     }),
   ]);
   const needsAgreement = me?.agreementVersion !== AGREEMENT_VERSION;
@@ -94,6 +110,243 @@ export default async function DashboardPage() {
     s.startsAt.getTime() <= nowMs && s.endsAt.getTime() >= nowMs;
   const isOver = (s: { endsAt: Date }) => s.endsAt.getTime() < nowMs;
   const nextSessionId = todaySessions.find((s) => s.startsAt.getTime() > nowMs)?.id;
+
+  // The order of the boxes follows what the practice said matters most
+  // (שאלון היכרות, src/lib/intro.ts); the same boxes in every order
+  const layout = dashboardLayout(me?.dashboardFocus);
+
+  const stats: Record<DashboardStat, ReactNode> = {
+    clients: <StatCard label="לקוחות פעילים" value={activeClients} />,
+    expected: (
+      <StatCard
+        label="הכנסה צפויה החודש"
+        value={formatCurrency(monthExpected)}
+        hint="לפי הפגישות ביומן החודש"
+      />
+    ),
+    income: (
+      <StatCard
+        label="הכנסות החודש"
+        value={formatCurrency(monthIncome)}
+        hint={periodLabel("this-month", now)}
+      />
+    ),
+    debt: (
+      <StatCard
+        label="חוב פתוח"
+        value={formatCurrency(outstandingAmount)}
+        hint="חשבוניות שטרם שולמו במלואן"
+      />
+    ),
+    meetings: <StatCard label="פגישות היום" value={todaySessions.length} hint="ביומן היום" />,
+  };
+
+  const tiles: Record<DashboardTile, ReactNode> = {
+    document: (
+      <Link
+        href="/document"
+        className="flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur-sm border border-cream-200/80 shadow-soft px-4 py-4 hover:shadow-lift transition-all active:scale-[0.98]"
+      >
+        <span className="w-10 h-10 rounded-xl bg-sage-100 text-sage-700 grid place-items-center shrink-0">
+          <NotebookPen className="w-5 h-5" />
+        </span>
+        <span className="font-medium text-ink text-sm sm:text-base">
+          תיעוד פגישות
+        </span>
+      </Link>
+    ),
+    collect: (
+      <Link
+        href="/collect"
+        className="flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur-sm border border-cream-200/80 shadow-soft px-4 py-4 hover:shadow-lift transition-all active:scale-[0.98]"
+      >
+        <span className="w-10 h-10 rounded-xl bg-sage-100 text-sage-700 grid place-items-center shrink-0">
+          <Receipt className="w-5 h-5" />
+        </span>
+        <span className="font-medium text-ink text-sm sm:text-base">
+          אישורי תשלום
+        </span>
+      </Link>
+    ),
+  };
+
+  const blocks: Record<DashboardBlock, ReactNode> = {
+    stats: (
+      <section className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+        {layout.stats.map((id) => (
+          <Fragment key={id}>{stats[id]}</Fragment>
+        ))}
+      </section>
+    ),
+    tiles: (
+      <section className="grid grid-cols-2 gap-4">
+        {layout.tiles.map((id) => (
+          <Fragment key={id}>{tiles[id]}</Fragment>
+        ))}
+      </section>
+    ),
+    today: (
+    <section className="grid gap-6 lg:grid-cols-3">
+      <Card className="lg:col-span-2">
+        <CardHeader className="flex items-start justify-between">
+          <div>
+            <CardTitle>הפגישות של היום</CardTitle>
+            <CardDescription>כל הפגישות ביומן היום</CardDescription>
+          </div>
+          <Link href="/calendar" className="text-xs text-sage-600 hover:text-sage-700">
+            ליומן המלא ←
+          </Link>
+        </CardHeader>
+        <CardContent className="p-0">
+          {todaySessions.length === 0 ? (
+            <div className="p-12 text-center">
+              <Calendar className="w-10 h-10 mx-auto text-ink-subtle mb-3" strokeWidth={1.5} />
+              <p className="text-ink-muted">אין פגישות ביומן היום</p>
+              <Link
+                href="/calendar"
+                className="text-sm text-sage-600 hover:text-sage-700 mt-2 inline-block"
+              >
+                קביעת פגישה
+              </Link>
+            </div>
+          ) : (
+            <ul className="divide-y divide-cream-200">
+              {todaySessions.map((s) => {
+                const inProgress = isInProgress(s);
+                const started = s.startsAt.getTime() <= nowMs;
+                const documented = !!s.note;
+                const paymentDone = !!s.paymentStatus || !!s.invoiceItem;
+                return (
+                  <li
+                    key={s.id}
+                    className={`flex items-center justify-between px-5 py-4 ${
+                      inProgress ? "bg-sage-50" : ""
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-ink">
+                          {s.client.firstName} {s.client.lastName}
+                        </span>
+                        {inProgress && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-sage-300 bg-sage-100 px-2 py-0.5 text-[11px] font-medium text-sage-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-sage-600 animate-pulse" />
+                            מתקיימת עכשיו
+                          </span>
+                        )}
+                        {!inProgress && s.id === nextSessionId && (
+                          <span className="rounded-full border border-cream-300 bg-cream-100 px-2 py-0.5 text-[11px] text-ink-muted">
+                            הפגישה הבאה
+                          </span>
+                        )}
+                        {isOver(s) && (
+                          <span className="rounded-full border border-cream-300 bg-cream-100 px-2 py-0.5 text-[11px] text-ink-muted">
+                            הסתיימה
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-ink-muted mt-0.5">
+                        {formatDateTime(s.startsAt)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Bold status: green = done, terracotta = missing (past meetings only) */}
+                      <Link
+                        href={`/sessions/${s.id}`}
+                        title={documented ? "הפגישה תועדה" : "חסר תיעוד"}
+                        aria-label={documented ? "הפגישה תועדה" : "חסר תיעוד"}
+                        className={`w-8 h-8 grid place-items-center rounded-lg border transition-colors ${
+                          !started
+                            ? "border-cream-300 bg-white/70 text-ink-muted hover:text-sage-700 hover:border-sage-300"
+                            : documented
+                              ? "border-sage-600 bg-sage-600 text-cream-50 shadow-glow"
+                              : "border-terracotta-500/50 bg-terracotta-500/10 text-terracotta-600 font-bold"
+                        }`}
+                      >
+                        <NotebookPen className="w-4 h-4" strokeWidth={started && !documented ? 2.5 : 2} />
+                      </Link>
+                      <Link
+                        href={
+                          s.invoiceItem && documents
+                            ? `/invoices/${s.invoiceItem.invoiceId}`
+                            : `/sessions/${s.id}#billing`
+                        }
+                        title={paymentDone ? "התשלום עודכן" : "חסר עדכון תשלום"}
+                        aria-label={paymentDone ? "התשלום עודכן" : "חסר עדכון תשלום"}
+                        className={`w-8 h-8 grid place-items-center rounded-lg border transition-colors ${
+                          !started
+                            ? "border-cream-300 bg-white/70 text-ink-muted hover:text-sage-700 hover:border-sage-300"
+                            : paymentDone
+                              ? "border-sage-600 bg-sage-600 text-cream-50 shadow-glow"
+                              : "border-terracotta-500/50 bg-terracotta-500/10 text-terracotta-600 font-bold"
+                        }`}
+                      >
+                        <Receipt className="w-4 h-4" strokeWidth={started && !paymentDone ? 2.5 : 2} />
+                      </Link>
+                      <Link
+                        href={`/sessions/${s.id}`}
+                        className="text-xs text-sage-600 hover:text-sage-700 ms-1 hidden sm:inline"
+                      >
+                        פרטים ←
+                      </Link>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="space-y-6">
+      <DashboardTasksCard
+            open={openTasks}
+            doneToday={doneToday}
+            clients={taskClients}
+            today={todayLocal}
+            suggestions={taskSuggestionsFor(me?.clientGroups)}
+          />
+      <Card>
+        <CardHeader>
+          <CardTitle>פעולות מהירות</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Link
+            href="/clients/new"
+            className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
+          >
+            <UserPlus className="w-4 h-4 text-sage-600" />
+            <span className="text-sm">הוספת לקוח</span>
+          </Link>
+          <Link
+            href="/calendar"
+            className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
+          >
+            <Calendar className="w-4 h-4 text-sage-600" />
+            <span className="text-sm">קביעת פגישה</span>
+          </Link>
+          {documents && (
+            <Link
+              href="/invoices"
+              className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
+            >
+              <FileText className="w-4 h-4 text-sage-600" />
+              <span className="text-sm">מסמך חדש</span>
+            </Link>
+          )}
+          <Link
+            href="/import"
+            className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
+          >
+            <ClipboardPaste className="w-4 h-4 text-sage-600" />
+            <span className="text-sm">ייבוא פגישה מהודעה</span>
+          </Link>
+        </CardContent>
+      </Card>
+      </div>
+    </section>
+    ),
+  };
 
   return (
     <div className="space-y-8">
@@ -176,204 +429,9 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <section className="grid gap-4 grid-cols-2 lg:grid-cols-5">
-        <StatCard label="לקוחות פעילים" value={activeClients} />
-        <StatCard
-          label="הכנסה צפויה החודש"
-          value={formatCurrency(monthExpected)}
-          hint="לפי הפגישות ביומן החודש"
-        />
-        <StatCard
-          label="הכנסות החודש"
-          value={formatCurrency(monthIncome)}
-          hint={periodLabel("this-month", now)}
-        />
-        <StatCard
-          label="חוב פתוח"
-          value={formatCurrency(outstandingAmount)}
-          hint="חשבוניות שטרם שולמו במלואן"
-        />
-        <StatCard label="פגישות היום" value={todaySessions.length} hint="ביומן היום" />
-      </section>
-
-      <section className="grid grid-cols-2 gap-4">
-        <Link
-          href="/document"
-          className="flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur-sm border border-cream-200/80 shadow-soft px-4 py-4 hover:shadow-lift transition-all active:scale-[0.98]"
-        >
-          <span className="w-10 h-10 rounded-xl bg-sage-100 text-sage-700 grid place-items-center shrink-0">
-            <NotebookPen className="w-5 h-5" />
-          </span>
-          <span className="font-medium text-ink text-sm sm:text-base">
-            תיעוד פגישות
-          </span>
-        </Link>
-        <Link
-          href="/collect"
-          className="flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur-sm border border-cream-200/80 shadow-soft px-4 py-4 hover:shadow-lift transition-all active:scale-[0.98]"
-        >
-          <span className="w-10 h-10 rounded-xl bg-sage-100 text-sage-700 grid place-items-center shrink-0">
-            <Receipt className="w-5 h-5" />
-          </span>
-          <span className="font-medium text-ink text-sm sm:text-base">
-            אישורי תשלום
-          </span>
-        </Link>
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex items-start justify-between">
-            <div>
-              <CardTitle>הפגישות של היום</CardTitle>
-              <CardDescription>כל הפגישות ביומן היום</CardDescription>
-            </div>
-            <Link href="/calendar" className="text-xs text-sage-600 hover:text-sage-700">
-              ליומן המלא ←
-            </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            {todaySessions.length === 0 ? (
-              <div className="p-12 text-center">
-                <Calendar className="w-10 h-10 mx-auto text-ink-subtle mb-3" strokeWidth={1.5} />
-                <p className="text-ink-muted">אין פגישות ביומן היום</p>
-                <Link
-                  href="/calendar"
-                  className="text-sm text-sage-600 hover:text-sage-700 mt-2 inline-block"
-                >
-                  קביעת פגישה
-                </Link>
-              </div>
-            ) : (
-              <ul className="divide-y divide-cream-200">
-                {todaySessions.map((s) => {
-                  const inProgress = isInProgress(s);
-                  const started = s.startsAt.getTime() <= nowMs;
-                  const documented = !!s.note;
-                  const paymentDone = !!s.paymentStatus || !!s.invoiceItem;
-                  return (
-                    <li
-                      key={s.id}
-                      className={`flex items-center justify-between px-5 py-4 ${
-                        inProgress ? "bg-sage-50" : ""
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-ink">
-                            {s.client.firstName} {s.client.lastName}
-                          </span>
-                          {inProgress && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-sage-300 bg-sage-100 px-2 py-0.5 text-[11px] font-medium text-sage-700">
-                              <span className="h-1.5 w-1.5 rounded-full bg-sage-600 animate-pulse" />
-                              מתקיימת עכשיו
-                            </span>
-                          )}
-                          {!inProgress && s.id === nextSessionId && (
-                            <span className="rounded-full border border-cream-300 bg-cream-100 px-2 py-0.5 text-[11px] text-ink-muted">
-                              הפגישה הבאה
-                            </span>
-                          )}
-                          {isOver(s) && (
-                            <span className="rounded-full border border-cream-300 bg-cream-100 px-2 py-0.5 text-[11px] text-ink-muted">
-                              הסתיימה
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-ink-muted mt-0.5">
-                          {formatDateTime(s.startsAt)}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Bold status: green = done, terracotta = missing (past meetings only) */}
-                        <Link
-                          href={`/sessions/${s.id}`}
-                          title={documented ? "הפגישה תועדה" : "חסר תיעוד"}
-                          aria-label={documented ? "הפגישה תועדה" : "חסר תיעוד"}
-                          className={`w-8 h-8 grid place-items-center rounded-lg border transition-colors ${
-                            !started
-                              ? "border-cream-300 bg-white/70 text-ink-muted hover:text-sage-700 hover:border-sage-300"
-                              : documented
-                                ? "border-sage-600 bg-sage-600 text-cream-50 shadow-glow"
-                                : "border-terracotta-500/50 bg-terracotta-500/10 text-terracotta-600 font-bold"
-                          }`}
-                        >
-                          <NotebookPen className="w-4 h-4" strokeWidth={started && !documented ? 2.5 : 2} />
-                        </Link>
-                        <Link
-                          href={
-                            s.invoiceItem && documents
-                              ? `/invoices/${s.invoiceItem.invoiceId}`
-                              : `/sessions/${s.id}#billing`
-                          }
-                          title={paymentDone ? "התשלום עודכן" : "חסר עדכון תשלום"}
-                          aria-label={paymentDone ? "התשלום עודכן" : "חסר עדכון תשלום"}
-                          className={`w-8 h-8 grid place-items-center rounded-lg border transition-colors ${
-                            !started
-                              ? "border-cream-300 bg-white/70 text-ink-muted hover:text-sage-700 hover:border-sage-300"
-                              : paymentDone
-                                ? "border-sage-600 bg-sage-600 text-cream-50 shadow-glow"
-                                : "border-terracotta-500/50 bg-terracotta-500/10 text-terracotta-600 font-bold"
-                          }`}
-                        >
-                          <Receipt className="w-4 h-4" strokeWidth={started && !paymentDone ? 2.5 : 2} />
-                        </Link>
-                        <Link
-                          href={`/sessions/${s.id}`}
-                          className="text-xs text-sage-600 hover:text-sage-700 ms-1 hidden sm:inline"
-                        >
-                          פרטים ←
-                        </Link>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-        <DashboardTasksCard open={openTasks} doneToday={doneToday} clients={taskClients} today={todayLocal} />
-        <Card>
-          <CardHeader>
-            <CardTitle>פעולות מהירות</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Link
-              href="/clients/new"
-              className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
-            >
-              <UserPlus className="w-4 h-4 text-sage-600" />
-              <span className="text-sm">הוספת לקוח</span>
-            </Link>
-            <Link
-              href="/calendar"
-              className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
-            >
-              <Calendar className="w-4 h-4 text-sage-600" />
-              <span className="text-sm">קביעת פגישה</span>
-            </Link>
-            {documents && (
-              <Link
-                href="/invoices"
-                className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
-              >
-                <FileText className="w-4 h-4 text-sage-600" />
-                <span className="text-sm">מסמך חדש</span>
-              </Link>
-            )}
-            <Link
-              href="/import"
-              className="flex items-center gap-3 px-3 py-2 rounded hover:bg-cream-100 transition-colors text-ink-soft"
-            >
-              <ClipboardPaste className="w-4 h-4 text-sage-600" />
-              <span className="text-sm">ייבוא פגישה מהודעה</span>
-            </Link>
-          </CardContent>
-        </Card>
-        </div>
-      </section>
+      {layout.blocks.map((id) => (
+        <Fragment key={id}>{blocks[id]}</Fragment>
+      ))}
     </div>
   );
 }

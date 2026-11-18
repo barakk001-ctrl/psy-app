@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { isReadOnly, requireWritable, subscriptionStateFor } from "@/lib/subscription-server";
 import { READ_ONLY_ERROR } from "@/lib/subscription";
 import { DEFAULT_SESSION_MINUTES } from "@/lib/session-duration";
+import { newSessionRate } from "@/lib/session-rate";
 import {
   FOLLOWER_GRACE_DAYS,
   beyondWindow,
@@ -304,7 +305,17 @@ export async function createSessionAction(
   if (!client) return { error: "לקוח לא נמצא" };
 
   const durationMs = data.durationMinutes * 60 * 1000;
-  const rate = data.rate ?? (client.defaultRate ? Number(client.defaultRate) : null);
+  // What was typed, else the client's own rate, else the practice's usual
+  // rate (src/lib/session-rate.ts). The practice's is read only when needed.
+  const practiceRate =
+    data.rate === undefined && client.defaultRate === null
+      ? (await db.user.findUnique({ where: { id: userId }, select: { defaultRate: true } }))?.defaultRate
+      : null;
+  const rate = newSessionRate(
+    data.rate,
+    client.defaultRate ? client.defaultRate.toString() : null,
+    practiceRate ? practiceRate.toString() : null,
+  );
 
   const intervalWeeks = data.recurrence === "BIWEEKLY" ? 2 : 1;
   const openEnded = data.recurrence !== "NONE" && data.openEnded;

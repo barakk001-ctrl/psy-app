@@ -222,6 +222,11 @@ export async function buildExportEntries(userId: string): Promise<ExportEntry[]>
       timezone: true,
       defaultSessionMinutes: true,
       vatLiable: true,
+      // the שאלון היכרות's answers
+      clinicType: true,
+      clientGroups: true,
+      workingHours: true,
+      dashboardFocus: true,
       agreementVersion: true,
       agreementAcceptedAt: true,
       trialEndsAt: true,
